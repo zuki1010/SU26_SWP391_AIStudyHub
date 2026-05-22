@@ -1,0 +1,240 @@
+
+
+# File .env và mọi biến thể của nó
+.env
+.env.*
+!.env.example
+
+# Config chứa thông tin nhạy cảm (DB password, JWT secret, API key Gemini)
+# Chỉ commit file gốc application.yml (không chứa secret)
+# File -dev, -prod, -local thường chứa password thật → ignore
+src/main/resources/application-dev.yml
+src/main/resources/application-dev.properties
+src/main/resources/application-prod.yml
+src/main/resources/application-prod.properties
+src/main/resources/application-local.yml
+src/main/resources/application-local.properties
+src/main/resources/application-staging.yml
+
+# Keystore, certificate (nếu dùng HTTPS tự ký)
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.crt
+*.key
+
+# Secret files tổng quát
+secrets.yml
+secrets.properties
+*.secret
+
+
+# ─────────────────────────────────────────────────────────────
+# ☕ JAVA / MAVEN BUILD OUTPUT
+# ─────────────────────────────────────────────────────────────
+
+# Thư mục build chính của Maven — tuyệt đối không commit
+target/
+
+# Maven release plugin tạo ra các file tạm này
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+
+# Maven wrapper JAR (file binary, không cần track)
+.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+
+# Compiled class files
+*.class
+
+# JAR / WAR build artifact
+*.jar
+*.war
+*.ear
+*.nar
+
+# Crash logs của JVM
+hs_err_pid*
+replay_pid*
+
+# Heap dump (thường rất nặng, vài GB)
+*.hprof
+
+
+# ─────────────────────────────────────────────────────────────
+# 🧠 INTELLIJ IDEA
+# ─────────────────────────────────────────────────────────────
+
+# Ignore toàn bộ .idea/ trừ 2 thứ nên chia sẻ trong team:
+.idea/*
+!.idea/codeStyles          # Code style chung cho team
+!.idea/runConfigurations   # Run config (VD: "Run AiStudyHubApplication")
+
+# File workspace cá nhân từng máy
+*.iws
+*.iml
+*.ipr
+
+# IntelliJ output dir
+out/
+
+# Database data source cấu hình cục bộ (chứa password DB)
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+
+# HTTP Client request history (có thể chứa token/response nhạy cảm)
+.idea/httpRequests/
+
+# Các file IntelliJ tự sinh khác
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/aws.xml
+.idea/**/contentModel.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+.idea/**/mongoSettings.xml
+.idea/sonarlint/
+.idea/replstate.xml
+.idea/caches/build_file_checksums.ser
+cmake-build-*/
+atlassian-ide-plugin.xml
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+.idea_modules/
+
+
+# ─────────────────────────────────────────────────────────────
+# 📁 FILE UPLOAD (DocumentService)
+# ─────────────────────────────────────────────────────────────
+# User upload lên server → lưu trên storage/cloud, không commit vào git
+
+uploads/
+upload/
+files/
+documents/
+src/main/resources/static/uploads/
+src/main/resources/uploads/
+
+# Các định dạng file upload phổ biến trong app học tập
+*.pdf
+*.docx
+*.doc
+*.pptx
+*.xlsx
+*.mp4
+*.mp3
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+
+
+# ─────────────────────────────────────────────────────────────
+# 📋 LOG FILES
+# ─────────────────────────────────────────────────────────────
+
+# Spring Boot mặc định ghi log vào đây
+logs/
+*.log
+*.log.*
+
+# Log rotation files
+*.log.gz
+*.log.zip
+
+
+# ─────────────────────────────────────────────────────────────
+# 🪟 WINDOWS
+# ─────────────────────────────────────────────────────────────
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+
+# ─────────────────────────────────────────────────────────────
+# 🍎 MACOS (phòng khi teammate dùng Mac)
+# ─────────────────────────────────────────────────────────────
+
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Icon
+
+
+# ─────────────────────────────────────────────────────────────
+# 🌱 SPRING BOOT / SPRING TOOL SUITE
+# ─────────────────────────────────────────────────────────────
+
+.springBeans
+.sts4-cache/
+
+
+# ─────────────────────────────────────────────────────────────
+# 🔧 MISC BUILD / TEMP FILES
+# ─────────────────────────────────────────────────────────────
+
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+bin/
+local.properties
+.settings/
+.loadpath
+.recommenders/
+.factorypath
+.classpath
+.project
+.apt_generated/
+.apt_generated_test/
+.cache-main
+.scala_dependencies
+.worksheet
+.externalToolBuilders/
+*.launch
+*.pydevproject
+.cproject
+.autotools
+.buildpath
+.target
+.tern-project
+.texlipse
