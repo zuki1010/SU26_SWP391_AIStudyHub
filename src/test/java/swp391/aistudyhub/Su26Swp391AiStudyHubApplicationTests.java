@@ -1,4 +1,4 @@
-package swp391.aistudyhub;
+package swp391.aistudyhub1;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

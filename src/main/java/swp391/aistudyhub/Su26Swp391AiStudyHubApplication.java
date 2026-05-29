@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class Su26Swp391AiStudyHubApplication {
 
     public static void main(String[] args) {
+
         SpringApplication.run(Su26Swp391AiStudyHubApplication.class, args);
     }
 
