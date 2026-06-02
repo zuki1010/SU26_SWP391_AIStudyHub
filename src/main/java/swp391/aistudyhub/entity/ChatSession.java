@@ -18,6 +18,7 @@ import java.util.UUID;
 public class ChatSession {
     @Id
     @ColumnDefault("newid()")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "chat_session_id", nullable = false)
     private UUID id;
 

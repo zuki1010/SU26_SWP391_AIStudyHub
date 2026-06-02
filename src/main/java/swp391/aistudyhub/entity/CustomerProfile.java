@@ -19,6 +19,7 @@ import java.util.UUID;
 public class CustomerProfile {
     @Id
     @ColumnDefault("newid()")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "customer_id", nullable = false)
     private UUID id;
 

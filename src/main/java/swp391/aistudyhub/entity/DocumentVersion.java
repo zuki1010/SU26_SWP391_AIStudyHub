@@ -19,6 +19,7 @@ import java.util.UUID;
 public class DocumentVersion {
     @Id
     @ColumnDefault("newid()")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "version_id", nullable = false)
     private UUID id;
 

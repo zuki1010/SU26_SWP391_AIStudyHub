@@ -20,6 +20,7 @@ import java.util.UUID;
 public class UserSession {
     @Id
     @ColumnDefault("newid()")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "session_id", nullable = false)
     private UUID id;
 
