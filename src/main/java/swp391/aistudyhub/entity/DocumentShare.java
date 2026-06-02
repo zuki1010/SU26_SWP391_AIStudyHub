@@ -20,7 +20,6 @@ import java.util.UUID;
 public class DocumentShare {
     @Id
     @ColumnDefault("newid()")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "share_id", nullable = false)
     private UUID id;
 

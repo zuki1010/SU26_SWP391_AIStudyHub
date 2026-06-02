@@ -18,7 +18,6 @@ import java.util.UUID;
 public class DocumentChunk {
     @Id
     @ColumnDefault("newid()")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "chunk_id", nullable = false)
     private UUID id;
 

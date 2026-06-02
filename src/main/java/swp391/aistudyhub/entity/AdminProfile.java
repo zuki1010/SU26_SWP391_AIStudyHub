@@ -19,7 +19,6 @@ import java.util.UUID;
 public class AdminProfile {
     @Id
     @ColumnDefault("newid()")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "admin_id", nullable = false)
     private UUID id;
 

@@ -18,7 +18,6 @@ import java.util.UUID;
 public class StorageUploadLog {
     @Id
     @ColumnDefault("newid()")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "log_id", nullable = false)
     private UUID id;
 

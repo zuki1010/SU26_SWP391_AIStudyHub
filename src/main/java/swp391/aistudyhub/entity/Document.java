@@ -20,7 +20,6 @@ import java.util.UUID;
 public class Document {
     @Id
     @ColumnDefault("newid()")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "document_id", nullable = false)
     private UUID id;
 

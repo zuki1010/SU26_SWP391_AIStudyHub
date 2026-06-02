@@ -19,7 +19,6 @@ import java.util.UUID;
 public class ModeratorProfile {
     @Id
     @ColumnDefault("newid()")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "moderator_id", nullable = false)
     private UUID id;
 
