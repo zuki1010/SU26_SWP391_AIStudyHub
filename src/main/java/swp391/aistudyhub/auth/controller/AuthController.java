@@ -22,6 +22,7 @@ import swp391.aistudyhub.service.AuthService;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Register, login, password, and profile APIs")
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
