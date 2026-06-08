@@ -1,9 +1,9 @@
 package swp391.aistudyhub.service;
 
 import jakarta.servlet.http.HttpServletRequest;
-import swp391.aistudyhub.auth.dto.request.*;
-import swp391.aistudyhub.auth.dto.response.AuthResponse;
-import swp391.aistudyhub.auth.dto.response.UserProfileResponse;
+import swp391.aistudyhub.dto.request.*;
+import swp391.aistudyhub.dto.response.AuthResponse;
+import swp391.aistudyhub.dto.response.UserProfileResponse;
 import swp391.aistudyhub.security.CustomUserDetails;
 
 public interface AuthService {

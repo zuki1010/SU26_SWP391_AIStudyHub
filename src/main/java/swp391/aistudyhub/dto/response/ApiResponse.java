@@ -1,4 +1,4 @@
-package swp391.aistudyhub.auth.dto.response;
+package swp391.aistudyhub.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

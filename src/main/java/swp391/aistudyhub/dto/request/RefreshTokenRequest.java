@@ -1,4 +1,4 @@
-package swp391.aistudyhub.auth.dto.request;
+package swp391.aistudyhub.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

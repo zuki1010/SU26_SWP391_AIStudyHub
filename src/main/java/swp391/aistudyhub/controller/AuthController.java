@@ -1,4 +1,4 @@
-package swp391.aistudyhub.auth.controller;
+package swp391.aistudyhub.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11,10 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
-import swp391.aistudyhub.auth.dto.request.*;
-import swp391.aistudyhub.auth.dto.response.ApiResponse;
-import swp391.aistudyhub.auth.dto.response.AuthResponse;
-import swp391.aistudyhub.auth.dto.response.UserProfileResponse;
+import swp391.aistudyhub.dto.request.*;
+import swp391.aistudyhub.dto.response.ApiResponse;
+import swp391.aistudyhub.dto.response.AuthResponse;
+import swp391.aistudyhub.dto.response.UserProfileResponse;
 import swp391.aistudyhub.security.CustomUserDetails;
 import swp391.aistudyhub.service.AuthService;
 
