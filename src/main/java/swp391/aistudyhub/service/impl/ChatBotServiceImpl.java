@@ -2,8 +2,8 @@ package swp391.aistudyhub.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import swp391.aistudyhub.dto.ChatRequestSessionDTO;
-import swp391.aistudyhub.dto.StartSessionDTO;
+import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
+import swp391.aistudyhub.dto.request.StartSessionDTO;
 import swp391.aistudyhub.entity.ChatMessage;
 import swp391.aistudyhub.entity.ChatSession;
 import swp391.aistudyhub.entity.Document;
