@@ -17,7 +17,8 @@ import java.util.UUID;
 @Table(name = "users")
 public class User {
     @Id
-    @Column(name = "user_id", nullable = false)
+    @ColumnDefault("newid()")
+    @Column(name = "user_id", updatable = false, nullable = false)
     private UUID id;
 
     @Size(max = 255)
