@@ -32,4 +32,10 @@ public class ChatBotController {
 
         return ResponseEntity.ok(aiAnswer);
     }
+
+    @PostMapping("/test")
+    public ResponseEntity<String> chatTest(@RequestBody String message) {
+        String answer = chatBotService.chatTest(message);
+        return ResponseEntity.ok().body(answer);
+    }
 }

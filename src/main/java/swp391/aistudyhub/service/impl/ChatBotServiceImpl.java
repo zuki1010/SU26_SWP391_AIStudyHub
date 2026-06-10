@@ -1,7 +1,12 @@
 package swp391.aistudyhub.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
 import swp391.aistudyhub.entity.ChatMessage;
@@ -15,10 +20,7 @@ import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.ChatBotService;
 
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class ChatBotServiceImpl implements ChatBotService {
@@ -34,6 +36,9 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Autowired
     private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     @Override
     public UUID createNewChatSession(StartSessionDTO dto) {
@@ -92,5 +97,37 @@ public class ChatBotServiceImpl implements ChatBotService {
         chatMessageRepository.save(aiMsg);
 
         return aiAnswer;
+    }
+
+    public String chatTest(String message) {
+
+        String apiKey = "...";
+        String url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=" + apiKey;
+
+        Map<String, Object> requestBody = Map.of(
+                "contents", List.of(
+                        Map.of("parts", List.of(Map.of("text", message)))
+                )
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<Map> candidates = (List<Map>) response.getBody().get("candidates");
+                Map contentMap = (Map) candidates.get(0).get("content");
+                List<Map> parts = (List<Map>) contentMap.get("parts");
+
+                return (String) parts.get(0).get("text");
+            }
+        } catch (Exception e) {
+            return "Lỗi kết nối API Gemini: " + e.getMessage();
+        }
+
+        return "Không nhận được phản hồi từ AI";
     }
 }
