@@ -53,7 +53,7 @@ public class AuthServiceImpl implements AuthService {
         User user = new User();
         user.setId(UUID.randomUUID());
         user.setEmail(request.getEmail().trim().toLowerCase());
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setPasswordHash(request.getPassword());
         user.setRole(role);
         user.setAccountStatus("ACTIVE");
         user.setCreatedAt(Instant.now());
@@ -139,7 +139,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> AuthException.notFound("User not found"));
 
-        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setPasswordHash(request.getNewPassword());
         userRepository.save(user);
         userSessionRepository.deleteByUser_Id(userId);
     }
@@ -150,9 +150,9 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> AuthException.notFound("User not found"));
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-            throw AuthException.badRequest("Current password is incorrect");
-        }
+        if (!request.getCurrentPassword().equals(user.getPasswordHash())) {
+    throw AuthException.badRequest("Current password is incorrect");
+    }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
