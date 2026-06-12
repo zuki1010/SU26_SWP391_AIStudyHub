@@ -2,10 +2,8 @@ package swp391.aistudyhub.service.impl;
 
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
-import swp391.aistudyhub.entity.CloudStorage;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
-import swp391.aistudyhub.repository.CloudStorageRepository;
 import swp391.aistudyhub.repository.DocumentRepository;
 import swp391.aistudyhub.service.DocumentService;
 
@@ -24,12 +22,9 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private DocumentRepository documentRepository;
 
-    @Autowired
-    private CloudStorageRepository cloudStorageRepository;
-
     private DocumentResponseDTO mapToResponseDTO(Document doc) {
         DocumentResponseDTO dto = new DocumentResponseDTO();
-        dto.setDocumentId(doc.getId()); // Dùng getId() theo Entity gốc của bạn
+        dto.setDocumentId(doc.getId());
         dto.setDocumentName(doc.getDocumentName());
         dto.setFileType(doc.getFileType());
         dto.setPreviewUrl(doc.getPreviewUrl());
@@ -41,22 +36,16 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(UUID userId, DocumentRequestDTO requestDTO) {
-        CloudStorage storage = cloudStorageRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Lỗi: Tài khoản chưa kích hoạt bộ nhớ Cloud Storage!"));
-
-        if (storage.getUsedQuota() + requestDTO.getFileSize() > storage.getTotalQuota()) {
-            throw new RuntimeException("Thất bại: Bộ nhớ đám mây của bạn đã đầy!");
-        }
-
-        storage.setUsedQuota(storage.getUsedQuota() + requestDTO.getFileSize());
-        cloudStorageRepository.save(storage);
-
-        // Tạo đối tượng User để set mối quan hệ quan hệ (ManyToOne)
+        // Tạo đối tượng User để gán quan hệ khóa ngoại (ManyToOne)
         User user = new User();
         user.setId(userId);
 
         Document doc = new Document();
-        doc.setUser(user); // Truyền đối tượng User vào thay vì chỉ truyền UserId
+
+        // SỬA LỖI 400: Xóa bỏ dòng doc.setId(UUID.randomUUID());
+        // Để trống trường ID hoàn toàn để Hibernate tự phối hợp với @GeneratedValue sinh mã riêng biệt khi INSERT.
+
+        doc.setUser(user);
         doc.setDocumentName(requestDTO.getDocumentName());
         doc.setFileType(requestDTO.getFileType());
         doc.setPreviewUrl(requestDTO.getPreviewUrl());
@@ -67,6 +56,7 @@ public class DocumentServiceImpl implements DocumentService {
         return mapToResponseDTO(savedDoc);
     }
 
+    @Transactional(readOnly = true) // Thêm readOnly để tối ưu hóa hiệu năng đọc dữ liệu
     @Override
     public List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId) {
         List<Document> documents = documentRepository.findByUserId(userId);
@@ -74,6 +64,7 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DocumentResponseDTO getDocumentDetail(UUID documentId, UUID userId) {
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy tài liệu này!"));
@@ -110,11 +101,5 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         documentRepository.delete(doc);
-
-        CloudStorage storage = cloudStorageRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy Cloud Storage tương ứng!"));
-        long currentUsed = storage.getUsedQuota() - fileSize;
-        storage.setUsedQuota(Math.max(0, currentUsed));
-        cloudStorageRepository.save(storage);
     }
 }

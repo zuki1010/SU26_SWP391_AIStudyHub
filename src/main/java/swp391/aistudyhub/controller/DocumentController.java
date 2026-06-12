@@ -30,7 +30,7 @@ public class DocumentController {
         }
     }
 
-    @GetMapping
+    @GetMapping("/all/{id}")
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(@RequestHeader("X-User-Id") UUID userId) {
         return ResponseEntity.ok(documentService.getAllDocumentsByUserId(userId));
     }
