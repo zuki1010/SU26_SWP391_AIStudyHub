@@ -1,5 +1,6 @@
 package swp391.aistudyhub.controller;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.service.DocumentService;
@@ -13,6 +14,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
+@Tag(name = "Document Management", description = "CRUD Document")
 public class DocumentController {
 
     @Autowired

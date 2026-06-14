@@ -42,13 +42,11 @@ public class Document {
     private String fileType;
 
     @Nationalized
-    @Lob
-    @Column(name = "preview_url")
+    @Column(name = "preview_url", columnDefinition = "TEXT")
     private String previewUrl;
 
     @Nationalized
-    @Lob
-    @Column(name = "download_url")
+    @Column(name = "download_url", columnDefinition = "TEXT")
     private String downloadUrl;
 
     @ColumnDefault("getdate()")

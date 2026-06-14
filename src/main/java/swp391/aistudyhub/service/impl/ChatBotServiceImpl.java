@@ -1,14 +1,19 @@
 package swp391.aistudyhub.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.endpoint.SecurityContext;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
+import swp391.aistudyhub.dto.response.UpdateSessionDocsDTO;
 import swp391.aistudyhub.entity.ChatMessage;
 import swp391.aistudyhub.entity.ChatSession;
 import swp391.aistudyhub.entity.Document;
@@ -42,61 +47,58 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Override
     public UUID createNewChatSession(StartSessionDTO dto) {
-        UUID mockUserId = UUID.fromString("7b29a244-c782-4422-95cd-6562211f32a4");
-        Optional<User> userOptional = userRepository.findById(mockUserId);
-        if(userOptional.isEmpty()) {
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
             throw new RuntimeException("You are not login yet!");
         }
-        User user = userOptional.get();
+
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
 
         ChatSession newSession = new ChatSession();
         newSession.setUser(user);
         newSession.setCreatedAt(Instant.now());
 
-        if(dto.getDocumentId()!=null) {
-            Optional<Document> documentOptional = documentRepository.findById(dto.getDocumentId());
-            if(documentOptional.isEmpty()) {
-                throw new RuntimeException("You don't have this document!");
+        if (dto != null && dto.getDocumentIds() != null && !dto.getDocumentIds().isEmpty()) {
+
+            List<Document> documents = documentRepository.findAllById(dto.getDocumentIds());
+            if (documents.isEmpty()) {
+                throw new RuntimeException("Documents are not found!");
             }
-            Document document = documentOptional.get();
-            newSession.setDocument(document);
-            newSession.setSessionTitle("Chat about document: " + document.getDocumentName());
+
+            newSession.getDocuments().addAll(documents);
+
+            if (documents.size() == 1) {
+                newSession.setSessionTitle("Chat about documents: " + documents.get(0).getDocumentName());
+            } else {
+                newSession.setSessionTitle("Chat about " + documents.size() + " documents selected");
+            }
+
         } else {
-            newSession.setDocument(null);
             newSession.setSessionTitle("New chat session");
         }
 
-        ChatSession saveSession = chatSessionRepository.save(newSession);
-        return saveSession.getId();
+        ChatSession savedSession = chatSessionRepository.save(newSession);
+        return savedSession.getId();
     }
 
     @Override
-    public String chatWithNoDocument(ChatRequestSessionDTO dto) {
-        ChatSession session = chatSessionRepository.findById(dto.getSessionId())
-                .orElseThrow(() -> new RuntimeException("This chat session is not exist!"));
+    public void updateSessionDocuments(UUID sessionId, UpdateSessionDocsDTO dto) {
+        ChatSession session = chatSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("This chat session is not found!"));
 
+        session.getDocuments().clear();
 
-        List<ChatMessage> chatHistory = chatMessageRepository.findTop10ByChatSessionOrderBySentAtDesc(session);
+        if (dto != null && dto.getDocumentIds() != null && !dto.getDocumentIds().isEmpty()) {
+            List<Document> targetDocuments = documentRepository.findAllById(dto.getDocumentIds());
 
-        Collections.reverse(chatHistory);
+            session.getDocuments().addAll(targetDocuments);
+            session.setSessionTitle("Chat about " + targetDocuments.size() + " documents selected");
+        } else {
+            session.setSessionTitle("Chat Free Session");
+        }
 
-        String aiAnswer = "This is the answer from AI";
-
-        ChatMessage userMsg = new ChatMessage();
-        userMsg.setChatSession(session);
-        userMsg.setMessageContent(dto.getMessageContent());
-        userMsg.setSenderType("USER");
-        userMsg.setSentAt(Instant.now());
-        chatMessageRepository.save(userMsg);
-
-        ChatMessage aiMsg = new ChatMessage();
-        aiMsg.setChatSession(session);
-        aiMsg.setMessageContent(aiAnswer);
-        aiMsg.setSenderType("BOT");
-        aiMsg.setSentAt(Instant.now());
-        chatMessageRepository.save(aiMsg);
-
-        return aiAnswer;
+        chatSessionRepository.save(session);
     }
 
     public String chatTest(String message) {

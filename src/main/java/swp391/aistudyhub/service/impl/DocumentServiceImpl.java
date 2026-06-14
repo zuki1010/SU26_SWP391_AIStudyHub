@@ -1,5 +1,7 @@
 package swp391.aistudyhub.service.impl;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.entity.CloudStorage;
@@ -7,6 +9,7 @@ import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.repository.CloudStorageRepository;
 import swp391.aistudyhub.repository.DocumentRepository;
+import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.DocumentService;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +29,9 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private CloudStorageRepository cloudStorageRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private DocumentResponseDTO mapToResponseDTO(Document doc) {
         DocumentResponseDTO dto = new DocumentResponseDTO();
@@ -116,5 +122,18 @@ public class DocumentServiceImpl implements DocumentService {
         long currentUsed = storage.getUsedQuota() - fileSize;
         storage.setUsedQuota(Math.max(0, currentUsed));
         cloudStorageRepository.save(storage);
+    }
+
+
+    public List<Document> getMyDocuments() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserEmail = authentication.getName();
+
+        User user = userRepository.findByEmailIgnoreCase(currentUserEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Document> documents = documentRepository.findAllByUser(user);
+
+        return documents;
     }
 }
