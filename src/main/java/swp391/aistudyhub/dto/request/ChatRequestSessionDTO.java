@@ -8,5 +8,4 @@ import java.util.UUID;
 public class ChatRequestSessionDTO {
     private UUID sessionId;
     private String messageContent;
-    private UUID documentId;
 }
