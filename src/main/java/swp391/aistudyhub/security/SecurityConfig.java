@@ -42,6 +42,7 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/api/chat/**",
             "/api/v1/documents/**"
+
     };
 
     @Bean
@@ -53,6 +54,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_PATHS).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/v1/documents").authenticated()
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/v1/documents/**").authenticated()
                         .anyRequest().authenticated())
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
