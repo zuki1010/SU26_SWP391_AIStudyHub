@@ -39,16 +39,14 @@ public class DocumentController {
     @GetMapping
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        try {
-            System.out.println("DOCUMENT API CALLED");
-            System.out.println("USER DETAILS = " + userDetails.getUsername());
 
-            return ResponseEntity.ok(
-                    documentService.getAllDocumentsByUserId(userDetails.getId())
-            );
-        } catch (Exception e) {
-            throw e;
-        }
+        System.out.println("DOCUMENT API CALLED");
+        System.out.println("USER DETAILS = " + userDetails.getUsername());
+        System.out.println("AUTHORITIES = " + userDetails.getAuthorities());
+
+        return ResponseEntity.ok(
+                documentService.getAllDocumentsByUserId(userDetails.getId())
+        );
     }
 
     @GetMapping("/{id}")
