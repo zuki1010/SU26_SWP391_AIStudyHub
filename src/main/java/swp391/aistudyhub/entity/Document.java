@@ -18,8 +18,11 @@ import java.util.UUID;
 @Entity
 @Table(name = "documents")
 public class Document {
+
     @Id
-    @ColumnDefault("newid()")
+    // 1. SỬA LỖI 400 (Phải gán ID thủ công):
+    // Thay đổi chiến lược sinh UUID tự động tương thích 100% với Spring Boot và PostgreSQL
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "document_id", nullable = false)
     private UUID id;
 
@@ -49,9 +52,7 @@ public class Document {
     @Column(name = "download_url", columnDefinition = "TEXT")
     private String downloadUrl;
 
-    @ColumnDefault("getdate()")
+    @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at")
     private Instant createdAt;
-
-
 }
