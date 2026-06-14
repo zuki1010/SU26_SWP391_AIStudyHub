@@ -5,7 +5,7 @@ import java.util.UUID;
 import java.time.Instant;
 
 @Data
-public class DocumentResponseDTO {
+public class    DocumentResponseDTO {
     private UUID documentId;
     private String documentName;
     private String fileType;
