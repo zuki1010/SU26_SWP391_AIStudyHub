@@ -41,7 +41,11 @@ public class SecurityConfig {
             "/api/auth/logout",
             "/v3/api-docs/**",
             "/swagger-ui/**",
+<<<<<<< Updated upstream:src/main/java/swp391/aistudyhub/config/SecurityConfig.java
             "/swagger-ui.html"
+=======
+            "/swagger-ui.html",
+>>>>>>> Stashed changes:src/main/java/swp391/aistudyhub/security/SecurityConfig.java
     };
 
     @Bean
@@ -51,12 +55,20 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+<<<<<<< Updated upstream:src/main/java/swp391/aistudyhub/config/SecurityConfig.java
         .requestMatchers(PUBLIC_PATHS).permitAll()
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
         .requestMatchers("/api/v1/documents").authenticated()
 .requestMatchers("/api/v1/documents/**").authenticated()
         .anyRequest().authenticated()
 )
+=======
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/v1/documents").authenticated()
+                        .requestMatchers("/api/v1/documents/**").authenticated()
+                        .anyRequest().authenticated())
+>>>>>>> Stashed changes:src/main/java/swp391/aistudyhub/security/SecurityConfig.java
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
