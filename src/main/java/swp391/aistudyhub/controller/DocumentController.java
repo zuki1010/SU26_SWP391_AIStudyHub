@@ -2,7 +2,10 @@ package swp391.aistudyhub.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -10,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
@@ -22,6 +26,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 =======
+>>>>>>> Stashed changes
+=======
+import swp391.aistudyhub.config.OpenApiConfig;
+import swp391.aistudyhub.dto.DocumentRequestDTO;
+import swp391.aistudyhub.dto.DocumentResponseDTO;
+import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.security.CustomUserDetails;
+import swp391.aistudyhub.service.DocumentChunkService;
+import swp391.aistudyhub.service.DocumentService;
 >>>>>>> Stashed changes
 
 import java.util.List;
@@ -36,16 +49,38 @@ public class DocumentController {
     @Autowired
     private DocumentService documentService;
 
+<<<<<<< Updated upstream
+=======
+    @Autowired
+    private DocumentChunkService documentChunkService;
+
+>>>>>>> Stashed changes
     @PostMapping
     public ResponseEntity<?> createDocument(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody DocumentRequestDTO requestDTO) {
         try {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             DocumentResponseDTO response = documentService.createDocument(userDetails.getId(), requestDTO);
 =======
             DocumentResponseDTO response =
                     documentService.createDocument(userDetails.getId(), requestDTO);
+=======
+            DocumentResponseDTO response =
+                    documentService.createDocument(userDetails.getId(), requestDTO);
+
+            Document docEntity = new Document();
+            docEntity.setId(response.getDocumentId());
+
+            String testLargeText = "Đây là đoạn văn bản dài dùng để kiểm tra tính năng băm nhỏ tài liệu của hệ thống AI Study Hub. "
+                    + "Hệ thống sẽ tự động cắt chuỗi này thành các mảnh nhỏ hơn dựa trên cấu hình chuỗi gối đầu overlap size. "
+                    + "Sau đó, mỗi mảnh nhỏ này sẽ được chuyển hóa thành vector và lưu trữ trực tiếp xuống bảng document_chunks trên Supabase. "
+                    + "Quá trình này giúp phục vụ cho tính năng tìm kiếm ngữ nghĩa nâng cao và tạo lập giải pháp Chat với tài liệu RAG ở các bước tiếp theo.";
+
+            System.out.println(">>> CONTROLLER LOG: Bắt đầu luồng kích hoạt băm chữ thử nghiệm...");
+            documentChunkService.chunkAndEmbedDocument(docEntity, testLargeText);
+>>>>>>> Stashed changes
 
 >>>>>>> Stashed changes
             return ResponseEntity.ok(response);
@@ -55,10 +90,13 @@ public class DocumentController {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     @GetMapping("/all/{id}")
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(documentService.getAllDocumentsByUserId(userDetails.getId()));
 =======
+=======
+>>>>>>> Stashed changes
     @GetMapping
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -69,6 +107,9 @@ public class DocumentController {
         return ResponseEntity.ok(
                 documentService.getAllDocumentsByUserId(userDetails.getId())
         );
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     }
 
