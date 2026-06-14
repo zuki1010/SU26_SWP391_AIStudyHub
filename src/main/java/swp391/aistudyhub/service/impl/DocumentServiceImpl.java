@@ -1,15 +1,19 @@
 package swp391.aistudyhub.service.impl;
 
+import org.springframework.core.io.Resource;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.repository.DocumentRepository;
 import swp391.aistudyhub.service.DocumentService;
-
+import org.springframework.core.io.ByteArrayResource;
+import java.io.InputStream;
+import java.net.URL;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.Instant;
 import java.util.List;
@@ -36,15 +40,10 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(UUID userId, DocumentRequestDTO requestDTO) {
-        // Tạo đối tượng User để gán quan hệ khóa ngoại (ManyToOne)
         User user = new User();
         user.setId(userId);
 
         Document doc = new Document();
-
-        // SỬA LỖI 400: Xóa bỏ dòng doc.setId(UUID.randomUUID());
-        // Để trống trường ID hoàn toàn để Hibernate tự phối hợp với @GeneratedValue sinh mã riêng biệt khi INSERT.
-
         doc.setUser(user);
         doc.setDocumentName(requestDTO.getDocumentName());
         doc.setFileType(requestDTO.getFileType());
@@ -56,7 +55,7 @@ public class DocumentServiceImpl implements DocumentService {
         return mapToResponseDTO(savedDoc);
     }
 
-    @Transactional(readOnly = true) // Thêm readOnly để tối ưu hóa hiệu năng đọc dữ liệu
+    @Transactional(readOnly = true)
     @Override
     public List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId) {
         List<Document> documents = documentRepository.findByUserId(userId);
@@ -101,5 +100,29 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         documentRepository.delete(doc);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Resource downloadDocumentFile(UUID documentId, UUID userId) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Lỗi: Không tìm thấy tài liệu để tải!"));
+
+        if (!doc.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Từ chối: Bạn không có quyền tải tài liệu này!");
+        }
+
+        try {
+            URL url = new URL(doc.getDownloadUrl());
+
+            try (InputStream in = url.openStream()) {
+                byte[] fileBytes = in.readAllBytes();
+
+
+                return new ByteArrayResource(fileBytes);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi tải file từ bộ lưu trữ Cloud: " + e.getMessage());
+        }
     }
 }
