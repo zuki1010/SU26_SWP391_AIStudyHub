@@ -48,4 +48,18 @@ public class ChatBotController {
         String answer = chatBotService.chatTest(message);
         return ResponseEntity.ok().body(answer);
     }
+    @PostMapping("/send-message")
+    public ResponseEntity<String> sendMessage(@RequestBody ChatRequestSessionDTO dto) {
+        if (dto.getSessionId() == null || dto.getMessageContent() == null || dto.getMessageContent().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("This field cannot be empty!");
+        }
+
+        try {
+            String aiResponse = chatBotService.chatWithGemini(dto);
+
+            return ResponseEntity.ok().body(aiResponse);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Chat Process Error: " + e.getMessage());
+        }
+    }
 }

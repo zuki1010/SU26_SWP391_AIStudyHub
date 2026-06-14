@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import swp391.aistudyhub.component.GeminiClient;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
@@ -21,12 +22,16 @@ import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.ChatBotService;
+import swp391.aistudyhub.service.DocumentChunkService;
 
 import java.time.Instant;
 import java.util.*;
 
 @Service
 public class ChatBotServiceImpl implements ChatBotService {
+
+    @Autowired
+    private GeminiClient geminiClient;
 
     @Autowired
     private ChatSessionRepository chatSessionRepository;
@@ -42,6 +47,9 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Autowired
     private DocumentChunkRepository documentChunkRepository;
+
+    @Autowired
+    private DocumentChunkService documentChunkService;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -149,30 +157,32 @@ public class ChatBotServiceImpl implements ChatBotService {
         if (attachedDocs != null && !attachedDocs.isEmpty()) {
             List<UUID> docIds = attachedDocs.stream().map(Document::getId).toList();
 
-            // Bước A: Chuyển câu chat hiện tại của User thành dạng Vector (gọi qua Embedding API của OpenAI/Gemini)
-            List<Float> embeddingResult = embeddingService.getEmbedding(userMessageContent);
-            String queryVectorStr = embeddingResult.toString(); // Chuyển mảng [0.11, 0.22] thành String "[0.11, 0.22]"
+            String embeddingResult = documentChunkService.getVectorStringForQuery(dto.getMessageContent());
 
-            // Bước B: Bắn thẳng xuống DB lôi ra đúng 5 đoạn văn liên quan nhất thuộc các file này
-            List<String> relevantChunks = documentChunkRepository.findRelevantChunks(docIds, queryVectorStr, 5);
+            List<String> relevantChunks = documentChunkRepository.findRelevantChunks(docIds, embeddingResult, 5);
 
-            // Gộp đống dữ liệu thô đó lại thành Context nền
             documentContext = String.join("\n\n", relevantChunks);
         }
 
-        // 4. Thiết lập System Instruction (Bảo AI đọc dữ liệu chunks nếu có)
         String systemPrompt = "Bạn là trợ lý học tập. ";
         if (!documentContext.isEmpty()) {
             systemPrompt += "Hãy dựa vào các đoạn dữ liệu tài liệu sau đây để trả lời câu hỏi:\n"
                     + documentContext;
         }
 
-        // 5. Gửi lên Gemini API nhận câu trả lời
-        String aiResponse = geminiClient.callGemini(systemPrompt, history, userMessageContent);
+        String aiResponse = geminiClient.callGemini(systemPrompt, history, dto.getMessageContent());
 
-        // 6. Lưu tin nhắn mới vào DB
-        saveMessage(sessionId, "USER", userMessageContent);
-        saveMessage(sessionId, "AI", aiResponse);
+        ChatMessage userMsg = new ChatMessage();
+        userMsg.setChatSession(session);
+        userMsg.setSenderType("USER");
+        userMsg.setMessageContent(dto.getMessageContent());
+        chatMessageRepository.save(userMsg);
+
+        ChatMessage aiMsg = new ChatMessage();
+        aiMsg.setChatSession(session);
+        aiMsg.setSenderType("AI");
+        aiMsg.setMessageContent(aiResponse);
+        chatMessageRepository.save(aiMsg);
 
         return aiResponse;
     }

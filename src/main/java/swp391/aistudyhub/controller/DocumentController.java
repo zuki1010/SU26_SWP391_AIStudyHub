@@ -1,13 +1,14 @@
 package swp391.aistudyhub.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
+import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,19 +21,37 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-
-@Tag(name = "Document Management", description = "CRUD Document")
-public class DocumentController {
+public class    DocumentController {
 
     @Autowired
     private DocumentService documentService;
+
+    // TÍCH HỢP Thêm service băm chữ tài liệu vào đây
+    @Autowired
+    private DocumentChunkService documentChunkService;
 
     @PostMapping
     public ResponseEntity<?> createDocument(
             @RequestHeader("X-User-Id") UUID userId,
             @RequestBody DocumentRequestDTO requestDTO) {
         try {
+            // 1. Gọi Service tạo thông tin Document gốc xuống DB để sinh ra ID thực tế
             DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
+
+            // 2. Chuẩn bị thực thể Document với ID vừa sinh ra để truyền làm khóa ngoại liên kết
+            Document docEntity = new Document();
+            docEntity.setId(response.getDocumentId());
+
+            // 3. Chuỗi văn bản mẫu dài để chạy thử nghiệm thuật toán cắt nhỏ (mẩu 200 ký tự)
+            String testLargeText = "Đây là đoạn văn bản dài dùng để kiểm tra tính năng băm nhỏ tài liệu của hệ thống AI Study Hub. "
+                    + "Hệ thống sẽ tự động cắt chuỗi này thành các mảnh nhỏ hơn dựa trên cấu hình chuỗi gối đầu (overlap size). "
+                    + "Sau đó, mỗi mảnh nhỏ này sẽ được chuyển hóa thành vector và lưu trữ trực tiếp xuống bảng document_chunks trên Supabase. "
+                    + "Quá trình này giúp phục vụ cho tính năng tìm kiếm ngữ nghĩa nâng cao và tạo lập giải pháp Chat với tài liệu (RAG) ở các bước tiếp theo.";
+
+            // 4. Kích hoạt tiến trình tự động băm chữ đẩy dữ liệu sang bảng document_chunks
+            System.out.println(">>> CONTROLLER LOG: Bắt đầu luồng kích hoạt băm chữ thử nghiệm...");
+            documentChunkService.chunkAndEmbedDocument(docEntity, testLargeText);
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
