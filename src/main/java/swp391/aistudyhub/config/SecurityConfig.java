@@ -41,11 +41,7 @@ public class SecurityConfig {
             "/api/auth/logout",
             "/v3/api-docs/**",
             "/swagger-ui/**",
-<<<<<<< Updated upstream:src/main/java/swp391/aistudyhub/config/SecurityConfig.java
             "/swagger-ui.html"
-=======
-            "/swagger-ui.html",
->>>>>>> Stashed changes:src/main/java/swp391/aistudyhub/security/SecurityConfig.java
     };
 
     @Bean
@@ -53,60 +49,88 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
-<<<<<<< Updated upstream:src/main/java/swp391/aistudyhub/config/SecurityConfig.java
-        .requestMatchers(PUBLIC_PATHS).permitAll()
-        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-        .requestMatchers("/api/v1/documents").authenticated()
-.requestMatchers("/api/v1/documents/**").authenticated()
-        .anyRequest().authenticated()
-)
-=======
-                        .requestMatchers(PUBLIC_PATHS).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
                         .requestMatchers("/api/v1/documents").authenticated()
                         .requestMatchers("/api/v1/documents/**").authenticated()
-                        .anyRequest().authenticated())
->>>>>>> Stashed changes:src/main/java/swp391/aistudyhub/security/SecurityConfig.java
+                        .requestMatchers("/api/admin/**").authenticated()
+                        .anyRequest().authenticated()
+                )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
+
         provider.setPasswordEncoder(passwordEncoder());
+
         return provider;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config
+    ) throws Exception {
         return config.getAuthenticationManager();
     }
 
     @Bean
     @SuppressWarnings("deprecation")
     public PasswordEncoder passwordEncoder() {
-       return NoOpPasswordEncoder.getInstance();
+        return NoOpPasswordEncoder.getInstance();
     }
 
-    private static final List<String> ALLOWED_ORIGINS = List.of(
-            "http://localhost:5173",  // Vite
-            "http://localhost:3000"   // CRA
-    );
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(ALLOWED_ORIGINS);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:3000"
+        ));
+
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
+        ));
+
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "X-Requested-With"
+        ));
+
+        config.setExposedHeaders(List.of(
+                "Authorization"
+        ));
+
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 }
