@@ -33,7 +33,6 @@ public class User {
     @Nationalized
     @JsonIgnore
     @Column(name = "password_hash", nullable = false)
-    @JsonIgnore
     private String passwordHash;
 
     @Size(max = 20)
