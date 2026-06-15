@@ -9,6 +9,8 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Nationalized;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Getter
@@ -19,6 +21,7 @@ public class ChatSession {
     @Id
     @ColumnDefault("newid()")
     @Column(name = "chat_session_id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @NotNull
@@ -26,9 +29,13 @@ public class ChatSession {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "document_id")
-    private Document document;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "session_documents",
+            joinColumns = @JoinColumn(name = "chat_session_id"),
+            inverseJoinColumns = @JoinColumn(name = "document_id")
+    )
+    private Set<Document> documents = new HashSet<>();
 
     @Size(max = 255)
     @Nationalized
@@ -39,5 +46,13 @@ public class ChatSession {
     @Column(name = "created_at")
     private Instant createdAt;
 
+
+    public void addDocument(Document doc) {
+        this.documents.add(doc);
+    }
+
+    public void removeDocument(Document doc) {
+        this.documents.remove(doc);
+    }
 
 }

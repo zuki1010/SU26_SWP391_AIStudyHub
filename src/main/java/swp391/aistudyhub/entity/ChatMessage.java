@@ -20,7 +20,8 @@ import java.util.UUID;
 public class ChatMessage {
     @Id
     @ColumnDefault("newid()")
-    @Column(name = "message_id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "message_id", updatable = false, nullable = false)
     private UUID id;
 
     @NotNull

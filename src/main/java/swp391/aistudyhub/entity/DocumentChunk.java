@@ -4,11 +4,8 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-
 import java.util.UUID;
 
 @Getter
@@ -16,8 +13,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "document_chunks")
 public class DocumentChunk {
+
     @Id
-    @ColumnDefault("newid()")
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "chunk_id", nullable = false)
     private UUID id;
 
@@ -28,18 +26,13 @@ public class DocumentChunk {
     private Document document;
 
     @NotNull
-    @Nationalized
-    @Lob
-    @Column(name = "chunk_content", nullable = false)
+    @Column(name = "chunk_content", nullable = false, columnDefinition = "TEXT")
     private String chunkContent;
 
-    @Nationalized
-    @Lob
-    @Column(name = "vector_embedding")
+    // ĐÃ SỬA: Thêm columnDefinition = "TEXT" để Driver JDBC cho phép truyền chuỗi vector siêu dài từ Java xuống DB
+    @Column(name = "vector_embedding", insertable = false, updatable = false, columnDefinition = "vector(1536)")
     private String vectorEmbedding;
 
     @Column(name = "page_number")
     private Integer pageNumber;
-
-
 }
