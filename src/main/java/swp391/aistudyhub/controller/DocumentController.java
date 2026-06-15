@@ -26,7 +26,6 @@ public class DocumentController {
     @Autowired
     private DocumentService documentService;
 
-    // TÍCH HỢP Thêm service băm chữ tài liệu vào đây
     @Autowired
     private DocumentChunkService documentChunkService;
 
@@ -35,14 +34,11 @@ public class DocumentController {
             @RequestHeader("X-User-Id") UUID userId,
             @RequestBody DocumentRequestDTO requestDTO) {
         try {
-            // 1. Gọi Service tạo thông tin Document gốc xuống DB để sinh ra ID thực tế
             DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
 
-            // 2. Chuẩn bị thực thể Document với ID vừa sinh ra để truyền làm khóa ngoại liên kết
             Document docEntity = new Document();
             docEntity.setId(response.getDocumentId());
 
-            // 3. Chuỗi văn bản mẫu dài để chạy thử nghiệm thuật toán cắt nhỏ (mẩu 200 ký tự)
             String testLargeText = "Đây là đoạn văn bản dài dùng để kiểm tra tính năng băm nhỏ tài liệu của hệ thống AI Study Hub. "
                     + "Hệ thống sẽ tự động cắt chuỗi này thành các mảnh nhỏ hơn dựa trên cấu hình chuỗi gối đầu (overlap size). "
                     + "Sau đó, mỗi mảnh nhỏ này sẽ được chuyển hóa thành vector và lưu trữ trực tiếp xuống bảng document_chunks trên Supabase. "
@@ -108,15 +104,40 @@ public class DocumentController {
         try {
             Resource fileResource = documentService.downloadDocumentFile(documentId, userId);
 
-            // Bạn nên lấy tên file thực tế lưu trong DB (đã bao gồm đuôi file như .pdf, .docx)
-            // Giả sử ta tạm thời không có thì lấy tên document làm tên file tải về
             String fileName = "tai_lieu_hoc_tap";
 
             return ResponseEntity.ok()
-                    // Thiết lập kiểu dữ liệu nhị phân thô (Stream) cho mọi loại file
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    // Ép trình duyệt phải mở hộp thoại "Save As" xuống máy người dùng
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(fileResource);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/preview-file")
+    public ResponseEntity<?> previewDocumentFile(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID documentId) {
+        try {
+            // 1. Gọi service lấy file thô (Resource) và thông tin file gốc
+            Resource fileResource = documentService.downloadDocumentFile(documentId, userId);
+            DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
+
+            // 2. Tự động nhận diện MediaType dựa trên đuôi file (PDF, PNG, v.v.)
+            MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+            if (detail.getFileType().equalsIgnoreCase("pdf")) {
+                mediaType = MediaType.APPLICATION_PDF;
+            } else if (detail.getFileType().equalsIgnoreCase("png")) {
+                mediaType = MediaType.IMAGE_PNG;
+            } else if (detail.getFileType().equalsIgnoreCase("jpg") || detail.getFileType().equalsIgnoreCase("jpeg")) {
+                mediaType = MediaType.IMAGE_JPEG;
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    // inline: Cho phép trình duyệt hiển thị trực tiếp (Preview) thay vì ép tải xuống (attachment)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + detail.getDocumentName() + "\"")
                     .body(fileResource);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

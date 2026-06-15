@@ -32,4 +32,9 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, UU
 
     // Truy vấn tìm kiếm các chunk thuộc về một tài liệu cụ thể phục vụ tính năng RAG/Chat sau này
     List<DocumentChunk> findByDocumentId(UUID documentId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM document_chunks WHERE document_id = :documentId", nativeQuery = true)
+    void deleteByDocumentId(@Param("documentId") UUID documentId);
 }
