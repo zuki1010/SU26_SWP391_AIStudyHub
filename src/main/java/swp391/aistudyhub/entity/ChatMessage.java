@@ -38,8 +38,7 @@ public class ChatMessage {
 
     @NotNull
     @Nationalized
-    @Lob
-    @Column(name = "message_content", nullable = false)
+    @Column(name = "message_content", columnDefinition = "TEXT")
     private String messageContent;
 
     @ColumnDefault("getdate()")
