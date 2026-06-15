@@ -8,6 +8,7 @@ import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.service.CloudStorageService;
 import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,9 @@ public class DocumentController {
 
     @Autowired
     private DocumentChunkService documentChunkService;
+
+    @Autowired
+    private CloudStorageService cloudStorageService;
 
     @PostMapping
     public ResponseEntity<?> createDocument(
