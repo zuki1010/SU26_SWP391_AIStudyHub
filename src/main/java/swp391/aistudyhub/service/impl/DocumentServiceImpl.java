@@ -83,12 +83,12 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public void deleteDocument(UUID documentId, UUID userId, Long fileSize) {
-        // Tạm thời để trống logic xóa
+       
     }
 
     @Override
     public Resource downloadDocumentFile(UUID documentId, UUID userId) {
-        // Tạm thời trả về null cho hàm tải file
+
         return null;
     }
 

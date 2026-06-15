@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
+import swp391.aistudyhub.dto.response.ChatMessageDTO;
 import swp391.aistudyhub.dto.response.UpdateSessionDocsDTO;
 import swp391.aistudyhub.entity.ChatMessage;
 import swp391.aistudyhub.entity.Document;
@@ -59,12 +60,12 @@ public class ChatBotController {
         }
     }
     @GetMapping("/session/{sessionId}/history")
-    public ResponseEntity<List<ChatMessage>> getChatHistory(
+    public ResponseEntity<List<ChatMessageDTO>> getChatHistory(
             @PathVariable UUID sessionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        List<ChatMessage> history = chatBotService.getChatHistory(sessionId, page, size);
+        List<ChatMessageDTO> history = chatBotService.getChatHistory(sessionId, page, size);
         return ResponseEntity.ok(history);
     }
 }

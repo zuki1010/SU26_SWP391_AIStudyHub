@@ -18,6 +18,7 @@ import swp391.aistudyhub.component.GeminiClient;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
+import swp391.aistudyhub.dto.response.ChatMessageDTO;
 import swp391.aistudyhub.dto.response.UpdateSessionDocsDTO;
 import swp391.aistudyhub.entity.ChatMessage;
 import swp391.aistudyhub.entity.ChatSession;
@@ -29,6 +30,7 @@ import swp391.aistudyhub.service.DocumentChunkService;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatBotServiceImpl implements ChatBotService {
@@ -159,15 +161,26 @@ public class ChatBotServiceImpl implements ChatBotService {
     }
 
     @Override
-    public List<ChatMessage> getChatHistory(UUID sessionId, int page, int size) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<ChatMessageDTO> getChatHistory(UUID sessionId, int page, int size) {
         ChatSession session = chatSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new RuntimeException("Chat Session is not found!"));
+                .orElseThrow(() -> new RuntimeException("Chat Session không tồn tại"));
 
-        Pageable pageable = PageRequest.of(page, size);
+        Page<ChatMessage> messagePage = chatMessageRepository.findByChatSessionOrderBySentAtDesc(
+                session,
+                PageRequest.of(page, size)
+        );
 
-        Page<ChatMessage> messagePage = chatMessageRepository.findByChatSessionOrderBySentAtDesc(session, pageable);
+        List<ChatMessageDTO> dtoList = messagePage.getContent().stream()
+                .map(msg -> new ChatMessageDTO(
+                        msg.getId(),
+                        msg.getMessageContent(),
+                        msg.getSenderType(),
+                        msg.getSentAt()
+                ))
+                .collect(Collectors.toList());
 
-        List<ChatMessage> history = new ArrayList<>(messagePage.getContent());
+        List<ChatMessageDTO> history = new ArrayList<>(dtoList);
         Collections.reverse(history);
 
         return history;

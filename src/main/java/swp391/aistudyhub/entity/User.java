@@ -1,5 +1,6 @@
 package swp391.aistudyhub.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -31,6 +32,7 @@ public class User {
     @NotNull
     @Nationalized
     @Column(name = "password_hash", nullable = false)
+    @JsonIgnore
     private String passwordHash;
 
     @Size(max = 20)

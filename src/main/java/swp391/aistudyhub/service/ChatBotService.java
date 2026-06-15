@@ -2,6 +2,7 @@ package swp391.aistudyhub.service;
 
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
+import swp391.aistudyhub.dto.response.ChatMessageDTO;
 import swp391.aistudyhub.dto.response.UpdateSessionDocsDTO;
 import swp391.aistudyhub.entity.ChatMessage;
 
@@ -15,5 +16,5 @@ public interface ChatBotService {
 
     String chatWithGemini(ChatRequestSessionDTO dto);
 
-    List<ChatMessage> getChatHistory(UUID sessionId, int page, int size);
+    List<ChatMessageDTO> getChatHistory(UUID sessionId, int page, int size);
 }
