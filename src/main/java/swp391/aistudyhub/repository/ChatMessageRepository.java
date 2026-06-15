@@ -16,4 +16,5 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
 
     Page<ChatMessage> findByChatSessionOrderBySentAtDesc(ChatSession chatSession, Pageable pageable);
 
+
 }

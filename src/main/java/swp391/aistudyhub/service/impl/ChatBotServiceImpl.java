@@ -149,19 +149,20 @@ public class ChatBotServiceImpl implements ChatBotService {
         userMsg.setChatSession(session);
         userMsg.setSenderType("USER");
         userMsg.setMessageContent(dto.getMessageContent());
+        userMsg.setSentAt(Instant.now());
         chatMessageRepository.save(userMsg);
 
         ChatMessage aiMsg = new ChatMessage();
         aiMsg.setChatSession(session);
         aiMsg.setSenderType("AI");
         aiMsg.setMessageContent(aiResponse);
+        aiMsg.setSentAt(Instant.now());
         chatMessageRepository.save(aiMsg);
 
         return aiResponse;
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<ChatMessageDTO> getChatHistory(UUID sessionId, int page, int size) {
         ChatSession session = chatSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Chat Session không tồn tại"));
