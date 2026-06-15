@@ -10,6 +10,7 @@ import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
 import swp391.aistudyhub.dto.response.UpdateSessionDocsDTO;
+import swp391.aistudyhub.entity.ChatMessage;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.service.ChatBotService;
 import swp391.aistudyhub.service.DocumentService;
@@ -43,11 +44,6 @@ public class ChatBotController {
         return ResponseEntity.ok().body("Update Documents List Successfully!");
     }
 
-    @PostMapping("/test")
-    public ResponseEntity<String> chatTest(@RequestBody String message) {
-        String answer = chatBotService.chatTest(message);
-        return ResponseEntity.ok().body(answer);
-    }
     @PostMapping("/send-message")
     public ResponseEntity<String> sendMessage(@RequestBody ChatRequestSessionDTO dto) {
         if (dto.getSessionId() == null || dto.getMessageContent() == null || dto.getMessageContent().trim().isEmpty()) {
@@ -61,5 +57,14 @@ public class ChatBotController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Chat Process Error: " + e.getMessage());
         }
+    }
+    @GetMapping("/session/{sessionId}/history")
+    public ResponseEntity<List<ChatMessage>> getChatHistory(
+            @PathVariable UUID sessionId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        List<ChatMessage> history = chatBotService.getChatHistory(sessionId, page, size);
+        return ResponseEntity.ok(history);
     }
 }
