@@ -149,12 +149,14 @@ public class ChatBotServiceImpl implements ChatBotService {
         userMsg.setChatSession(session);
         userMsg.setSenderType("USER");
         userMsg.setMessageContent(dto.getMessageContent());
+        userMsg.setSentAt(Instant.now());
         chatMessageRepository.save(userMsg);
 
         ChatMessage aiMsg = new ChatMessage();
         aiMsg.setChatSession(session);
         aiMsg.setSenderType("AI");
         aiMsg.setMessageContent(aiResponse);
+        aiMsg.setSentAt(Instant.now());
         chatMessageRepository.save(aiMsg);
 
         return aiResponse;
