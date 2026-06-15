@@ -145,11 +145,11 @@ public class ChatBotServiceImpl implements ChatBotService {
     @Override
     @Transactional
     public String chatWithGemini(ChatRequestSessionDTO dto) {
-        List<ChatMessage> history = chatMessageRepository.findTop10ByChatSessionOrderBySentAtDesc(dto.getSessionId());
-        Collections.reverse(history);
-
         ChatSession session = chatSessionRepository.findById(dto.getSessionId())
                 .orElseThrow(() -> new RuntimeException("This Chat Session is not found"));
+
+        List<ChatMessage> history = chatMessageRepository.findTop10ByChatSessionOrderBySentAtDesc(session);
+        Collections.reverse(history);
 
         Set<Document> attachedDocs = session.getDocuments();
         String documentContext = "";
@@ -166,7 +166,7 @@ public class ChatBotServiceImpl implements ChatBotService {
 
         String systemPrompt = "Bạn là trợ lý học tập. ";
         if (!documentContext.isEmpty()) {
-            systemPrompt += "Hãy dựa vào các đoạn dữ liệu tài liệu sau đây để trả lời câu hỏi:\n"
+            systemPrompt += "Answer Questions base on documents:\n"
                     + documentContext;
         }
 

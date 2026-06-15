@@ -30,7 +30,7 @@ public class DocumentChunk {
     private String chunkContent;
 
     // ĐÃ SỬA: Thêm columnDefinition = "TEXT" để Driver JDBC cho phép truyền chuỗi vector siêu dài từ Java xuống DB
-    @Column(name = "vector_embedding", insertable = false, updatable = false, columnDefinition = "TEXT")
+    @Column(name = "vector_embedding", insertable = false, updatable = false, columnDefinition = "vector(1536)")
     private String vectorEmbedding;
 
     @Column(name = "page_number")
