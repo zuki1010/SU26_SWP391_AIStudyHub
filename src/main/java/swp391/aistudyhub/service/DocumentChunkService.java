@@ -6,4 +6,6 @@ import java.util.UUID;
 public interface DocumentChunkService {
 
     void chunkAndEmbedDocument(Document document, String fullTextContent);
+
+    String getVectorStringForQuery(String text);
 }

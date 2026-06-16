@@ -8,6 +8,8 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -15,8 +17,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "cloud_storage")
 public class CloudStorage {
+
     @Id
-    @ColumnDefault("newid()")
+    @GeneratedValue(strategy = GenerationType.UUID) // Đồng bộ sử dụng tự động sinh UUID như bảng Document
     @Column(name = "storage_id", nullable = false)
     private UUID id;
 
@@ -36,5 +39,7 @@ public class CloudStorage {
     @Column(name = "used_quota", nullable = false)
     private Long usedQuota;
 
-
+    // --- ĐÃ THÊM: Mối quan hệ 1-N đảo ngược từ Storage xuôi xuống danh sách các Documents ---
+    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Document> documents = new ArrayList<>();
 }

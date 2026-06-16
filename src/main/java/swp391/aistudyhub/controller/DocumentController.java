@@ -22,7 +22,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-public class DocumentController {
+public class    DocumentController {
 
     @Autowired
     private DocumentService documentService;
