@@ -17,7 +17,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "chat_messages")
 public class ChatMessage {
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID) // Tự động sinh UUID bằng Java/Hibernate, loại bỏ newid() lỗi
     @Column(name = "message_id", nullable = false)
@@ -31,6 +30,7 @@ public class ChatMessage {
 
     @Size(max = 20)
     @NotNull
+
     @Column(name = "sender_type", nullable = false, length = 20)
     private String senderType;
 
@@ -41,4 +41,6 @@ public class ChatMessage {
     @Column(name = "sent_at", updatable = false)
     @CreationTimestamp
     private Instant sentAt;
+
+
 }

@@ -22,7 +22,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-public class DocumentController {
+public class    DocumentController {
 
     @Autowired
     private DocumentService documentService;
@@ -49,7 +49,7 @@ public class DocumentController {
                     + "Quá trình này giúp phục vụ cho tính năng tìm kiếm ngữ nghĩa nâng cao và tạo lập giải pháp Chat với tài liệu (RAG) ở các bước tiếp theo.";
 
             System.out.println(">>> CONTROLLER LOG: Bắt đầu luồng kích hoạt băm chữ thử nghiệm...");
-            documentChunkService.chunkAndEmbedDocument(docEntity, testLargeText);
+            documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {

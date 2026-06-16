@@ -8,6 +8,8 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -35,5 +37,9 @@ public class CloudStorage {
     @NotNull
     @ColumnDefault("0")
     @Column(name = "used_quota", nullable = false)
-    private Long usedQuota = 0L; // Gán giá trị mặc định ở tầng Java (0 bytes)
+    private Long usedQuota;
+
+    // --- ĐÃ THÊM: Mối quan hệ 1-N đảo ngược từ Storage xuôi xuống danh sách các Documents ---
+    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Document> documents = new ArrayList<>();
 }

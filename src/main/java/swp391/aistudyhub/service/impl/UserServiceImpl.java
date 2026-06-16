@@ -6,6 +6,7 @@ import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.UserService;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,5 +24,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public Optional<User> findById(UUID id) {
         return userRepository.findById(id);
+    }
+
+    @Override
+    public List<User> getAllUserAccount() {
+        return userRepository.findAll();
     }
 }

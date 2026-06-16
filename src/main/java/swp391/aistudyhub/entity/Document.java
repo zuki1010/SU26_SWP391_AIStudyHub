@@ -23,11 +23,12 @@ public class Document {
     @Column(name = "document_id", nullable = false)
     private UUID id;
 
+    // --- ĐÃ ĐỔI: Thay thế mối quan hệ từ User sang CloudStorage ---
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @OnDelete(action = OnDeleteAction.NO_ACTION)
+    @JoinColumn(name = "storage_id", nullable = false)
+    private CloudStorage storage;
 
     @Size(max = 255)
     @NotNull
