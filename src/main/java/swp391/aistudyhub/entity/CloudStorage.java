@@ -15,8 +15,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "cloud_storage")
 public class CloudStorage {
+
     @Id
-    @ColumnDefault("newid()")
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "storage_id", nullable = false)
     private UUID id;
 
@@ -27,14 +28,12 @@ public class CloudStorage {
     private User user;
 
     @NotNull
-    @ColumnDefault("16106127360.")
+    @ColumnDefault("16106127360")
     @Column(name = "total_quota", nullable = false)
-    private Long totalQuota;
+    private Long totalQuota = 16106127360L; // Gán giá trị mặc định ở tầng Java (15GB)
 
     @NotNull
     @ColumnDefault("0")
     @Column(name = "used_quota", nullable = false)
-    private Long usedQuota;
-
-
+    private Long usedQuota = 0L; // Gán giá trị mặc định ở tầng Java (0 bytes)
 }

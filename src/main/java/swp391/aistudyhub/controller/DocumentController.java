@@ -48,7 +48,6 @@ public class DocumentController {
                     + "Sau đó, mỗi mảnh nhỏ này sẽ được chuyển hóa thành vector và lưu trữ trực tiếp xuống bảng document_chunks trên Supabase. "
                     + "Quá trình này giúp phục vụ cho tính năng tìm kiếm ngữ nghĩa nâng cao và tạo lập giải pháp Chat với tài liệu (RAG) ở các bước tiếp theo.";
 
-            // 4. Kích hoạt tiến trình tự động băm chữ đẩy dữ liệu sang bảng document_chunks
             System.out.println(">>> CONTROLLER LOG: Bắt đầu luồng kích hoạt băm chữ thử nghiệm...");
             documentChunkService.chunkAndEmbedDocument(docEntity, testLargeText);
 
@@ -58,7 +57,8 @@ public class DocumentController {
         }
     }
 
-    @GetMapping("/all/{id}")
+    // ĐA SỬA: Bỏ /{id} dư thừa trên URL vì bạn đã nhận diện user qua @RequestHeader
+    @GetMapping("/all")
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(@RequestHeader("X-User-Id") UUID userId) {
         return ResponseEntity.ok(documentService.getAllDocumentsByUserId(userId));
     }
@@ -108,7 +108,9 @@ public class DocumentController {
         try {
             Resource fileResource = documentService.downloadDocumentFile(documentId, userId);
 
-            String fileName = "tai_lieu_hoc_tap";
+            // ĐA TỐI ƯU: Lấy thông tin chi tiết để gán đúng tên file gốc và định dạng khi tải về
+            DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
+            String fileName = detail.getDocumentName() + "." + detail.getFileType();
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -124,11 +126,9 @@ public class DocumentController {
             @RequestHeader("X-User-Id") UUID userId,
             @PathVariable("id") UUID documentId) {
         try {
-            // 1. Gọi service lấy file thô (Resource) và thông tin file gốc
             Resource fileResource = documentService.downloadDocumentFile(documentId, userId);
             DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
 
-            // 2. Tự động nhận diện MediaType dựa trên đuôi file (PDF, PNG, v.v.)
             MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
             if (detail.getFileType().equalsIgnoreCase("pdf")) {
                 mediaType = MediaType.APPLICATION_PDF;
@@ -140,7 +140,6 @@ public class DocumentController {
 
             return ResponseEntity.ok()
                     .contentType(mediaType)
-                    // inline: Cho phép trình duyệt hiển thị trực tiếp (Preview) thay vì ép tải xuống (attachment)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + detail.getDocumentName() + "\"")
                     .body(fileResource);
         } catch (Exception e) {

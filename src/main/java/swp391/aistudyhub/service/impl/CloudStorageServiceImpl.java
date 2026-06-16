@@ -1,10 +1,14 @@
 package swp391.aistudyhub.service.impl;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import swp391.aistudyhub.entity.CloudStorage; // Đảm bảo đã import Entity này
+import swp391.aistudyhub.repository.CloudStorageRepository;
 import swp391.aistudyhub.service.CloudStorageService;
 
 import java.io.IOException;
@@ -12,6 +16,9 @@ import java.util.UUID;
 
 @Service
 public class CloudStorageServiceImpl implements CloudStorageService {
+
+    @Autowired
+    private CloudStorageRepository cloudStorageRepository;
 
     @Value("${supabase.url}")
     private String supabaseUrl;
@@ -25,29 +32,45 @@ public class CloudStorageServiceImpl implements CloudStorageService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
-    public String uploadFile(MultipartFile file) {
+    @Transactional
+    public String uploadFile(UUID userId, MultipartFile file) {
+        // 1. BỔ SUNG: Lấy thông tin cấu hình Storage của User từ DB local lên kiểm tra trước
+        CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình bộ nhớ của người dùng"));
+
+        // 2. BỔ SUNG: Kiểm tra xem file mới lên có làm tràn bộ nhớ (Vượt 15GB) không
+        long fileSize = file.getSize();
+        if (storage.getUsedQuota() + fileSize > storage.getTotalQuota()) {
+            throw new RuntimeException("Dung lượng bộ nhớ đám mây của bạn đã đầy (Giới hạn tối đa 15GB)!");
+        }
+
         String originalFilename = file.getOriginalFilename();
         String fileExtension = originalFilename != null && originalFilename.contains(".")
                 ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".pdf";
 
-        // Tạo tên file ngẫu nhiên bằng UUID để tránh trùng tên trên Supabase
-        String uniqueFileName = UUID.randomUUID().toString() + fileExtension;
-
-        // URL REST API của Supabase Storage
+        // Tối ưu: Bỏ .toString() thừa để code sạch hơn
+        String uniqueFileName = UUID.randomUUID() + fileExtension;
         String uploadUrl = supabaseUrl + "/storage/v1/object/" + bucketName + "/" + uniqueFileName;
 
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Bearer " + anonKey);
             headers.set("apiKey", anonKey);
-            headers.setContentType(MediaType.parseMediaType(file.getContentType()));
+
+            // Tối ưu: Kiểm tra tránh lỗi NullPointerException nếu file không rõ định dạng
+            String contentType = file.getContentType();
+            headers.setContentType(contentType != null ? MediaType.parseMediaType(contentType) : MediaType.APPLICATION_OCTET_STREAM);
 
             HttpEntity<byte[]> requestEntity = new HttpEntity<>(file.getBytes(), headers);
 
-            // Bắn dữ liệu thô lên Cloud
+            // Bắn dữ liệu thô lên Cloud Supabase
             ResponseEntity<String> response = restTemplate.exchange(uploadUrl, HttpMethod.POST, requestEntity, String.class);
 
             if (response.getStatusCode() == HttpStatus.OK) {
+                // 3. BỔ SUNG: Upload Cloud thành công -> Tiến hành cộng dồn số byte của file vào dung lượng đã dùng
+                storage.setUsedQuota(storage.getUsedQuota() + fileSize);
+                cloudStorageRepository.save(storage);
+
                 // Trả về link Public trực tiếp của file để lưu vào database
                 return supabaseUrl + "/storage/v1/object/public/" + bucketName + "/" + uniqueFileName;
             } else {

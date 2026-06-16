@@ -5,8 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -18,8 +17,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "chat_messages")
 public class ChatMessage {
+
     @Id
-    @ColumnDefault("newid()")
+    @GeneratedValue(strategy = GenerationType.UUID) // Tự động sinh UUID bằng Java/Hibernate, loại bỏ newid() lỗi
     @Column(name = "message_id", nullable = false)
     private UUID id;
 
@@ -31,19 +31,14 @@ public class ChatMessage {
 
     @Size(max = 20)
     @NotNull
-    @Nationalized
     @Column(name = "sender_type", nullable = false, length = 20)
     private String senderType;
 
     @NotNull
-    @Nationalized
-    @Lob
-    @Column(name = "message_content", nullable = false)
+    @Column(name = "message_content", nullable = false, columnDefinition = "TEXT")
     private String messageContent;
 
-    @ColumnDefault("getdate()")
-    @Column(name = "sent_at")
+    @Column(name = "sent_at", updatable = false)
+    @CreationTimestamp
     private Instant sentAt;
-
-
 }

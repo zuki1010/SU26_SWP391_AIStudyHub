@@ -10,6 +10,7 @@ import swp391.aistudyhub.repository.DocumentChunkRepository;
 import swp391.aistudyhub.service.DocumentChunkService;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentChunkServiceImpl implements DocumentChunkService {
@@ -35,18 +36,18 @@ public class DocumentChunkServiceImpl implements DocumentChunkService {
 
         System.out.println(">>> CHUNK LOG: Đã băm văn bản thành " + chunks.size() + " đoạn nhỏ.");
 
-        int currentPage = 1;
+        int chunkOrder = 1; // Đổi tên từ currentPage thành chunkOrder cho đúng bản chất luồng băm chữ
 
         for (String chunkText : chunks) {
             String vectorJsonString = getEmbeddingFromOpenAI(chunkText);
 
-            System.out.println(">>> CHUNK LOG: Chuẩn bị lưu đoạn " + currentPage + " xuống database...");
+            System.out.println(">>> CHUNK LOG: Chuẩn bị lưu đoạn " + chunkOrder + " xuống database...");
 
             documentChunkRepository.insertChunkWithVector(
                     document.getId(),
                     chunkText,
                     vectorJsonString,
-                    currentPage++
+                    chunkOrder++ // Tạm thời lưu số thứ tự phân đoạn làm vị trí định danh
             );
         }
         System.out.println(">>> CHUNK LOG: Đã hoàn tất xử lý lưu bảng document_chunks!");
@@ -81,7 +82,7 @@ public class DocumentChunkServiceImpl implements DocumentChunkService {
 
             Map<String, Object> body = new HashMap<>();
             body.put("input", text);
-            body.put("model", "text-embedding-3-small");
+            body.put("model", "text-embedding-3-small"); // Model 1536 chiều cực kỳ tiết kiệm chi phí
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
@@ -103,13 +104,18 @@ public class DocumentChunkServiceImpl implements DocumentChunkService {
                         Object embeddingObj = firstItem.get("embedding");
 
                         if (embeddingObj instanceof List<?> embeddingList) {
-                            return embeddingList.toString();
+                            // TỐI ƯU: Chuẩn hóa chuỗi vector đầu ra, loại bỏ khoảng trắng dư thừa
+                            // Tránh lỗi định dạng chuỗi khi truyền vào câu lệnh CAST(:embedding AS vector) của PostgreSQL
+                            String cleanVector = embeddingList.stream()
+                                    .map(Object::toString)
+                                    .collect(Collectors.joining(","));
+                            return "[" + cleanVector + "]";
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            System.err.println(">>> OPENAI WARNING: Lỗi kết nối hoặc Key hết hạn, tự động chuyển sang chế độ Mock Vector!");
+            System.err.println(">>> OPENAI WARNING: Lỗi kết nối hoặc Key hết hạn, tự động chuyển sang chế độ Mock Vector! Chi tiết: " + e.getMessage());
         }
 
         // CỨU NGUY: Nếu gọi API lỗi, lập tức sinh Vector giả lập thay vì trả về mảng rỗng [] gây sập JDBC SQL
