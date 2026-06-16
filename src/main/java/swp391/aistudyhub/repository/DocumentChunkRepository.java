@@ -31,7 +31,21 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, UU
     List<DocumentChunk> findByDocument_Id(UUID documentId);
 
     // Xóa bỏ hàm deleteByDocumentId native query thừa vì đã có OnDelete CASCADE lo liệu.
-    // Nếu vẫn muốn giữ hàm này để xóa chủ động mà không xóa Document cha, hãy dùng cơ chế chuẩn của JPA:
     @Transactional
     void deleteByDocument_Id(UUID documentId);
+
+    /**
+     * ĐÃ TÍCH HỢP: Hàm tìm kiếm các phân đoạn tài liệu tương đồng nhất với câu hỏi (RAG Search).
+     * Sử dụng toán tử <=> (Cosine Distance) của extension pgvector trên Supabase.
+     */
+    @Query(value = "SELECT * FROM document_chunks dc " +
+            "WHERE dc.document_id IN (:documentIds) " +
+            "ORDER BY dc.vector_embedding <=> cast(:queryVector as vector) " +
+            "LIMIT :topK",
+            nativeQuery = true)
+    List<DocumentChunk> findRelevantChunks(
+            @Param("documentIds") List<UUID> documentIds,
+            @Param("queryVector") String queryVector,
+            @Param("topK") int topK
+    );
 }
