@@ -25,7 +25,7 @@ public class CloudStorage {
 
     @NotNull
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
+    @OnDelete(action = OnDeleteAction.NO_ACTION)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
