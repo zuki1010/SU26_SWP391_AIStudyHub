@@ -47,7 +47,7 @@ public class DocumentServiceImpl implements DocumentService {
         user.setId(userId);
 
         Document doc = new Document();
-//        doc.setUser(user);
+        doc.setUser(user);
         doc.setDocumentName(requestDTO.getDocumentName());
         doc.setFileType(requestDTO.getFileType());
         doc.setPreviewUrl(requestDTO.getPreviewUrl());
