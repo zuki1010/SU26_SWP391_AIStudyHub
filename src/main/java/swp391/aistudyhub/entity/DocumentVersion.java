@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -17,9 +15,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "document_versions")
 public class DocumentVersion {
+
     @Id
-    @ColumnDefault("newid()")
-    @Column(name = "version_id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "version_id", updatable = false, nullable = false)
     private UUID id;
 
     @NotNull
@@ -30,22 +29,15 @@ public class DocumentVersion {
 
     @NotNull
     @Column(name = "version_number", nullable = false)
-    private Integer versionNumber;
+    private Integer versionNumber = 1;
 
     @NotNull
-    @Nationalized
-    @Lob
-    @Column(name = "file_secure_path", nullable = false)
+    @Column(name = "file_secure_path", nullable = false, columnDefinition = "text")
     private String fileSecurePath;
 
-    @Nationalized
-    @Lob
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @ColumnDefault("getdate()")
     @Column(name = "updated_at")
-    private Instant updatedAt;
-
-
+    private Instant updatedAt = Instant.now();
 }

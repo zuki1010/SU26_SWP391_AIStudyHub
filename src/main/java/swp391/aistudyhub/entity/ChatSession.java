@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -18,10 +16,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "chat_sessions")
 public class ChatSession {
+
     @Id
-    @ColumnDefault("newid()")
-    @Column(name = "chat_session_id", nullable = false)
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "chat_session_id", updatable = false, nullable = false)
     private UUID id;
 
     @NotNull
@@ -38,14 +36,11 @@ public class ChatSession {
     private Set<Document> documents = new HashSet<>();
 
     @Size(max = 255)
-    @Nationalized
     @Column(name = "session_title")
     private String sessionTitle;
 
-    @ColumnDefault("getdate()")
-    @Column(name = "created_at")
-    private Instant createdAt;
-
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt = Instant.now();
 
     public void addDocument(Document doc) {
         this.documents.add(doc);
@@ -54,5 +49,4 @@ public class ChatSession {
     public void removeDocument(Document doc) {
         this.documents.remove(doc);
     }
-
 }

@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -18,9 +16,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "chat_messages")
 public class ChatMessage {
+
     @Id
-    @ColumnDefault("newid()")
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "message_id", updatable = false, nullable = false)
     private UUID id;
 
@@ -32,18 +30,13 @@ public class ChatMessage {
 
     @Size(max = 20)
     @NotNull
-    @Nationalized
     @Column(name = "sender_type", nullable = false, length = 20)
     private String senderType;
 
     @NotNull
-    @Nationalized
-    @Column(name = "message_content", columnDefinition = "TEXT")
+    @Column(name = "message_content", nullable = false, columnDefinition = "text")
     private String messageContent;
 
-    @ColumnDefault("getdate()")
-    @Column(name = "sent_at")
-    private Instant sentAt;
-
-
+    @Column(name = "sent_at", updatable = false)
+    private Instant sentAt = Instant.now();
 }
