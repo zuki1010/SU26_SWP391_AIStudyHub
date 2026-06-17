@@ -7,9 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Getter
 @Setter
@@ -41,6 +39,9 @@ public class ChatSession {
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt = Instant.now();
+
+    @OneToMany(mappedBy = "chatSession", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<ChatMessage> chatMessages = new ArrayList<>();
 
     public void addDocument(Document doc) {
         this.documents.add(doc);

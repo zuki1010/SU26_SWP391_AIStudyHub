@@ -5,10 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.annotations.*;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -19,8 +16,8 @@ import java.util.UUID;
 @Table(name = "document_categories")
 public class DocumentCategory {
     @Id
-    @ColumnDefault("newid()")
     @Column(name = "category_id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @NotNull
@@ -31,12 +28,10 @@ public class DocumentCategory {
 
     @Size(max = 256)
     @NotNull
-    @Nationalized
     @Column(name = "category_name", nullable = false, length = 256)
     private String categoryName;
 
     @Size(max = 100)
-    @Nationalized
     @Column(name = "category_type", length = 100)
     private String categoryType;
 
@@ -45,8 +40,8 @@ public class DocumentCategory {
     private DocumentCategory parent;
 
     @NotNull
-    @ColumnDefault("sysdatetimeoffset()")
-    @Column(name = "created_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "created_at",updatable = false, nullable = false)
     private OffsetDateTime createdAt;
 
 

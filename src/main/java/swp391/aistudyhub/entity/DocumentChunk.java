@@ -30,7 +30,7 @@ public class DocumentChunk {
     private String chunkContent;
 
     @Column(name = "vector_embedding", columnDefinition = "vector(1536)")
-    private String vectorEmbedding;
+    private float[] vectorEmbedding;
 
     @Column(name = "page_number")
     private Integer pageNumber;

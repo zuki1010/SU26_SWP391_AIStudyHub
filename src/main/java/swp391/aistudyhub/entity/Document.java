@@ -51,4 +51,10 @@ public class Document {
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<DocumentCategory> documentCategories = new ArrayList<>();
+
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DocumentChunk> documentChunks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DocumentVersion> documentVersions = new ArrayList<>();
 }

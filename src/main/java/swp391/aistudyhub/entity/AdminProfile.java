@@ -1,5 +1,6 @@
 package swp391.aistudyhub.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -35,5 +36,6 @@ public class AdminProfile {
     private Integer accessLevel = 1;
 
     @Column(name = "security_key", columnDefinition = "text")
+    @JsonIgnore
     private String securityKey;
 }

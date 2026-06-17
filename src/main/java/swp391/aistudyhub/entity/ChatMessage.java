@@ -28,10 +28,10 @@ public class ChatMessage {
     @JoinColumn(name = "chat_session_id", nullable = false)
     private ChatSession chatSession;
 
-    @Size(max = 20)
     @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false, length = 20)
-    private String senderType;
+    private String senderType;    //để đây, hồi nữa em thêm enum
 
     @NotNull
     @Column(name = "message_content", nullable = false, columnDefinition = "text")

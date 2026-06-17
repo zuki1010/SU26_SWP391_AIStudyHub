@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -13,7 +14,9 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "document_versions")
+@Table(name = "document_versions", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"document_id", "version_number"})
+})
 public class DocumentVersion {
 
     @Id
@@ -38,6 +41,7 @@ public class DocumentVersion {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(name = "updated_at")
-    private Instant updatedAt = Instant.now();
+    @Column(name = "updated_at", nullable = false)
+    @UpdateTimestamp
+    private Instant updatedAt;
 }
