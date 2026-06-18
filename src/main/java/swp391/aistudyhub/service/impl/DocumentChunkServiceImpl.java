@@ -52,6 +52,14 @@ public class DocumentChunkServiceImpl implements DocumentChunkService {
         System.out.println(">>> CHUNK LOG: Đã hoàn tất xử lý lưu bảng document_chunks!");
     }
 
+    @Override
+    public String getVectorStringForQuery(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return generateMockVector(1536);
+        }
+        return getEmbeddingFromOpenAI(text);
+    }
+
     private List<String> splitTextIntoChunks(String text, int chunkSize, int overlap) {
         List<String> chunks = new ArrayList<>();
         int start = 0;

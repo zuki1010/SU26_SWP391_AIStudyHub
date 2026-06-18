@@ -32,4 +32,15 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, UU
 
     // Truy vấn tìm kiếm các chunk thuộc về một tài liệu cụ thể phục vụ tính năng RAG/Chat sau này
     List<DocumentChunk> findByDocumentId(UUID documentId);
+
+    @Query(value = "SELECT dc.chunk_content FROM document_chunks dc " +
+            "WHERE dc.document_id IN (:documentIds) " +
+            "ORDER BY dc.vector_embedding <=> cast(:queryVector as vector) " +
+            "LIMIT :limitCount",
+            nativeQuery = true)
+    List<String> findRelevantChunks(
+            @Param("documentIds") List<UUID> documentIds,
+            @Param("queryVector") String queryVector,
+            @Param("limitCount") int limitCount
+    );
 }

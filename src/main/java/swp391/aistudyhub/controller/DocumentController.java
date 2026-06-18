@@ -17,7 +17,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/documents")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-public class DocumentController {
+public class    DocumentController {
 
     @Autowired
     private DocumentService documentService;

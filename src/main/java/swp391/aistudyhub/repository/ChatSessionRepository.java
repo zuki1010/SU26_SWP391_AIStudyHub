@@ -6,4 +6,5 @@ import swp391.aistudyhub.entity.ChatSession;
 import java.util.UUID;
 
 public interface ChatSessionRepository extends JpaRepository<ChatSession, UUID> {
+
 }

@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -18,9 +16,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "chat_messages")
 public class ChatMessage {
+
     @Id
-    @ColumnDefault("newid()")
-    @Column(name = "message_id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "message_id", updatable = false, nullable = false)
     private UUID id;
 
     @NotNull
@@ -29,21 +28,15 @@ public class ChatMessage {
     @JoinColumn(name = "chat_session_id", nullable = false)
     private ChatSession chatSession;
 
-    @Size(max = 20)
     @NotNull
-    @Nationalized
+    @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false, length = 20)
-    private String senderType;
+    private String senderType;    //để đây, hồi nữa em thêm enum
 
     @NotNull
-    @Nationalized
-    @Lob
-    @Column(name = "message_content", nullable = false)
+    @Column(name = "message_content", nullable = false, columnDefinition = "text")
     private String messageContent;
 
-    @ColumnDefault("getdate()")
-    @Column(name = "sent_at")
-    private Instant sentAt;
-
-
+    @Column(name = "sent_at", updatable = false)
+    private Instant sentAt = Instant.now();
 }
