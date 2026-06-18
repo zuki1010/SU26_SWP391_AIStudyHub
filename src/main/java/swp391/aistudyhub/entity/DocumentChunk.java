@@ -16,7 +16,7 @@ public class DocumentChunk {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "chunk_id", nullable = false)
+    @Column(name = "chunk_id", updatable = false, nullable = false)
     private UUID id;
 
     @NotNull
@@ -26,12 +26,11 @@ public class DocumentChunk {
     private Document document;
 
     @NotNull
-    @Column(name = "chunk_content", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "chunk_content", nullable = false, columnDefinition = "text")
     private String chunkContent;
 
-    // ĐÃ SỬA: Thêm columnDefinition = "TEXT" để Driver JDBC cho phép truyền chuỗi vector siêu dài từ Java xuống DB
-    @Column(name = "vector_embedding", insertable = false, updatable = false, columnDefinition = "vector(1536)")
-    private String vectorEmbedding;
+    @Column(name = "vector_embedding", columnDefinition = "vector(1536)")
+    private float[] vectorEmbedding;
 
     @Column(name = "page_number")
     private Integer pageNumber;

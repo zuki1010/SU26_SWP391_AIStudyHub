@@ -5,8 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.Nationalized;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -16,15 +16,20 @@ import java.util.UUID;
 @Entity
 @Table(name = "storage_upload_logs")
 public class StorageUploadLog {
+
     @Id
-    @ColumnDefault("newid()")
-    @Column(name = "log_id", nullable = false)
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "log_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Size(max = 255)
     @NotNull
-    @Nationalized
-    @Column(name = "file_name_origin", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "storage_id", nullable = false)
+    private CloudStorage storage;
+
+    @NotNull
+    @Column(name = "file_name_origin", nullable = false, columnDefinition = "text")
     private String fileNameOrigin;
 
     @NotNull
@@ -33,13 +38,9 @@ public class StorageUploadLog {
 
     @Size(max = 50)
     @NotNull
-    @Nationalized
     @Column(name = "upload_status", nullable = false, length = 50)
-    private String uploadStatus;
+    private String uploadStatus = "pending";
 
-    @ColumnDefault("getdate()")
-    @Column(name = "uploaded_at")
-    private Instant uploadedAt;
-
-
+    @Column(name = "uploaded_at", updatable = false)
+    private Instant uploadedAt = Instant.now();
 }
