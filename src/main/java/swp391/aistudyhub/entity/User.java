@@ -52,6 +52,14 @@ public class User {
     @Column(name = "created_at")
     private Instant createdAt;
 
-
+    @PrePersist
+    protected void onCreate() {
+        if (this.id == null) {
+            this.id = UUID.randomUUID();
+        }
+        if (this.createdAt == null) {
+            this.createdAt = Instant.now();
+        }
+    }
 
 }

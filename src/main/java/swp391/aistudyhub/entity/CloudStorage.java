@@ -39,7 +39,6 @@ public class CloudStorage {
     @Column(name = "used_quota", nullable = false)
     private Long usedQuota;
 
-    // --- ĐÃ THÊM: Mối quan hệ 1-N đảo ngược từ Storage xuôi xuống danh sách các Documents ---
     @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Document> documents = new ArrayList<>();
 }
