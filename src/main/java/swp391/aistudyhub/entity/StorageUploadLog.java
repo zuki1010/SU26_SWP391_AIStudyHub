@@ -26,7 +26,7 @@ public class StorageUploadLog {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "storage_id", nullable = false)
-    private CloudStorage storage;
+    private CloudStorage cloudStorage;
 
     @NotNull
     @Column(name = "file_name_origin", nullable = false, columnDefinition = "text")

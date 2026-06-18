@@ -24,6 +24,7 @@ import swp391.aistudyhub.entity.ChatMessage;
 import swp391.aistudyhub.entity.ChatSession;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.enums.SenderType;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.ChatBotService;
 import swp391.aistudyhub.service.DocumentChunkService;
@@ -147,14 +148,14 @@ public class ChatBotServiceImpl implements ChatBotService {
 
         ChatMessage userMsg = new ChatMessage();
         userMsg.setChatSession(session);
-        userMsg.setSenderType("USER");
+        userMsg.setSenderType(SenderType.USER);
         userMsg.setMessageContent(dto.getMessageContent());
         userMsg.setSentAt(Instant.now());
         chatMessageRepository.save(userMsg);
 
         ChatMessage aiMsg = new ChatMessage();
         aiMsg.setChatSession(session);
-        aiMsg.setSenderType("AI");
+        aiMsg.setSenderType(SenderType.AI);
         aiMsg.setMessageContent(aiResponse);
         aiMsg.setSentAt(Instant.now());
         chatMessageRepository.save(aiMsg);
@@ -176,7 +177,7 @@ public class ChatBotServiceImpl implements ChatBotService {
                 .map(msg -> new ChatMessageDTO(
                         msg.getId(),
                         msg.getMessageContent(),
-                        msg.getSenderType(),
+                        msg.getSenderType().name(),
                         msg.getSentAt()
                 ))
                 .collect(Collectors.toList());

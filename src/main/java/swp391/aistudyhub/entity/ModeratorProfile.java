@@ -39,7 +39,4 @@ public class ModeratorProfile {
     @Size(max = 100)
     @Column(name = "assigned_subject", length = 100)
     private String assignedSubject;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private ModeratorProfile moderatorProfile;
 }

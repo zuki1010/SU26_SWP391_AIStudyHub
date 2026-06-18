@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import swp391.aistudyhub.enums.SenderType;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -31,7 +32,7 @@ public class ChatMessage {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false, length = 20)
-    private String senderType;    //để đây, hồi nữa em thêm enum
+    private SenderType senderType;    //để đây, hồi nữa em thêm enum
 
     @NotNull
     @Column(name = "message_content", nullable = false, columnDefinition = "text")
