@@ -51,13 +51,13 @@ public class AuthServiceImpl implements AuthService {
         String role = request.getRole() != null ? request.getRole().toUpperCase() : "CUSTOMER";
 
         User user = new User();
-        user.setId(UUID.randomUUID());
+//        user.setId(UUID.randomUUID());
         user.setEmail(request.getEmail().trim().toLowerCase());
         user.setPasswordHash(request.getPassword());
         user.setRole(role);
         user.setAccountStatus("ACTIVE");
         user.setCreatedAt(Instant.now());
-        userRepository.save(user);
+        user = userRepository.save(user);
 
         createRoleProfile(user, request);
 
@@ -187,7 +187,7 @@ public class AuthServiceImpl implements AuthService {
         switch (user.getRole()) {
             case "CUSTOMER" -> {
                 CustomerProfile profile = new CustomerProfile();
-                profile.setId(UUID.randomUUID());
+//                profile.setId(UUID.randomUUID());
                 profile.setUser(user);
                 profile.setFullName(request.getFullName());
                 profile.setStudentCode(request.getStudentCode());
@@ -196,7 +196,7 @@ public class AuthServiceImpl implements AuthService {
             }
             case "ADMIN" -> {
                 AdminProfile profile = new AdminProfile();
-                profile.setId(UUID.randomUUID());
+//                profile.setId(UUID.randomUUID());
                 profile.setUser(user);
                 profile.setFullName(request.getFullName());
                 profile.setAccessLevel(1);
@@ -204,7 +204,7 @@ public class AuthServiceImpl implements AuthService {
             }
             case "MODERATOR" -> {
                 ModeratorProfile profile = new ModeratorProfile();
-                profile.setId(UUID.randomUUID());
+//                profile.setId(UUID.randomUUID());
                 profile.setUser(user);
                 profile.setFullName(request.getFullName());
                 profile.setDepartment(request.getDepartment());
@@ -249,7 +249,7 @@ public class AuthServiceImpl implements AuthService {
 
     private void saveSession(User user, String refreshToken, String deviceInfo, String ipAddress) {
         UserSession session = new UserSession();
-        session.setId(UUID.randomUUID());
+//        session.setId(UUID.randomUUID());
         session.setUser(user);
         session.setRefreshToken(refreshToken);
         session.setDeviceInfo(deviceInfo);
