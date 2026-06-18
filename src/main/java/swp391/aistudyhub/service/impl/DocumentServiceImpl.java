@@ -19,7 +19,6 @@ import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.DocumentService;
 
 import java.io.InputStream;
-import java.net.URL;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -42,26 +41,45 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(UUID userId, DocumentRequestDTO requestDTO) {
-        // Lấy cấu hình bộ nhớ CloudStorage của User ra trước để gán quan hệ
+        // 1. Tìm User thực tế (Vì Document thuộc về User theo ERD)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng hệ thống."));
+
+        // 2. Tìm CloudStorage của User đó (Gọi thông qua trục chung là userId)
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình không gian lưu trữ của người dùng này."));
 
+        // 3. Tạo và lưu Document trực tiếp cho User
         Document doc = new Document();
-        doc.setStorage(storage); // ĐÃ ĐỔI: Gán đúng thực thể Storage theo đúng Entity của bạn
+        doc.setUser(user); // Khớp 100% với cột user_id dưới Supabase
         doc.setDocumentName(requestDTO.getDocumentName());
         doc.setFileType(requestDTO.getFileType());
         doc.setPreviewUrl(requestDTO.getPreviewUrl());
         doc.setDownloadUrl(requestDTO.getDownloadUrl());
-
         Document savedDoc = documentRepository.save(doc);
+
+        // 4. LOGIC QUOTA: Giả định dung lượng file mới truyền lên (ví dụ: mặc định tạm thời là 10MB = 10485760 bytes để test)
+        long newFileSize = 10485760L;
+
+        // Cộng dồn dung lượng đã dùng vào CloudStorage của User đó
+        long updatedUsedQuota = storage.getUsedQuota() + newFileSize;
+
+        // Kiểm tra xem có bị tràn bộ nhớ (Over quota) không
+        if (updatedUsedQuota > storage.getTotalQuota()) {
+            throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
+        }
+
+        storage.setUsedQuota(updatedUsedQuota);
+        cloudStorageRepository.save(storage); // Cập nhật lại dung lượng mới xuống Supabase
+
         return mapToResponseDTO(savedDoc);
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId) {
-        // Gọi hàm truy vấn xuyên bảng đã sửa ở Bước 1
-        return documentRepository.findByStorage_User_Id(userId)
+        // ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
+        return documentRepository.findByUserId(userId)
                 .stream()
                 .map(this::mapToResponseDTO)
                 .toList();
@@ -73,9 +91,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        // Kiểm tra bảo mật quyền sở hữu thông qua thực thể trung gian Storage -> User
-        if (doc.getStorage() == null || doc.getStorage().getUser() == null ||
-                !Objects.equals(doc.getStorage().getUser().getId(), userId)) {
+        if (doc.getUser() == null || !Objects.equals(doc.getUser().getId(), userId)) {
             throw new RuntimeException("Bạn không có quyền xem tài liệu này");
         }
 
@@ -88,8 +104,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        if (doc.getStorage() == null || doc.getStorage().getUser() == null ||
-                !Objects.equals(doc.getStorage().getUser().getId(), userId)) {
+        if (doc.getUser() == null || !Objects.equals(doc.getUser().getId(), userId)) {
             throw new RuntimeException("Bạn không có quyền sửa tài liệu này");
         }
 
@@ -102,17 +117,17 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public void deleteDocument(UUID documentId, UUID userId, Long fileSize) {
-        // Tìm và xóa dựa trên hàm liên kết cấu trúc thực tế
-        Document document = documentRepository.findByIdAndStorage_User_Id(documentId, userId)
+        // ĐÃ ĐỔI: Gọi findByIdAndUserId (bỏ gạch dưới) khớp với Repository
+        Document document = documentRepository.findByIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền xóa"));
 
         documentChunkRepository.deleteByDocument_Id(documentId);
         documentRepository.delete(document);
 
-        // Khấu trừ hoàn trả dung lượng bộ nhớ đám mây đám mây địa phương cho User
+        // Khấu trừ hoàn trả dung lượng bộ nhớ cho User
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
-        // Bảo vệ dữ liệu: Đảm bảo đầu vào fileSize không bị âm
+
         long validatedFileSize = (fileSize != null) ? Math.max(0, fileSize) : 0L;
         long newUsedQuota = Math.max(0, storage.getUsedQuota() - validatedFileSize);
 
@@ -131,10 +146,8 @@ public class DocumentServiceImpl implements DocumentService {
         User user = userRepository.findByEmailIgnoreCase(currentUserEmail)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + currentUserEmail));
 
-        CloudStorage storage = cloudStorageRepository.findByUser_Id(user.getId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy không gian lưu trữ cho tài khoản này"));
-
-        return documentRepository.findAllByStorage(storage);
+        // ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
+        return documentRepository.findByUserId(user.getId());
     }
 
     @Override
@@ -143,8 +156,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        if (doc.getStorage() == null || doc.getStorage().getUser() == null ||
-                !Objects.equals(doc.getStorage().getUser().getId(), userId)) {
+        if (doc.getUser() == null || !Objects.equals(doc.getUser().getId(), userId)) {
             throw new RuntimeException("Bạn không có quyền truy cập tài liệu này");
         }
 

@@ -39,6 +39,4 @@ public class CloudStorage {
     @Column(name = "used_quota", nullable = false)
     private Long usedQuota;
 
-    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Document> documents = new ArrayList<>();
 }

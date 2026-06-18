@@ -25,9 +25,8 @@ public class Document {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.NO_ACTION)
-    @JoinColumn(name = "storage_id", nullable = false)
-    private CloudStorage storage;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Size(max = 255)
     @NotNull
