@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
+@PreAuthorize("hasRole('CUSTOMER')")
 public class    DocumentController {
 
     @Autowired

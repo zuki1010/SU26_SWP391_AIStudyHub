@@ -3,6 +3,7 @@ package swp391.aistudyhub.controller;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,7 @@ import java.util.List;
 @RequestMapping("/api/admin")
 @CrossOrigin("*")
 @Tag(name = "Admin Dashboard", description = "View User Account")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     @Autowired
