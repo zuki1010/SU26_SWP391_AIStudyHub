@@ -41,7 +41,6 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api/chat/**",
-            "/api/v1/documents/**"
 
     };
 
@@ -52,10 +51,20 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(PUBLIC_PATHS).permitAll()
-                        .anyRequest().authenticated())
-                .authenticationProvider(authenticationProvider())
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+        .requestMatchers("/api/auth/**").permitAll()
+        .requestMatchers("/v3/api-docs/**").permitAll()
+        .requestMatchers("/swagger-ui/**").permitAll()
+        .requestMatchers("/swagger-ui.html").permitAll()
+
+        .requestMatchers("/api/v1/documents").authenticated()
+        .requestMatchers("/api/v1/documents/**").authenticated()
+
+        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+
+        .anyRequest().authenticated()
+)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

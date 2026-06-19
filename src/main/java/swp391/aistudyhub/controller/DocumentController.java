@@ -6,6 +6,9 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
@@ -37,43 +40,66 @@ public class    DocumentController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
-    public ResponseEntity<?> createDocument(
-            @RequestHeader("X-User-Id") UUID userId,
-            @RequestPart("file") MultipartFile file,
-            // Chỉ nhận chuỗi textContent hoặc các thông tin tùy chọn khác, loại bỏ hoàn toàn các trường kích thước file
-            @RequestParam(value = "textContent", required = false) String textContent) {
-        try {
-            // Tự động bóc tách thông tin từ file máy tính để đóng gói vào DTO
-            DocumentRequestDTO requestDTO = new DocumentRequestDTO();
+public ResponseEntity<?> createDocument(
+        @RequestHeader("X-User-Id") UUID userId,
+        @RequestPart("file") MultipartFile file,
+        @RequestParam(value = "data", required = false) String data
+) {
+    System.out.println("POST DOCUMENT API CALLED");
+    System.out.println("X-USER-ID = " + userId);
+    System.out.println("FILE NAME = " + file.getOriginalFilename());
+    System.out.println("DATA = " + data);
 
-            // 1. Tự động lấy tên file (bỏ đuôi nếu muốn, hoặc để nguyên)
+    try {
+        DocumentRequestDTO requestDTO;
+
+        if (data == null || data.isBlank()) {
+            requestDTO = new DocumentRequestDTO();
             requestDTO.setDocumentName(file.getOriginalFilename());
-
-            // 2. Tự động lấy dung lượng file (Kích thước thực tế từ máy tính)
+            requestDTO.setFileType(file.getContentType());
+            requestDTO.setPreviewUrl("");
+            requestDTO.setDownloadUrl("");
             requestDTO.setFileSize(file.getSize());
+            requestDTO.setTextContent(
+                    "Nội dung trích xuất tự động từ file: " + file.getOriginalFilename()
+            );
+        } else {
+            ObjectMapper objectMapper = new ObjectMapper();
+            requestDTO = objectMapper.readValue(data, DocumentRequestDTO.class);
 
-            // 3. Tự động lấy kiểu file (ví dụ: docx, pdf...)
-            String originalName = file.getOriginalFilename();
-            String fileType = (originalName != null && originalName.contains("."))
-                    ? originalName.substring(originalName.lastIndexOf(".") + 1) : "unknown";
-            requestDTO.setFileType(fileType);
+            if (requestDTO.getDocumentName() == null || requestDTO.getDocumentName().isBlank()) {
+                requestDTO.setDocumentName(file.getOriginalFilename());
+            }
 
-            // 4. Gán nội dung text (nếu có)
-            requestDTO.setTextContent(textContent != null ? textContent : "Nội dung trích xuất tự động từ file.");
+            if (requestDTO.getFileType() == null || requestDTO.getFileType().isBlank()) {
+                requestDTO.setFileType(file.getContentType());
+            }
 
-            // Gọi xuống Service xử lý như bình thường
-            DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
+            if (requestDTO.getFileSize() == null || requestDTO.getFileSize() == 0) {
+                requestDTO.setFileSize(file.getSize());
+            }
 
-            // Luồng băm chữ của AI
-            Document docEntity = new Document();
-            docEntity.setId(response.getDocumentId());
-            documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            if (requestDTO.getTextContent() == null || requestDTO.getTextContent().isBlank()) {
+                requestDTO.setTextContent(
+                        "Nội dung trích xuất tự động từ file: " + file.getOriginalFilename()
+                );
+            }
         }
+
+        DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
+
+        Document docEntity = new Document();
+        docEntity.setId(response.getDocumentId());
+
+        System.out.println(">>> CONTROLLER LOG: Bắt đầu luồng kích hoạt băm chữ thử nghiệm...");
+        documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
+
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.badRequest().body(e.getMessage());
     }
+}
 
     // ĐA SỬA: Bỏ /{id} dư thừa trên URL vì bạn đã nhận diện user qua @RequestHeader
     @GetMapping("/all")
