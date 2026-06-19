@@ -111,32 +111,43 @@ public class DocumentServiceImpl implements DocumentService {
         return mapToResponseDTO(updatedDoc);
     }
 
+    @Autowired
+    private jakarta.persistence.EntityManager entityManager;
+
     @Override
     @Transactional
     public void deleteDocument(UUID documentId, UUID userId) {
-        // 1. Tìm tài liệu cần xóa lên để lấy thông tin fileSize
+        // 1. Tìm tài liệu cần xóa dựa vào id tài liệu và id người dùng
         Document document = documentRepository.findByIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền xóa"));
 
-        // Lấy kích thước thật đã lưu trong DB local của file đó
+        // LẤY ĐÚNG FILE_SIZE THẬT: Nếu null thì coi như bằng 0 bytes
         long actualFileSize = (document.getFileSize() != null) ? document.getFileSize() : 0L;
 
-        // 2. [ĐƯA LÊN TRƯỚC]: Tìm cấu hình lưu trữ đám mây của User
+        // 2. Tìm cấu hình lưu trữ đám mây của User để chuẩn bị trừ bộ nhớ
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
 
-        // Tính toán dung lượng mới và cập nhật ngay lập tức
+        // Thực hiện phép trừ chính xác dung lượng file thật
         long newUsedQuota = Math.max(0, storage.getUsedQuota() - actualFileSize);
         storage.setUsedQuota(newUsedQuota);
 
-        // Sử dụng saveAndFlush để ép Hibernate cập nhật ngay dung lượng mới xuống DB
+        // Ép Hibernate lưu ngay giá trị mới này xuống database PostgreSQL
         cloudStorageRepository.saveAndFlush(storage);
 
-        // 3. [THỰC HIỆN XÓA SAU CÙNG]: Sau khi bộ nhớ đã được giải phóng an toàn
-        documentChunkRepository.deleteByDocument_Id(documentId);
-        documentRepository.delete(document);
-    }
+        // Giải phóng bộ nhớ đệm (Cache Level 1) của JPA để không bị ghi đè ngược giá trị cũ
+        entityManager.flush();
+        entityManager.clear();
 
+        // 3. Tiến hành xóa các bản ghi liên quan dưới Database local
+        documentChunkRepository.deleteByDocument_Id(documentId);
+
+        // Tìm lại thực thể ở trạng thái Managed sau khi clear() để xóa vật lý dưới DB
+        Document managedDoc = documentRepository.findById(documentId).orElse(null);
+        if (managedDoc != null) {
+            documentRepository.delete(managedDoc);
+        }
+    }
     public List<Document> getMyDocuments() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
