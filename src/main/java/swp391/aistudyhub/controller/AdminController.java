@@ -2,16 +2,16 @@ package swp391.aistudyhub.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.service.AdminService;
 import swp391.aistudyhub.service.UserService;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -23,9 +23,14 @@ public class AdminController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private AdminService adminService;
+
     @GetMapping("/account")
-    public ResponseEntity<List<User>> getAllUser() {
-        return ResponseEntity.ok().body(userService.getAllUserAccount());
+    public ResponseEntity<Page<User>> getAllUser(@RequestParam(required = false) String key,
+                                                 @RequestParam(defaultValue = "0") int page,
+                                                 @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok().body(adminService.getAllCustomer(key,page,size));
     }
 
 }
