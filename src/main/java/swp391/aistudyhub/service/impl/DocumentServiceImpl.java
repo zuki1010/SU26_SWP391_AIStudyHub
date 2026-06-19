@@ -41,36 +41,33 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(UUID userId, DocumentRequestDTO requestDTO) {
-        // 1. Tìm User thực tế (Vì Document thuộc về User theo ERD)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng hệ thống."));
 
-        // 2. Tìm CloudStorage của User đó (Gọi thông qua trục chung là userId)
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình không gian lưu trữ của người dùng này."));
 
-        // 3. Tạo và lưu Document trực tiếp cho User
-        Document doc = new Document();
-        doc.setUser(user); // Khớp 100% với cột user_id dưới Supabase
-        doc.setDocumentName(requestDTO.getDocumentName());
-        doc.setFileType(requestDTO.getFileType());
-        doc.setPreviewUrl(requestDTO.getPreviewUrl());
-        doc.setDownloadUrl(requestDTO.getDownloadUrl());
-        Document savedDoc = documentRepository.save(doc);
+        long actualFileSize = requestDTO.getFileSize() != null ? requestDTO.getFileSize() : 0L;
 
-        // 4. LOGIC QUOTA: Giả định dung lượng file mới truyền lên (ví dụ: mặc định tạm thời là 10MB = 10485760 bytes để test)
-        long newFileSize = 10485760L;
-
-        // Cộng dồn dung lượng đã dùng vào CloudStorage của User đó
-        long updatedUsedQuota = storage.getUsedQuota() + newFileSize;
-
-        // Kiểm tra xem có bị tràn bộ nhớ (Over quota) không
+        long updatedUsedQuota = storage.getUsedQuota() + actualFileSize;
         if (updatedUsedQuota > storage.getTotalQuota()) {
             throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
         }
 
+        Document doc = new Document();
+        doc.setUser(user);
+        doc.setDocumentName(requestDTO.getDocumentName());
+        doc.setFileType(requestDTO.getFileType());
+        doc.setPreviewUrl(requestDTO.getPreviewUrl());
+        doc.setDownloadUrl(requestDTO.getDownloadUrl());
+        doc.setFileSize(actualFileSize);
+
+        Document savedDoc = documentRepository.save(doc);
+
+        // 4. Cập nhật quota mới của user
         storage.setUsedQuota(updatedUsedQuota);
-        cloudStorageRepository.save(storage); // Cập nhật lại dung lượng mới xuống Supabase
+        cloudStorageRepository.save(storage);
+        // ==========================================================
 
         return mapToResponseDTO(savedDoc);
     }
@@ -116,23 +113,28 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public void deleteDocument(UUID documentId, UUID userId, Long fileSize) {
-        // ĐÃ ĐỔI: Gọi findByIdAndUserId (bỏ gạch dưới) khớp với Repository
+    public void deleteDocument(UUID documentId, UUID userId) {
+        // 1. Tìm tài liệu cần xóa lên để lấy thông tin fileSize
         Document document = documentRepository.findByIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền xóa"));
 
-        documentChunkRepository.deleteByDocument_Id(documentId);
-        documentRepository.delete(document);
+        // Lấy kích thước thật đã lưu trong DB local của file đó
+        long actualFileSize = (document.getFileSize() != null) ? document.getFileSize() : 0L;
 
-        // Khấu trừ hoàn trả dung lượng bộ nhớ cho User
+        // 2. [ĐƯA LÊN TRƯỚC]: Tìm cấu hình lưu trữ đám mây của User
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
 
-        long validatedFileSize = (fileSize != null) ? Math.max(0, fileSize) : 0L;
-        long newUsedQuota = Math.max(0, storage.getUsedQuota() - validatedFileSize);
-
+        // Tính toán dung lượng mới và cập nhật ngay lập tức
+        long newUsedQuota = Math.max(0, storage.getUsedQuota() - actualFileSize);
         storage.setUsedQuota(newUsedQuota);
-        cloudStorageRepository.save(storage);
+
+        // Sử dụng saveAndFlush để ép Hibernate cập nhật ngay dung lượng mới xuống DB
+        cloudStorageRepository.saveAndFlush(storage);
+
+        // 3. [THỰC HIỆN XÓA SAU CÙNG]: Sau khi bộ nhớ đã được giải phóng an toàn
+        documentChunkRepository.deleteByDocument_Id(documentId);
+        documentRepository.delete(document);
     }
 
     public List<Document> getMyDocuments() {

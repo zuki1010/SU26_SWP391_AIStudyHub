@@ -17,7 +17,7 @@ public interface DocumentService {
 
     DocumentResponseDTO updateDocumentName(UUID documentId, UUID userId, String newName);
 
-    void deleteDocument(UUID documentId, UUID userId, Long fileSize);
+    void deleteDocument(UUID documentId, UUID userId);
 
     Resource downloadDocumentFile(UUID documentId, UUID userId);
     List<Document> getMyDocuments();

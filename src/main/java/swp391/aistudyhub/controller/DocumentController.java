@@ -112,10 +112,9 @@ public class    DocumentController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteDocument(
             @RequestHeader("X-User-Id") UUID userId,
-            @PathVariable("id") UUID documentId,
-            @RequestParam("fileSize") Long fileSize) {
+            @PathVariable("id") UUID documentId) {
         try {
-            documentService.deleteDocument(documentId, userId, fileSize);
+            documentService.deleteDocument(documentId, userId);
             return ResponseEntity.ok("Xóa thành công tài liệu và giải phóng bộ nhớ!");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
