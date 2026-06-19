@@ -1,9 +1,11 @@
 package swp391.aistudyhub.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
@@ -33,20 +35,28 @@ public class    DocumentController {
     @Autowired
     private CloudStorageService cloudStorageService;
 
-    @PostMapping
+    // THAY ĐỔI: Thêm consumes để Swagger biết đây là luồng upload file
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
     public ResponseEntity<?> createDocument(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestBody DocumentRequestDTO requestDTO) {
+
+            // THAY ĐỔI: Đổi @RequestBody thành @RequestPart để lấy file trực tiếp từ máy tính
+            @RequestPart("file") MultipartFile file,
+
+            // THAY ĐỔI: DTO chứa thông tin text đi kèm (không bắt buộc, truyền dạng JSON hoặc Text)
+            @RequestPart(value = "data", required = false) DocumentRequestDTO requestDTO) {
         try {
+            // Chuẩn hóa DTO nếu client không gửi textContent lên
+            if (requestDTO == null) {
+                requestDTO = new DocumentRequestDTO();
+                requestDTO.setTextContent("Nội dung trích xuất tự động từ file: " + file.getOriginalFilename());
+            }
+
             DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
 
             Document docEntity = new Document();
             docEntity.setId(response.getDocumentId());
-
-            String testLargeText = "Đây là đoạn văn bản dài dùng để kiểm tra tính năng băm nhỏ tài liệu của hệ thống AI Study Hub. "
-                    + "Hệ thống sẽ tự động cắt chuỗi này thành các mảnh nhỏ hơn dựa trên cấu hình chuỗi gối đầu (overlap size). "
-                    + "Sau đó, mỗi mảnh nhỏ này sẽ được chuyển hóa thành vector và lưu trữ trực tiếp xuống bảng document_chunks trên Supabase. "
-                    + "Quá trình này giúp phục vụ cho tính năng tìm kiếm ngữ nghĩa nâng cao và tạo lập giải pháp Chat với tài liệu (RAG) ở các bước tiếp theo.";
 
             System.out.println(">>> CONTROLLER LOG: Bắt đầu luồng kích hoạt băm chữ thử nghiệm...");
             documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
