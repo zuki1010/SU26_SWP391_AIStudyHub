@@ -43,6 +43,7 @@ public class    DocumentController {
             // Chỉ nhận chuỗi textContent hoặc các thông tin tùy chọn khác, loại bỏ hoàn toàn các trường kích thước file
             @RequestParam(value = "textContent", required = false) String textContent) {
         try {
+            String fileUrl = cloudStorageService.uploadFile(userId, file);
             // Tự động bóc tách thông tin từ file máy tính để đóng gói vào DTO
             DocumentRequestDTO requestDTO = new DocumentRequestDTO();
 
@@ -61,6 +62,8 @@ public class    DocumentController {
             // 4. Gán nội dung text (nếu có)
             requestDTO.setTextContent(textContent != null ? textContent : "Nội dung trích xuất tự động từ file.");
 
+            requestDTO.setPreviewUrl(fileUrl);
+            requestDTO.setDownloadUrl(fileUrl);
             // Gọi xuống Service xử lý như bình thường
             DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
 

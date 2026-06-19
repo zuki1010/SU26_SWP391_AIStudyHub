@@ -49,33 +49,35 @@ public class CloudStorageServiceImpl implements CloudStorageService {
                 ? originalFilename.substring(originalFilename.lastIndexOf(".")) : ".pdf";
 
         // Tối ưu: Bỏ .toString() thừa để code sạch hơn
-        String uniqueFileName = UUID.randomUUID() + fileExtension;
+        // ======================== SỬA ĐỔI ĐOẠN NÀY ========================
+        // 1. Thay đổi: Thêm userId vào trước tên file để tạo cấu trúc thư mục chuẩn trên Supabase
+        String uniqueFileName = userId + "/" + UUID.randomUUID() + fileExtension;
         String uploadUrl = supabaseUrl + "/storage/v1/object/" + bucketName + "/" + uniqueFileName;
 
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Bearer " + anonKey);
-            headers.set("apiKey", anonKey);
 
-            // Tối ưu: Kiểm tra tránh lỗi NullPointerException nếu file không rõ định dạng
+            // 2. Sửa lỗi chính tả: Đổi 'apiKey' (chữ K viết hoa) thành 'apikey' (chữ k viết thường) theo luật của Supabase REST API
+            headers.set("apikey", anonKey);
+
             String contentType = file.getContentType();
             headers.setContentType(contentType != null ? MediaType.parseMediaType(contentType) : MediaType.APPLICATION_OCTET_STREAM);
 
             HttpEntity<byte[]> requestEntity = new HttpEntity<>(file.getBytes(), headers);
 
-            // Bắn dữ liệu thô lên Cloud Supabase
             ResponseEntity<String> response = restTemplate.exchange(uploadUrl, HttpMethod.POST, requestEntity, String.class);
 
             if (response.getStatusCode() == HttpStatus.OK) {
-                // 3. BỔ SUNG: Upload Cloud thành công -> Tiến hành cộng dồn số byte của file vào dung lượng đã dùng
                 storage.setUsedQuota(storage.getUsedQuota() + fileSize);
                 cloudStorageRepository.save(storage);
 
-                // Trả về link Public trực tiếp của file để lưu vào database
+                // 3. Sửa đổi: Thêm chính xác cụm '/public/' vào đường dẫn trả về để tạo Link xem/tải trực tiếp công khai
                 return supabaseUrl + "/storage/v1/object/public/" + bucketName + "/" + uniqueFileName;
             } else {
                 throw new RuntimeException("Supabase trả về mã lỗi: " + response.getStatusCode());
             }
+            // ===================================================================
         } catch (IOException e) {
             throw new RuntimeException("Lỗi đọc file nhị phân: " + e.getMessage());
         } catch (Exception e) {
