@@ -33,7 +33,7 @@ public class UserSession {
     private String refreshToken;
 
     @Size(max = 255)
-    @Column(name = "device_info")
+    @Column(name = "device_info", columnDefinition = "text")
     private String deviceInfo;
 
     @Size(max = 45)
