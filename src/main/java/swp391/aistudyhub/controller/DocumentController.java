@@ -8,6 +8,7 @@ import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.service.CloudStorageService;
 import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,31 +27,29 @@ public class    DocumentController {
     @Autowired
     private DocumentService documentService;
 
-    // TÍCH HỢP Thêm service băm chữ tài liệu vào đây
     @Autowired
     private DocumentChunkService documentChunkService;
+
+    @Autowired
+    private CloudStorageService cloudStorageService;
 
     @PostMapping
     public ResponseEntity<?> createDocument(
             @RequestHeader("X-User-Id") UUID userId,
             @RequestBody DocumentRequestDTO requestDTO) {
         try {
-            // 1. Gọi Service tạo thông tin Document gốc xuống DB để sinh ra ID thực tế
             DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
 
-            // 2. Chuẩn bị thực thể Document với ID vừa sinh ra để truyền làm khóa ngoại liên kết
             Document docEntity = new Document();
             docEntity.setId(response.getDocumentId());
 
-            // 3. Chuỗi văn bản mẫu dài để chạy thử nghiệm thuật toán cắt nhỏ (mẩu 200 ký tự)
             String testLargeText = "Đây là đoạn văn bản dài dùng để kiểm tra tính năng băm nhỏ tài liệu của hệ thống AI Study Hub. "
                     + "Hệ thống sẽ tự động cắt chuỗi này thành các mảnh nhỏ hơn dựa trên cấu hình chuỗi gối đầu (overlap size). "
                     + "Sau đó, mỗi mảnh nhỏ này sẽ được chuyển hóa thành vector và lưu trữ trực tiếp xuống bảng document_chunks trên Supabase. "
                     + "Quá trình này giúp phục vụ cho tính năng tìm kiếm ngữ nghĩa nâng cao và tạo lập giải pháp Chat với tài liệu (RAG) ở các bước tiếp theo.";
 
-            // 4. Kích hoạt tiến trình tự động băm chữ đẩy dữ liệu sang bảng document_chunks
             System.out.println(">>> CONTROLLER LOG: Bắt đầu luồng kích hoạt băm chữ thử nghiệm...");
-            documentChunkService.chunkAndEmbedDocument(docEntity, testLargeText);
+            documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -58,7 +57,8 @@ public class    DocumentController {
         }
     }
 
-    @GetMapping("/all/{id}")
+    // ĐA SỬA: Bỏ /{id} dư thừa trên URL vì bạn đã nhận diện user qua @RequestHeader
+    @GetMapping("/all")
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(@RequestHeader("X-User-Id") UUID userId) {
         return ResponseEntity.ok(documentService.getAllDocumentsByUserId(userId));
     }
@@ -108,15 +108,39 @@ public class    DocumentController {
         try {
             Resource fileResource = documentService.downloadDocumentFile(documentId, userId);
 
-            // Bạn nên lấy tên file thực tế lưu trong DB (đã bao gồm đuôi file như .pdf, .docx)
-            // Giả sử ta tạm thời không có thì lấy tên document làm tên file tải về
-            String fileName = "tai_lieu_hoc_tap";
+            // ĐA TỐI ƯU: Lấy thông tin chi tiết để gán đúng tên file gốc và định dạng khi tải về
+            DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
+            String fileName = detail.getDocumentName() + "." + detail.getFileType();
 
             return ResponseEntity.ok()
-                    // Thiết lập kiểu dữ liệu nhị phân thô (Stream) cho mọi loại file
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    // Ép trình duyệt phải mở hộp thoại "Save As" xuống máy người dùng
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(fileResource);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/preview-file")
+    public ResponseEntity<?> previewDocumentFile(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID documentId) {
+        try {
+            Resource fileResource = documentService.downloadDocumentFile(documentId, userId);
+            DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
+
+            MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+            if (detail.getFileType().equalsIgnoreCase("pdf")) {
+                mediaType = MediaType.APPLICATION_PDF;
+            } else if (detail.getFileType().equalsIgnoreCase("png")) {
+                mediaType = MediaType.IMAGE_PNG;
+            } else if (detail.getFileType().equalsIgnoreCase("jpg") || detail.getFileType().equalsIgnoreCase("jpeg")) {
+                mediaType = MediaType.IMAGE_JPEG;
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + detail.getDocumentName() + "\"")
                     .body(fileResource);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

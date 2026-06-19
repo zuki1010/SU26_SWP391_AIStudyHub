@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -33,6 +34,7 @@ public class CloudStorage {
     private Long totalQuota = 5368709120L;
 
     @NotNull
+    @ColumnDefault("0")
     @Column(name = "used_quota", nullable = false)
     private Long usedQuota = 0L;
 

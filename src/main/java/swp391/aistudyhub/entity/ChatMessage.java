@@ -29,8 +29,6 @@ public class ChatMessage {
     @JoinColumn(name = "chat_session_id", nullable = false)
     private ChatSession chatSession;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false, length = 20)
     private SenderType senderType;    //để đây, hồi nữa em thêm enum
 

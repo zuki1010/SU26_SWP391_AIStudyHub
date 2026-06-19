@@ -14,26 +14,31 @@ import java.util.UUID;
 @Repository
 public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, UUID> {
 
-    /**
-     * Native Query xử lý ép kiểu mảng chuỗi sang vector(1536) mượt mà không lỗi Driver JDBC.
-     * Đã cập nhật lại lệnh cast sang kiểu vector để khớp với cấu trúc lưu trữ của Supabase AI.
-     */
     @Modifying
     @Transactional
+    // Đã tối ưu câu lệnh Native SQL chuẩn hóa cho extension pgvector trên Supabase
     @Query(value = "INSERT INTO document_chunks (chunk_id, document_id, chunk_content, vector_embedding, page_number) " +
             "VALUES (gen_random_uuid(), :documentId, :content, cast(:embedding as vector), :pageNumber)",
             nativeQuery = true)
     void insertChunkWithVector(
             @Param("documentId") UUID documentId,
             @Param("content") String content,
-            @Param("embedding") String embeddingString, // Chuỗi số thực nhận từ OpenAI: "[0.012, -0.045, ...]"
+            @Param("embedding") String embeddingString, // Ví dụ: "[0.012, -0.045, ...]"
             @Param("pageNumber") Integer pageNumber
     );
 
-    // Truy vấn tìm kiếm các chunk thuộc về một tài liệu cụ thể phục vụ tính năng RAG/Chat sau này
-    List<DocumentChunk> findByDocumentId(UUID documentId);
+    // ĐÃ SỬA: Thêm dấu _ để Spring Data JPA tự hiểu cấu trúc liên kết sang bảng Document
+    List<DocumentChunk> findByDocument_Id(UUID documentId);
 
-    @Query(value = "SELECT dc.chunk_content FROM document_chunks dc " +
+    // Xóa bỏ hàm deleteByDocumentId native query thừa vì đã có OnDelete CASCADE lo liệu.
+    @Transactional
+    void deleteByDocument_Id(UUID documentId);
+
+    /**
+     * ĐÃ TÍCH HỢP: Hàm tìm kiếm các phân đoạn tài liệu tương đồng nhất với câu hỏi (RAG Search).
+     * Sử dụng toán tử <=> (Cosine Distance) của extension pgvector trên Supabase.
+     */
+    @Query(value = "SELECT * FROM document_chunks dc " +
             "WHERE dc.document_id IN (:documentIds) " +
             "ORDER BY dc.vector_embedding <=> cast(:queryVector as vector) " +
             "LIMIT :limitCount",
