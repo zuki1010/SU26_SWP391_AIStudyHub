@@ -35,30 +35,38 @@ public class    DocumentController {
     @Autowired
     private CloudStorageService cloudStorageService;
 
-    // THAY ĐỔI: Thêm consumes để Swagger biết đây là luồng upload file
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
     public ResponseEntity<?> createDocument(
             @RequestHeader("X-User-Id") UUID userId,
-
-            // THAY ĐỔI: Đổi @RequestBody thành @RequestPart để lấy file trực tiếp từ máy tính
             @RequestPart("file") MultipartFile file,
-
-            // THAY ĐỔI: DTO chứa thông tin text đi kèm (không bắt buộc, truyền dạng JSON hoặc Text)
-            @RequestPart(value = "data", required = false) DocumentRequestDTO requestDTO) {
+            // Chỉ nhận chuỗi textContent hoặc các thông tin tùy chọn khác, loại bỏ hoàn toàn các trường kích thước file
+            @RequestParam(value = "textContent", required = false) String textContent) {
         try {
-            // Chuẩn hóa DTO nếu client không gửi textContent lên
-            if (requestDTO == null) {
-                requestDTO = new DocumentRequestDTO();
-                requestDTO.setTextContent("Nội dung trích xuất tự động từ file: " + file.getOriginalFilename());
-            }
+            // Tự động bóc tách thông tin từ file máy tính để đóng gói vào DTO
+            DocumentRequestDTO requestDTO = new DocumentRequestDTO();
 
+            // 1. Tự động lấy tên file (bỏ đuôi nếu muốn, hoặc để nguyên)
+            requestDTO.setDocumentName(file.getOriginalFilename());
+
+            // 2. Tự động lấy dung lượng file (Kích thước thực tế từ máy tính)
+            requestDTO.setFileSize(file.getSize());
+
+            // 3. Tự động lấy kiểu file (ví dụ: docx, pdf...)
+            String originalName = file.getOriginalFilename();
+            String fileType = (originalName != null && originalName.contains("."))
+                    ? originalName.substring(originalName.lastIndexOf(".") + 1) : "unknown";
+            requestDTO.setFileType(fileType);
+
+            // 4. Gán nội dung text (nếu có)
+            requestDTO.setTextContent(textContent != null ? textContent : "Nội dung trích xuất tự động từ file.");
+
+            // Gọi xuống Service xử lý như bình thường
             DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
 
+            // Luồng băm chữ của AI
             Document docEntity = new Document();
             docEntity.setId(response.getDocumentId());
-
-            System.out.println(">>> CONTROLLER LOG: Bắt đầu luồng kích hoạt băm chữ thử nghiệm...");
             documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
 
             return ResponseEntity.ok(response);
