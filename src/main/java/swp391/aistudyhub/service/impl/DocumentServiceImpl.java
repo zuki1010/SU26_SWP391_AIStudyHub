@@ -194,4 +194,31 @@ public class DocumentServiceImpl implements DocumentService {
         dto.setDownloadUrl(document.getDownloadUrl());
         return dto;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType) {
+
+        return documentRepository.findAll((root, query, cb) -> {
+                    java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+
+                    predicates.add(cb.equal(root.get("user").get("id"), userId));
+
+                    if (searchName != null && !searchName.trim().isEmpty()) {
+                        predicates.add(cb.like(cb.lower(root.get("documentName")), "%" + searchName.toLowerCase().trim() + "%"));
+                    }
+
+
+                    if (fileType != null && !fileType.trim().isEmpty()) {
+                        predicates.add(cb.like(cb.lower(root.get("fileType")), "%" + fileType.toLowerCase().trim() + "%"));
+                    }
+
+                    query.orderBy(cb.desc(root.get("createdAt")));
+
+                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                })
+                .stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
 }

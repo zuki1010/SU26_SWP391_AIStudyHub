@@ -21,4 +21,6 @@ public interface DocumentService {
 
     Resource downloadDocumentFile(UUID documentId, UUID userId);
     List<Document> getMyDocuments();
+
+    List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType);
 }

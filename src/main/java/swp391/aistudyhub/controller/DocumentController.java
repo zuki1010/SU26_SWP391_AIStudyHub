@@ -166,4 +166,14 @@ public class    DocumentController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String type) {
+
+        List<DocumentResponseDTO> results = documentService.searchAndFilterDocuments(userId, name, type);
+        return ResponseEntity.ok(results);
+    }
 }
