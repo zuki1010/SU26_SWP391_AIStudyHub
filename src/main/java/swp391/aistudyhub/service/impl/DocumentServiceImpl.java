@@ -7,6 +7,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 import swp391.aistudyhub.dto.DocumentRequestDTO;
 import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.entity.CloudStorage;
@@ -62,12 +63,17 @@ public class DocumentServiceImpl implements DocumentService {
         doc.setDownloadUrl(requestDTO.getDownloadUrl());
         doc.setFileSize(actualFileSize);
 
-        Document savedDoc = documentRepository.save(doc);
+        Document savedDoc = documentRepository.saveAndFlush(doc);
 
-        // 4. Cập nhật quota mới của user
+//        cloudStorageRepository.plusUsedQuota(userId, actualFileSize);
+//
+//        entityManager.flush();
+//        entityManager.clear();
+
+// 4. Cập nhật quota mới của user
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.save(storage);
-        // ==========================================================
+// ==========================================================
 
         return mapToResponseDTO(savedDoc);
     }
@@ -75,7 +81,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional(readOnly = true)
     @Override
     public List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId) {
-        // ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
+// ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
         return documentRepository.findByUserId(userId)
                 .stream()
                 .map(this::mapToResponseDTO)
@@ -117,37 +123,30 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public void deleteDocument(UUID documentId, UUID userId) {
-        // 1. Tìm tài liệu cần xóa dựa vào id tài liệu và id người dùng
         Document document = documentRepository.findByIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền xóa"));
 
-        // LẤY ĐÚNG FILE_SIZE THẬT: Nếu null thì coi như bằng 0 bytes
+
         long actualFileSize = (document.getFileSize() != null) ? document.getFileSize() : 0L;
 
-        // 2. Tìm cấu hình lưu trữ đám mây của User để chuẩn bị trừ bộ nhớ
+
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
 
-        // Thực hiện phép trừ chính xác dung lượng file thật
+
         long newUsedQuota = Math.max(0, storage.getUsedQuota() - actualFileSize);
         storage.setUsedQuota(newUsedQuota);
 
-        // Ép Hibernate lưu ngay giá trị mới này xuống database PostgreSQL
         cloudStorageRepository.saveAndFlush(storage);
 
-        // Giải phóng bộ nhớ đệm (Cache Level 1) của JPA để không bị ghi đè ngược giá trị cũ
         entityManager.flush();
         entityManager.clear();
 
-        // 3. Tiến hành xóa các bản ghi liên quan dưới Database local
-        documentChunkRepository.deleteByDocument_Id(documentId);
 
-        // Tìm lại thực thể ở trạng thái Managed sau khi clear() để xóa vật lý dưới DB
-        Document managedDoc = documentRepository.findById(documentId).orElse(null);
-        if (managedDoc != null) {
-            documentRepository.delete(managedDoc);
-        }
+        documentChunkRepository.deleteByDocument_Id(documentId);
+        documentRepository.delete(document);
     }
+
     public List<Document> getMyDocuments() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -159,7 +158,7 @@ public class DocumentServiceImpl implements DocumentService {
         User user = userRepository.findByEmailIgnoreCase(currentUserEmail)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + currentUserEmail));
 
-        // ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
+// ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
         return documentRepository.findByUserId(user.getId());
     }
 
