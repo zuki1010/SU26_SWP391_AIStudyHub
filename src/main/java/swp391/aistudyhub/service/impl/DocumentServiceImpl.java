@@ -65,15 +65,10 @@ public class DocumentServiceImpl implements DocumentService {
 
         Document savedDoc = documentRepository.saveAndFlush(doc);
 
-//        cloudStorageRepository.plusUsedQuota(userId, actualFileSize);
-//
-//        entityManager.flush();
-//        entityManager.clear();
+        long realTotalUsedQuota = documentRepository.sumFileSizeByUserId(userId);
 
-// 4. Cập nhật quota mới của user
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.save(storage);
-// ==========================================================
 
         return mapToResponseDTO(savedDoc);
     }

@@ -69,8 +69,6 @@ public class CloudStorageServiceImpl implements CloudStorageService {
             ResponseEntity<String> response = restTemplate.exchange(uploadUrl, HttpMethod.POST, requestEntity, String.class);
 
             if (response.getStatusCode() == HttpStatus.OK) {
-                storage.setUsedQuota(storage.getUsedQuota() + fileSize);
-                cloudStorageRepository.save(storage);
 
                 // 3. Sửa đổi: Thêm chính xác cụm '/public/' vào đường dẫn trả về để tạo Link xem/tải trực tiếp công khai
                 return supabaseUrl + "/storage/v1/object/public/" + bucketName + "/" + uniqueFileName;

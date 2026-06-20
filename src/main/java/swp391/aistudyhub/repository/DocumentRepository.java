@@ -2,6 +2,8 @@ package swp391.aistudyhub.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import swp391.aistudyhub.entity.Document;
 
@@ -16,4 +18,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
 
     // ĐÃ SỬA: Tìm Document theo ID và UserId (thay thế cho findByIdAndStorage_User_Id)
     Optional<Document> findByIdAndUserId(UUID id, UUID userId);
+
+    @Query("SELECT COALESCE(SUM(d.fileSize), 0) FROM Document d WHERE d.user.id = :userId")
+    long sumFileSizeByUserId(@Param("userId") UUID userId);
 }
