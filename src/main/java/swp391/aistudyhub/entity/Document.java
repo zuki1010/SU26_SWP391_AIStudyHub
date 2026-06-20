@@ -41,6 +41,9 @@ public class Document {
     @Column(name = "file_type", length = 50)
     private String fileType;
 
+    @Column(name = "file_size", nullable = false)
+    private Long fileSize = 0L;
+
     @Column(name = "preview_url", columnDefinition = "text")
     private String previewUrl;
 
