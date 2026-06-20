@@ -120,6 +120,10 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private jakarta.persistence.EntityManager entityManager;
 
+
+    @Autowired
+    private RestTemplate restTemplate;
+
     @Override
     @Transactional
     public void deleteDocument(UUID documentId, UUID userId) {
@@ -129,6 +133,57 @@ public class DocumentServiceImpl implements DocumentService {
 
         long actualFileSize = (document.getFileSize() != null) ? document.getFileSize() : 0L;
 
+        try {
+            // Giải pháp lấy tên file thông minh: Trích xuất tên file thực tế từ link downloadUrl đã lưu trong DB
+            String downloadUrl = document.getDownloadUrl();
+            if (downloadUrl == null || downloadUrl.trim().isEmpty()) {
+                downloadUrl = document.getPreviewUrl();
+            }
+
+            // Tìm phần tên file vật lý nằm sau chữ /documents/
+            String fileKey = "";
+            if (downloadUrl != null && downloadUrl.contains("/documents/")) {
+                fileKey = downloadUrl.substring(downloadUrl.indexOf("/documents/") + 11);
+            } else {
+                // Phương án dự phòng nếu không tìm thấy link dạng chuẩn: dùng userId/documentId.extension
+                String extension = document.getFileType().toLowerCase().trim();
+                fileKey = userId.toString() + "/" + documentId.toString() + "." + extension;
+            }
+
+            // Endpoint chính xác để gọi phương thức DELETE của Supabase Storage
+            String supabaseUrl = "https://ybgeblpkptrsefpafthb.supabase.co/storage/v1/object/documents/" + fileKey;
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+
+            // ⚠️ CHÚ Ý QUAN TRỌNG: Hãy dán mã Service Role Key của bạn vào đây (Bắt buộc dùng Service Role để có quyền xóa)
+            String supabaseToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliZ2VibHBrcHRyc2VmcGFmdGhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDYwNDM0MSwiZXhwIjoyMDk2MTgwMzQxfQ.T0MpOxyT3aFSdVMy-o4j22D8OxO9hXzRLzDjkbputUI";
+
+            headers.set("Authorization", "Bearer " + supabaseToken);
+            headers.set("apiKey", supabaseToken);
+
+            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
+
+            // Gửi lệnh xóa lên cloud Supabase
+            restTemplate.exchange(supabaseUrl, org.springframework.http.HttpMethod.DELETE, entity, String.class);
+            System.out.println("==> Đã xóa file vật lý thành công trên Supabase Bucket: " + fileKey);
+
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            String errorResponse = e.getResponseBodyAsString();
+            // Nếu file thực tế trên Cloud vốn dĩ đã bị mất từ trước (404 Not Found), ta log cảnh báo và vẫn cho chạy tiếp xuống dưới để dọn DB
+            if (e.getStatusCode().value() == 404 || errorResponse.contains("not_found")) {
+                System.out.println("==> Cảnh báo: File không tìm thấy trên Cloud (404), tiến hành dọn dẹp tiếp Database.");
+            } else {
+                // Nếu gặp các lỗi khác (403 Unauthorized, 400 lỗi cú pháp hệ thống...), lập tức chặn đứng (ném RuntimeException) để Rollback Transaction, không cho xóa DB local!
+                throw new RuntimeException("Không thể xóa file vật lý trên Supabase Bucket. Mã lỗi: " + e.getStatusCode() + " - Chi tiết: " + errorResponse);
+            }
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            if (msg.contains("404") || msg.contains("not_found")) {
+                System.out.println("==> Cảnh báo: Phát hiện mã lỗi 404, tiếp tục dọn dẹp Database.");
+            } else {
+                throw new RuntimeException("Lỗi kết nối mạng đến Supabase: " + e.getMessage());
+            }
+        }
 
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
