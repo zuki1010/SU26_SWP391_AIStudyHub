@@ -31,8 +31,9 @@ public class DocumentChunk {
     @Column(name = "chunk_content", nullable = false, columnDefinition = "text")
     private String chunkContent;
 
+    @JsonIgnore
     @Column(name = "vector_embedding", columnDefinition = "vector(1536)")
-    private float[] vectorEmbedding;
+    private Object vectorEmbedding;
 
     @Column(name = "page_number")
     private Integer pageNumber;
