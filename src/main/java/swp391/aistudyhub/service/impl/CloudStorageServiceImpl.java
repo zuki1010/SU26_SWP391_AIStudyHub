@@ -41,7 +41,7 @@ public class CloudStorageServiceImpl implements CloudStorageService {
         // 2. BỔ SUNG: Kiểm tra xem file mới lên có làm tràn bộ nhớ (Vượt 15GB) không
         long fileSize = file.getSize();
         if (storage.getUsedQuota() + fileSize > storage.getTotalQuota()) {
-            throw new RuntimeException("Dung lượng bộ nhớ đám mây của bạn đã đầy (Giới hạn tối đa 15GB)!");
+            throw new RuntimeException("Dung lượng bộ nhớ đám mây của bạn đã đầy (Giới hạn tối đa 5GB)!");
         }
 
         String originalFilename = file.getOriginalFilename();

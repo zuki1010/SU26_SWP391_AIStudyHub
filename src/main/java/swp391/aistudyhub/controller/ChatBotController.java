@@ -4,15 +4,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
 import swp391.aistudyhub.dto.response.ChatMessageDTO;
 import swp391.aistudyhub.dto.response.UpdateSessionDocsDTO;
-import swp391.aistudyhub.entity.ChatMessage;
-import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.service.ChatBotService;
 import swp391.aistudyhub.service.DocumentService;
 
