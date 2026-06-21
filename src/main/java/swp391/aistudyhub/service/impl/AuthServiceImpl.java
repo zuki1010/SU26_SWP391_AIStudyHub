@@ -55,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.getEmail().trim().toLowerCase());
         user.setPasswordHash(request.getPassword());
         user.setRole("ROLE_" + role);
-        user.setAccountStatus(swp391.aistudyhub.enums.AccountStatus.ACTIVE);
+        user.setAccountStatus("ACTIVE");
         user.setCreatedAt(Instant.now());
         user = userRepository.save(user);
 
@@ -281,7 +281,7 @@ public class AuthServiceImpl implements AuthService {
                 .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .accountStatus(user.getAccountStatus() != null ? user.getAccountStatus().name() : null)
+                .accountStatus(user.getAccountStatus())
                 .createdAt(user.getCreatedAt());
 
         switch (user.getRole()) {

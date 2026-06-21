@@ -24,7 +24,7 @@ public class CustomUserDetails implements UserDetails {
         this.email = user.getEmail();
         this.passwordHash = user.getPasswordHash();
         this.role = user.getRole();
-        this.accountStatus = user.getAccountStatus() != null ? user.getAccountStatus().name() : null;
+        this.accountStatus = user.getAccountStatus();
     }
 
     @Override
