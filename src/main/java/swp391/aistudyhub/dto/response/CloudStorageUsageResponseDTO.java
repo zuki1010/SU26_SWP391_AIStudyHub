@@ -14,4 +14,5 @@ public class CloudStorageUsageResponseDTO {
     private long usedQuota;       // Dung lượng đã dùng (bytes)
     private long totalQuota;      // Tổng dung lượng cho phép (5GB - bytes)
     private String percentageUsed; // Tỷ lệ phần trăm đã dùng (ví dụ: 12.34%)
+    private String warningMessage;
 }

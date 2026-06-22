@@ -1,5 +1,6 @@
 package swp391.aistudyhub.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.util.UUID;
 import java.time.Instant;
@@ -13,4 +14,7 @@ public class    DocumentResponseDTO {
     private String downloadUrl;
     private Instant createdAt;
     private String description;
+
+    @JsonProperty("storageWarningMessage")
+    private String storageWarningMessage;
 }

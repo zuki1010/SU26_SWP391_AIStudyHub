@@ -103,12 +103,26 @@ public class CloudStorageServiceImpl implements CloudStorageService {
 
         String percentageWithSign = "0%"; // Giá trị mặc định nếu chưa dùng gì
 
+        String warningMessage = "Không gian lưu trữ của bạn như túi thần kì của Doremon.";
+
         if (storage.getTotalQuota() > 0 && realUsedQuota > 0) {
             double percentage = (realUsedQuota * 100.0) / storage.getTotalQuota();
 
             percentageWithSign = String.format("%.5f%%", percentage);
-            if (percentage >= 0.01) {
-                percentageWithSign = String.format("%.2f%%", percentage);
+
+            if (percentage >= 50.0) {
+//                percentageWithSign = String.format("%.2f%%", percentage);
+               warningMessage = "Không gian lưu trữ của bạn chỉ còn 1 nửa.";
+            }
+
+            if (percentage >= 80.0) {
+
+                warningMessage = "Cảnh báo: Không gian lưu trữ đám mây của bạn đã sử dụng trên 80% (" + percentageWithSign + "). Hãy lên Premium để có thêm dung lượng bạn nhé";
+            }
+
+
+            if (percentage == 100.0) {
+                warningMessage = "Nguy hiểm: Không gian lưu trữ đám mây của bạn đã đầy (100%). Bạn không thể upload thêm tài liệu mới!";
             }
         }
 
@@ -116,7 +130,8 @@ public class CloudStorageServiceImpl implements CloudStorageService {
                 userId,
                 realUsedQuota,
                 storage.getTotalQuota(),
-                percentageWithSign
+                percentageWithSign,
+                warningMessage
         );
     }
 }

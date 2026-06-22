@@ -244,6 +244,7 @@ public class DocumentServiceImpl implements DocumentService {
         dto.setPreviewUrl(document.getPreviewUrl());
         dto.setDownloadUrl(document.getDownloadUrl());
         dto.setDescription(document.getDescription());
+        dto.setStorageWarningMessage(null);
         return dto;
     }
 
