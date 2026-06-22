@@ -48,6 +48,9 @@ public class Document {
     @Column(name = "file_size")
     private Long fileSize;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt = Instant.now();
@@ -60,4 +63,6 @@ public class Document {
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> documentVersions = new ArrayList<>();
+
+
 }

@@ -12,4 +12,5 @@ public class    DocumentResponseDTO {
     private String previewUrl;
     private String downloadUrl;
     private Instant createdAt;
+    private String description;
 }

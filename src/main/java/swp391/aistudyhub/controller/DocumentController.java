@@ -70,6 +70,9 @@ public class    DocumentController {
             requestDTO.setPreviewUrl(fileUrl);
             requestDTO.setDownloadUrl(fileUrl);
             // Gọi xuống Service xử lý như bình thường
+
+            requestDTO.setDescription(description);
+
             DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
 
             // Luồng băm chữ của AI

@@ -63,6 +63,7 @@ public class DocumentServiceImpl implements DocumentService {
         doc.setDownloadUrl(requestDTO.getDownloadUrl());
         doc.setFileSize(actualFileSize);
 
+        doc.setDescription(requestDTO.getDescription());
         Document savedDoc = documentRepository.saveAndFlush(doc);
 
         long realTotalUsedQuota = documentRepository.sumFileSizeByUserId(userId);
@@ -208,7 +209,7 @@ public class DocumentServiceImpl implements DocumentService {
         User user = userRepository.findByEmailIgnoreCase(currentUserEmail)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + currentUserEmail));
 
-// ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
+
         return documentRepository.findByUserId(user.getId());
     }
 
@@ -242,6 +243,7 @@ public class DocumentServiceImpl implements DocumentService {
         dto.setFileType(document.getFileType());
         dto.setPreviewUrl(document.getPreviewUrl());
         dto.setDownloadUrl(document.getDownloadUrl());
+        dto.setDescription(document.getDescription());
         return dto;
     }
 
