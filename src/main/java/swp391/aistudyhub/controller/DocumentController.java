@@ -40,10 +40,15 @@ public class    DocumentController {
     public ResponseEntity<?> createDocument(
             @RequestHeader("X-User-Id") UUID userId,
             @RequestPart("file") MultipartFile file,
+            @RequestParam("description") String description,
             // Chỉ nhận chuỗi textContent hoặc các thông tin tùy chọn khác, loại bỏ hoàn toàn các trường kích thước file
             @RequestParam(value = "textContent", required = false) String textContent) {
         try {
-            String fileUrl = cloudStorageService.uploadFile(userId, file);
+            if (description == null || description.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
+            }
+
+            String fileUrl = cloudStorageService.uploadFile(userId, file , description);
             // Tự động bóc tách thông tin từ file máy tính để đóng gói vào DTO
             DocumentRequestDTO requestDTO = new DocumentRequestDTO();
 

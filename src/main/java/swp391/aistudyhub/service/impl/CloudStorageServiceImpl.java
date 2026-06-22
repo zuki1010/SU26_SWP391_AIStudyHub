@@ -16,6 +16,7 @@ import swp391.aistudyhub.service.CloudStorageService;
 import java.io.IOException;
 import java.util.UUID;
 
+
 @Service
 public class CloudStorageServiceImpl implements CloudStorageService {
 
@@ -35,7 +36,11 @@ public class CloudStorageServiceImpl implements CloudStorageService {
 
     @Override
     @Transactional
-    public String uploadFile(UUID userId, MultipartFile file) {
+    public String uploadFile(UUID userId, MultipartFile file, String description) {
+
+        if (description == null || description.trim().isEmpty()) {
+            throw new RuntimeException("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
+        }
         // 1. BỔ SUNG: Lấy thông tin cấu hình Storage của User từ DB local lên kiểm tra trước
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình bộ nhớ của người dùng"));
