@@ -9,4 +9,7 @@ public class DocumentRequestDTO {
     private String previewUrl;
     private String downloadUrl;
     private Long fileSize; // Dung lượng file tính bằng Byte để check quota bộ nhớ
+
+    // ĐÃ BỔ SUNG: Chuỗi văn bản thô trích xuất từ file do Frontend gửi lên để xử lý RAG Chunking
+    private String textContent;
 }

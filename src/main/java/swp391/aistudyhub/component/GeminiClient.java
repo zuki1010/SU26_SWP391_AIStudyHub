@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import swp391.aistudyhub.entity.ChatMessage;
+import swp391.aistudyhub.enums.SenderType;
 
 import java.util.*;
 
@@ -41,7 +42,7 @@ public class GeminiClient {
         if (history != null && !history.isEmpty()) {
             for (ChatMessage msg : history) {
                 Map<String, Object> contentItem = new HashMap<>();
-                String role = "USER".equalsIgnoreCase(msg.getSenderType()) ? "user" : "model";
+                String role = (msg.getSenderType() == SenderType.USER) ? "user" : "model";
                 contentItem.put("role", role);
 
                 Map<String, Object> partsItem = new HashMap<>();

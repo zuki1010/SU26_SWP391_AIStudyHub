@@ -1,5 +1,6 @@
 package swp391.aistudyhub.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -7,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import swp391.aistudyhub.enums.SenderType;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -23,6 +25,7 @@ public class ChatMessage {
     private UUID id;
 
     @NotNull
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "chat_session_id", nullable = false)
@@ -31,7 +34,7 @@ public class ChatMessage {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false, length = 20)
-    private String senderType;    //để đây, hồi nữa em thêm enum
+    private SenderType senderType;
 
     @NotNull
     @Column(name = "message_content", nullable = false, columnDefinition = "text")

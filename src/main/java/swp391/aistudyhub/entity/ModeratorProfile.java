@@ -1,5 +1,6 @@
 package swp391.aistudyhub.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -22,6 +23,7 @@ public class ModeratorProfile {
     private UUID id;
 
     @NotNull
+    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
@@ -39,7 +41,4 @@ public class ModeratorProfile {
     @Size(max = 100)
     @Column(name = "assigned_subject", length = 100)
     private String assignedSubject;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private ModeratorProfile moderatorProfile;
 }

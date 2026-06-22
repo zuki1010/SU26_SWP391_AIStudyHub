@@ -1,5 +1,6 @@
 package swp391.aistudyhub.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -23,10 +24,11 @@ public class StorageUploadLog {
     private UUID id;
 
     @NotNull
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "storage_id", nullable = false)
-    private CloudStorage storage;
+    private CloudStorage cloudStorage;
 
     @NotNull
     @Column(name = "file_name_origin", nullable = false, columnDefinition = "text")

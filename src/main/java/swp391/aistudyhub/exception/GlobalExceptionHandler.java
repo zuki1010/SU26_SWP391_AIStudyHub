@@ -3,6 +3,8 @@ package swp391.aistudyhub.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,7 +14,7 @@ import swp391.aistudyhub.dto.response.ApiResponse;
 
 import java.util.stream.Collectors;
 
-@RestControllerAdvice(basePackages = "swp391.aistudyhub.auth.controller")
+@RestControllerAdvice(basePackages = "swp391.aistudyhub")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthException.class)
@@ -24,6 +26,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.fail("Invalid email or password"));
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDisabled(DisabledException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.fail("Account is banned. Please contact admin."));
+    }
+
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleLocked(LockedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.fail("Account is locked. Please contact admin."));
     }
 
     @ExceptionHandler(UsernameNotFoundException.class)

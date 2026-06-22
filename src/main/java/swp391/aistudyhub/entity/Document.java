@@ -1,5 +1,6 @@
 package swp391.aistudyhub.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -25,6 +26,7 @@ public class Document {
     private UUID id;
 
     @NotNull
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", nullable = false)
@@ -38,6 +40,9 @@ public class Document {
     @Size(max = 50)
     @Column(name = "file_type", length = 50)
     private String fileType;
+
+    @Column(name = "file_size", nullable = false)
+    private Long fileSize = 0L;
 
     @Column(name = "preview_url", columnDefinition = "text")
     private String previewUrl;
