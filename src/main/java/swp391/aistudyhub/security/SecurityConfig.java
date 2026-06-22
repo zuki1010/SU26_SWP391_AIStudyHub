@@ -40,7 +40,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/api/chat/**",
+            "/api/chat/**"
 
     };
 
@@ -52,16 +52,13 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-        .requestMatchers("/api/auth/**").permitAll()
-        .requestMatchers("/v3/api-docs/**").permitAll()
-        .requestMatchers("/swagger-ui/**").permitAll()
-        .requestMatchers("/swagger-ui.html").permitAll()
+        .requestMatchers(PUBLIC_PATHS).permitAll()
 
         .requestMatchers("/api/v1/documents").authenticated()
         .requestMatchers("/api/v1/documents/**").authenticated()
 
-        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+        .requestMatchers("/api/v1/storage").authenticated()
+        .requestMatchers("/api/v1/storage/**").authenticated()
 
         .anyRequest().authenticated()
 )
