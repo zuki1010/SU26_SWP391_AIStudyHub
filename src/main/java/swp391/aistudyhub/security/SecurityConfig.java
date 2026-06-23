@@ -86,9 +86,10 @@ public class SecurityConfig {
     }
 
     private static final List<String> ALLOWED_ORIGINS = List.of(
-            "http://localhost:5173",  // Vite
-            "http://localhost:3000"   // CRA
-    );
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://aistudyfe.onrender.com"
+);
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
