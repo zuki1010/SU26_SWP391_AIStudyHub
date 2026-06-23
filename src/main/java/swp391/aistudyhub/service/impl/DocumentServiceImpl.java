@@ -62,6 +62,7 @@ public class DocumentServiceImpl implements DocumentService {
         doc.setPreviewUrl(requestDTO.getPreviewUrl());
         doc.setDownloadUrl(requestDTO.getDownloadUrl());
         doc.setFileSize(actualFileSize);
+        
 
         Document savedDoc = documentRepository.saveAndFlush(doc);
 

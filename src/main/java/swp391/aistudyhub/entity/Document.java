@@ -60,4 +60,7 @@ public class Document {
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> documentVersions = new ArrayList<>();
+
+    @Column(name = "description", columnDefinition = "TEXT")
+private String description;
 }

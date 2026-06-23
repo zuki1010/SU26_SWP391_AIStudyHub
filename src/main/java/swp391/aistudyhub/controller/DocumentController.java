@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.List;
 import java.util.UUID;
 
@@ -36,47 +37,56 @@ public class    DocumentController {
     private CloudStorageService cloudStorageService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
-    public ResponseEntity<?> createDocument(
-            @RequestHeader("X-User-Id") UUID userId,
-            @RequestPart("file") MultipartFile file,
-            // Chỉ nhận chuỗi textContent hoặc các thông tin tùy chọn khác, loại bỏ hoàn toàn các trường kích thước file
-            @RequestParam(value = "textContent", required = false) String textContent) {
-        try {
-            String fileUrl = cloudStorageService.uploadFile(userId, file);
-            // Tự động bóc tách thông tin từ file máy tính để đóng gói vào DTO
-            DocumentRequestDTO requestDTO = new DocumentRequestDTO();
-
-            // 1. Tự động lấy tên file (bỏ đuôi nếu muốn, hoặc để nguyên)
-            requestDTO.setDocumentName(file.getOriginalFilename());
-
-            // 2. Tự động lấy dung lượng file (Kích thước thực tế từ máy tính)
-            requestDTO.setFileSize(file.getSize());
-
-            // 3. Tự động lấy kiểu file (ví dụ: docx, pdf...)
-            String originalName = file.getOriginalFilename();
-            String fileType = (originalName != null && originalName.contains("."))
-                    ? originalName.substring(originalName.lastIndexOf(".") + 1) : "unknown";
-            requestDTO.setFileType(fileType);
-
-            // 4. Gán nội dung text (nếu có)
-            requestDTO.setTextContent(textContent != null ? textContent : "Nội dung trích xuất tự động từ file.");
-
-            requestDTO.setPreviewUrl(fileUrl);
-            requestDTO.setDownloadUrl(fileUrl);
-            // Gọi xuống Service xử lý như bình thường
-            DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
-
-            // Luồng băm chữ của AI
-            Document docEntity = new Document();
-            docEntity.setId(response.getDocumentId());
-            documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+@Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
+public ResponseEntity<?> createDocument(
+        @RequestHeader("X-User-Id") UUID userId,
+        @RequestPart("file") MultipartFile file,
+        @RequestParam("description") String description,
+        @RequestParam(value = "textContent", required = false) String textContent
+) {
+    try {
+        if (description == null || description.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
         }
+
+        String fileUrl = cloudStorageService.uploadFile(userId, file);
+
+        DocumentRequestDTO requestDTO = new DocumentRequestDTO();
+
+        requestDTO.setDocumentName(file.getOriginalFilename());
+        requestDTO.setFileSize(file.getSize());
+
+        String originalName = file.getOriginalFilename();
+        String fileType = (originalName != null && originalName.contains("."))
+                ? originalName.substring(originalName.lastIndexOf(".") + 1)
+                : "unknown";
+
+        requestDTO.setFileType(fileType);
+
+        requestDTO.setDescription(description.trim());
+
+        requestDTO.setTextContent(
+                textContent != null && !textContent.trim().isEmpty()
+                        ? textContent.trim()
+                        : description.trim()
+        );
+
+        requestDTO.setPreviewUrl(fileUrl);
+        requestDTO.setDownloadUrl(fileUrl);
+
+        DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
+
+        Document docEntity = new Document();
+        docEntity.setId(response.getDocumentId());
+        documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
+
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.badRequest().body(e.getMessage());
     }
+}
 
     // ĐA SỬA: Bỏ /{id} dư thừa trên URL vì bạn đã nhận diện user qua @RequestHeader
     @GetMapping("/all")
@@ -110,16 +120,29 @@ public class    DocumentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteDocument(
-            @RequestHeader("X-User-Id") UUID userId,
-            @PathVariable("id") UUID documentId) {
-        try {
-            documentService.deleteDocument(documentId, userId);
-            return ResponseEntity.ok("Xóa thành công tài liệu và giải phóng bộ nhớ!");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+public ResponseEntity<?> deleteDocument(
+        @RequestHeader("X-User-Id") UUID userId,
+        @PathVariable("id") UUID documentId) {
+    try {
+        documentService.deleteDocument(documentId, userId);
+
+        return ResponseEntity.ok(
+                java.util.Map.of(
+                        "success", true,
+                        "message", "Xóa thành công tài liệu và giải phóng bộ nhớ!"
+                )
+        );
+    } catch (Exception e) {
+        e.printStackTrace();
+
+        return ResponseEntity.badRequest().body(
+                java.util.Map.of(
+                        "success", false,
+                        "message", e.getMessage()
+                )
+        );
     }
+}
 
     @GetMapping("/{id}/download")
     public ResponseEntity<?> downloadDocument(
