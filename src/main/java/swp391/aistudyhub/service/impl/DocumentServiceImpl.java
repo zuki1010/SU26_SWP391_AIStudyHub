@@ -62,7 +62,7 @@ public class DocumentServiceImpl implements DocumentService {
         doc.setPreviewUrl(requestDTO.getPreviewUrl());
         doc.setDownloadUrl(requestDTO.getDownloadUrl());
         doc.setFileSize(actualFileSize);
-        
+        doc.setDescription(requestDTO.getDescription());
 
         Document savedDoc = documentRepository.saveAndFlush(doc);
 
@@ -237,14 +237,23 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     private DocumentResponseDTO mapToResponseDTO(Document document) {
-        DocumentResponseDTO dto = new DocumentResponseDTO();
-        dto.setDocumentId(document.getId());
-        dto.setDocumentName(document.getDocumentName());
-        dto.setFileType(document.getFileType());
-        dto.setPreviewUrl(document.getPreviewUrl());
-        dto.setDownloadUrl(document.getDownloadUrl());
-        return dto;
-    }
+    DocumentResponseDTO dto = new DocumentResponseDTO();
+
+    dto.setDocumentId(document.getId());
+    dto.setDocumentName(document.getDocumentName());
+    dto.setFileType(document.getFileType());
+    dto.setPreviewUrl(document.getPreviewUrl());
+    dto.setDownloadUrl(document.getDownloadUrl());
+    dto.setCreatedAt(document.getCreatedAt());
+
+    // THÊM DÒNG NÀY ĐỂ FE PREVIEW ĐỌC ĐƯỢC
+    dto.setDescription(document.getDescription());
+
+    // Vì FE có thể đọc textContent, ta cho textContent = description luôn
+    dto.setTextContent(document.getDescription());
+
+    return dto;
+}
 
     @Override
     @Transactional(readOnly = true)
