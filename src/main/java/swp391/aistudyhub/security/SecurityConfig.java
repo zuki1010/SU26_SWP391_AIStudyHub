@@ -90,6 +90,7 @@ public class SecurityConfig {
         "http://localhost:3000",
         "https://aistudyfe.onrender.com"
 );
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
