@@ -29,7 +29,9 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        // role is already stored as "ROLE_CUSTOMER" etc. in the DB; don't double-prefix.
+        String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        return List.of(new SimpleGrantedAuthority(authority));
     }
 
     @Override

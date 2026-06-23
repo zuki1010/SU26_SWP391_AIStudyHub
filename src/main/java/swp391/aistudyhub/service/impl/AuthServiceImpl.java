@@ -184,7 +184,9 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void createRoleProfile(User user, RegisterRequest request) {
-        switch (user.getRole()) {
+        // user.getRole() returns "ROLE_CUSTOMER" etc; strip prefix for switch
+        String roleKey = user.getRole().startsWith("ROLE_") ? user.getRole().substring(5) : user.getRole();
+        switch (roleKey) {
             case "CUSTOMER" -> {
                 CustomerProfile profile = new CustomerProfile();
 //                profile.setId(UUID.randomUUID());
