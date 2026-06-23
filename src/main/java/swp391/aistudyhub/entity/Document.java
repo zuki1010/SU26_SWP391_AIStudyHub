@@ -50,6 +50,13 @@ public class Document {
     @Column(name = "download_url", columnDefinition = "text")
     private String downloadUrl;
 
+    /**
+     * True when the document has been shared publicly (e.g. attached into a forum post/comment).
+     * Stored as is_public; defaults to false. Lombok generates isPublic()/setPublic(boolean).
+     */
+    @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
+    private boolean isPublic = false;
+
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt = Instant.now();
