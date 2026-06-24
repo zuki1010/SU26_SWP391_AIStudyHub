@@ -55,8 +55,8 @@ public class AuthServiceImpl implements AuthService {
 //        user.setId(UUID.randomUUID());
         user.setEmail(request.getEmail().trim().toLowerCase());
         user.setPasswordHash(request.getPassword());
-        user.setRole(role);
-        user.setAccountStatus("ACTIVE");
+        user.setRole("ROLE_" + role);
+        user.setAccountStatus(swp391.aistudyhub.enums.AccountStatus.ACTIVE);
         user.setCreatedAt(Instant.now());
         user = userRepository.save(user);
 
@@ -191,7 +191,9 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void createRoleProfile(User user, RegisterRequest request) {
-        switch (user.getRole()) {
+        // user.getRole() returns "ROLE_CUSTOMER" etc; strip prefix for switch
+        String roleKey = user.getRole().startsWith("ROLE_") ? user.getRole().substring(5) : user.getRole();
+        switch (roleKey) {
             case "CUSTOMER" -> {
                 CustomerProfile profile = new CustomerProfile();
 //                profile.setId(UUID.randomUUID());
@@ -288,7 +290,7 @@ public class AuthServiceImpl implements AuthService {
                 .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .accountStatus(user.getAccountStatus())
+                .accountStatus(user.getAccountStatus() != null ? user.getAccountStatus().name() : null)
                 .createdAt(user.getCreatedAt());
 
         switch (user.getRole()) {

@@ -1,5 +1,6 @@
 package swp391.aistudyhub.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -25,6 +26,7 @@ public class Document {
     private UUID id;
 
     @NotNull
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", nullable = false)
@@ -51,6 +53,13 @@ public class Document {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * True when the document has been shared publicly (e.g. attached into a forum post/comment).
+     * Stored as is_public; defaults to false. Lombok generates isPublic()/setPublic(boolean).
+     */
+    @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
+    private boolean isPublic = false;
+
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt = Instant.now();
@@ -63,6 +72,4 @@ public class Document {
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> documentVersions = new ArrayList<>();
-
-
 }

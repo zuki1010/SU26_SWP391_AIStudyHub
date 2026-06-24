@@ -36,17 +36,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        if (SecurityContextHolder.getContext().getAuthentication() == null
-                && jwtService.isTokenValid(token)
-                && jwtService.isAccessToken(token)) {
+        try {
+            if (SecurityContextHolder.getContext().getAuthentication() == null
+                    && jwtService.isTokenValid(token)
+                    && jwtService.isAccessToken(token)) {
 
-            String email = jwtService.extractEmail(token);
-            CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
+                String email = jwtService.extractEmail(token);
+                CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
 
-            var authentication = new UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.getAuthorities());
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                var authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        } catch (Exception e) {
+            // Token không hợp lệ hoặc hết hạn — bỏ qua, để Spring Security tự quyết định
         }
 
         filterChain.doFilter(request, response);
