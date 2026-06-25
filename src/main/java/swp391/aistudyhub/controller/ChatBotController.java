@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import swp391.aistudyhub.dto.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
 import swp391.aistudyhub.dto.response.ChatMessageDTO;
