@@ -1,8 +1,8 @@
 package swp391.aistudyhub.service;
 
 import org.springframework.core.io.Resource;
-import swp391.aistudyhub.dto.DocumentRequestDTO;
-import swp391.aistudyhub.dto.DocumentResponseDTO;
+import swp391.aistudyhub.dto.request.DocumentRequestDTO;
+import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 
 import java.util.List;
@@ -17,8 +17,10 @@ public interface DocumentService {
 
     DocumentResponseDTO updateDocumentName(UUID documentId, UUID userId, String newName);
 
-    void deleteDocument(UUID documentId, UUID userId, Long fileSize);
+    void deleteDocument(UUID documentId, UUID userId);
 
     Resource downloadDocumentFile(UUID documentId, UUID userId);
     List<Document> getMyDocuments();
+
+    List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType);
 }
