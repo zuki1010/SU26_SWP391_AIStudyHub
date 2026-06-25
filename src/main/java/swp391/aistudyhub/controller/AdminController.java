@@ -29,11 +29,10 @@ public class AdminController {
     private AdminService adminService;
 
     @GetMapping("/account")
-    public ResponseEntity<Page<List<String>>> getAllUser(@RequestParam(required = false) String key,
+    public ResponseEntity<Page<UserAccountResponseDTO>> getAllUser(@RequestParam(required = false) String key,
                                                  @RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "10") int size,
                                                  UserAccountResponseDTO dto) {
-        List<String> = user
         return ResponseEntity.ok().body(adminService.getAllCustomer(key,page,size));
     }
 
