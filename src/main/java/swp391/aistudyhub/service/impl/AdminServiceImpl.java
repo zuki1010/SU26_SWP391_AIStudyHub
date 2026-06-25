@@ -29,6 +29,7 @@ public class AdminServiceImpl implements AdminService {
     public Page<User> getAllCustomer(String key, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         if (key != null && !key.isEmpty()) {
+            Page<User> user1 = userRepository.findByEmailContainingIgnoreCaseOrCustomerProfileFullNameContainingIgnoreCase(key,key,pageable);
             return userRepository.findByEmailContainingIgnoreCaseOrCustomerProfileFullNameContainingIgnoreCase(key, key, pageable);
         }
 
