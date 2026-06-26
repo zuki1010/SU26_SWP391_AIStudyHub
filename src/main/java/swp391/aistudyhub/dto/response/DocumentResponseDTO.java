@@ -14,4 +14,6 @@ public class    DocumentResponseDTO {
     private Instant createdAt;
     private String description;
     private String textContent;
+    private Boolean isPublic;
+
 }

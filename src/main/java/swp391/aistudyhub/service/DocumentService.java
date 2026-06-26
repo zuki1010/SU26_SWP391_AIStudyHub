@@ -23,4 +23,6 @@ public interface DocumentService {
     List<Document> getMyDocuments();
 
     List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType);
+
+    DocumentResponseDTO toggleDocumentPublicStatus(UUID userId, UUID documentId, boolean isPublic);
 }

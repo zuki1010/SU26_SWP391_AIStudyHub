@@ -48,6 +48,9 @@ public class Document {
     @Column(name = "file_size")
     private Long fileSize;
 
+    @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
+    private boolean isPublic = false;
+
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt = Instant.now();

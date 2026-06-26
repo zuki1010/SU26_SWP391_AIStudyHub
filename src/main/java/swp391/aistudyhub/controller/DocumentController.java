@@ -4,10 +4,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
+import swp391.aistudyhub.dto.request.DocumentTogglePublicRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.service.CloudStorageService;
@@ -198,5 +200,24 @@ public ResponseEntity<?> deleteDocument(
 
         List<DocumentResponseDTO> results = documentService.searchAndFilterDocuments(userId, name, type);
         return ResponseEntity.ok(results);
+    }
+
+    @PutMapping("/{documentId}/toggle-public")
+    public ResponseEntity<?> toggleDocumentPublic(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("documentId") UUID documentId,
+            @RequestBody DocumentTogglePublicRequestDTO requestDTO) {
+        try {
+            DocumentResponseDTO response = documentService.toggleDocumentPublicStatus(
+                    userId,
+                    documentId,
+                    requestDTO.getIsPublic()
+            );
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi hệ thống: " + e.getMessage());
+        }
     }
 }

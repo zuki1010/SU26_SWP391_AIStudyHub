@@ -245,13 +245,9 @@ public class DocumentServiceImpl implements DocumentService {
     dto.setPreviewUrl(document.getPreviewUrl());
     dto.setDownloadUrl(document.getDownloadUrl());
     dto.setCreatedAt(document.getCreatedAt());
-
-    // THÊM DÒNG NÀY ĐỂ FE PREVIEW ĐỌC ĐƯỢC
     dto.setDescription(document.getDescription());
-
-    // Vì FE có thể đọc textContent, ta cho textContent = description luôn
     dto.setTextContent(document.getDescription());
-
+    dto.setIsPublic(document.isPublic());
     return dto;
 }
 
@@ -280,5 +276,25 @@ public class DocumentServiceImpl implements DocumentService {
                 .stream()
                 .map(this::mapToResponseDTO)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public DocumentResponseDTO toggleDocumentPublicStatus(UUID userId, UUID documentId, boolean isPublic) {
+        // 1. Tìm tài liệu dựa trên ID thô gửi lên
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu."));
+
+        // 2. Bảo mật: Kiểm tra xem User đang thực hiện có đúng là chủ sở hữu của tài liệu này không
+        if (!document.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa trạng thái của tài liệu này!");
+        }
+
+        // 3. Tiến hành thay đổi trạng thái lưu trữ
+        document.setPublic(isPublic);
+        Document updatedDoc = documentRepository.saveAndFlush(document);
+
+        // 4. Đóng gói dữ liệu trả về thông qua hàm map có sẵn trong service của bạn
+        return mapToResponseDTO(updatedDoc);
     }
 }
