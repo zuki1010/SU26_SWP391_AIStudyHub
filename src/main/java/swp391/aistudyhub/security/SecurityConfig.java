@@ -32,18 +32,19 @@ public class SecurityConfig {
     private final UserDetailsServiceImpl userDetailsService;
 
     private static final String[] PUBLIC_PATHS = {
-            "/api/auth/register",
-            "/api/auth/login",
-            "/api/auth/forgot-password",
-            "/api/auth/reset-password",
-            "/api/auth/refresh",
-            "/api/auth/logout",
-            "/v3/api-docs/**",
-            "/swagger-ui/**",
-            "/swagger-ui.html",
-            "/api/chat/**"
+        "/api/auth/register",
+        "/api/auth/login",
+        "/api/auth/forgot-password",
+        "/api/auth/reset-password",
+        "/api/auth/refresh",
+        "/api/auth/logout",
+        "/v3/api-docs/**",
+        "/swagger-ui/**",
+        "/swagger-ui.html",
+        "/api/chat/**",
 
-    };
+        "/api/v1/documents/public"
+};
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -54,14 +55,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
         .requestMatchers(PUBLIC_PATHS).permitAll()
-        
 
         .requestMatchers("/api/v1/documents").authenticated()
         .requestMatchers("/api/v1/documents/**").authenticated()
 
         .requestMatchers("/api/v1/storage").authenticated()
         .requestMatchers("/api/v1/storage/**").authenticated()
-
 
         .anyRequest().authenticated()
 )

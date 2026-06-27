@@ -94,6 +94,11 @@ public class DocumentController {
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(@RequestHeader("X-User-Id") UUID userId) {
         return ResponseEntity.ok(documentService.getAllDocumentsByUserId(userId));
     }
+    
+    @GetMapping("/public")
+public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
+    return ResponseEntity.ok(documentService.getPublicDocuments());
+}
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getDocumentById(
@@ -107,10 +112,6 @@ public class DocumentController {
         }
     }
 
-    @GetMapping("/public")
-public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
-    return ResponseEntity.ok(documentService.getPublicDocuments());
-}
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDocumentName(
