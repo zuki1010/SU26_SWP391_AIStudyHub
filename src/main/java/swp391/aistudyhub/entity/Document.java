@@ -50,9 +50,6 @@ public class Document {
     @Column(name = "download_url", columnDefinition = "text")
     private String downloadUrl;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
-
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt = Instant.now();
@@ -65,4 +62,7 @@ public class Document {
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> documentVersions = new ArrayList<>();
+
+    @Column(name = "description", columnDefinition = "TEXT")
+private String description;
 }
