@@ -107,6 +107,11 @@ public class DocumentController {
         }
     }
 
+    @GetMapping("/public")
+public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
+    return ResponseEntity.ok(documentService.getPublicDocuments());
+}
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDocumentName(
             @RequestHeader("X-User-Id") UUID userId,
@@ -200,4 +205,21 @@ public class DocumentController {
         List<DocumentResponseDTO> results = documentService.searchAndFilterDocuments(userId, name, type);
         return ResponseEntity.ok(results);
     }
+
+    @PutMapping("/{id}/toggle-public")
+public ResponseEntity<?> updateDocumentVisibility(
+        @RequestHeader("X-User-Id") UUID userId,
+        @PathVariable("id") UUID documentId,
+        @RequestBody java.util.Map<String, Boolean> body) {
+    try {
+        Boolean isPublic = body.get("isPublic");
+
+        DocumentResponseDTO response =
+                documentService.updateDocumentVisibility(documentId, userId, isPublic);
+
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    }
+}
 }

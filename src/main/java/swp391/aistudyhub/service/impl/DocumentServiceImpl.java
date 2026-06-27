@@ -246,11 +246,10 @@ public class DocumentServiceImpl implements DocumentService {
     dto.setDownloadUrl(document.getDownloadUrl());
     dto.setCreatedAt(document.getCreatedAt());
 
-    // THÊM DÒNG NÀY ĐỂ FE PREVIEW ĐỌC ĐƯỢC
+    dto.setFileSize(document.getFileSize());
     dto.setDescription(document.getDescription());
-
-    // Vì FE có thể đọc textContent, ta cho textContent = description luôn
     dto.setTextContent(document.getDescription());
+    dto.setIsPublic(Boolean.TRUE.equals(document.getIsPublic()));
 
     return dto;
 }
@@ -281,4 +280,26 @@ public class DocumentServiceImpl implements DocumentService {
                 .map(this::mapToResponseDTO)
                 .toList();
     }
+
+    @Override
+@Transactional(readOnly = true)
+public List<DocumentResponseDTO> getPublicDocuments() {
+    return documentRepository.findPublicDocuments()
+            .stream()
+            .map(this::mapToResponseDTO)
+            .toList();
+}
+
+@Override
+@Transactional
+public DocumentResponseDTO updateDocumentVisibility(UUID documentId, UUID userId, Boolean isPublic) {
+    Document doc = documentRepository.findByIdAndUserId(documentId, userId)
+            .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền cập nhật"));
+
+    doc.setIsPublic(Boolean.TRUE.equals(isPublic));
+
+    Document saved = documentRepository.save(doc);
+
+    return mapToResponseDTO(saved);
+}
 }

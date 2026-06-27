@@ -54,12 +54,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
         .requestMatchers(PUBLIC_PATHS).permitAll()
+        
 
         .requestMatchers("/api/v1/documents").authenticated()
         .requestMatchers("/api/v1/documents/**").authenticated()
 
         .requestMatchers("/api/v1/storage").authenticated()
         .requestMatchers("/api/v1/storage/**").authenticated()
+
 
         .anyRequest().authenticated()
 )
@@ -89,7 +91,8 @@ public class SecurityConfig {
 
     private static final List<String> ALLOWED_ORIGINS = List.of(
         "http://localhost:5173",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "https://aistudyfe.onrender.com"
 );
 
     @Bean

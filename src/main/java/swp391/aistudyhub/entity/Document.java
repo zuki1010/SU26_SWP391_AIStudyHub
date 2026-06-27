@@ -65,4 +65,7 @@ public class Document {
 
     @Column(name = "description", columnDefinition = "TEXT")
 private String description;
+
+@Column(name = "is_public", nullable = false)
+private Boolean isPublic = false;
 }
