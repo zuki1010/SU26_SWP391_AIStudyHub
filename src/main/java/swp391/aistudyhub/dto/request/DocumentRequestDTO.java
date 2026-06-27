@@ -1,4 +1,4 @@
-package swp391.aistudyhub.dto;
+package swp391.aistudyhub.dto.request;
 
 import lombok.Data;
 
@@ -12,4 +12,5 @@ public class DocumentRequestDTO {
 
     // ĐÃ BỔ SUNG: Chuỗi văn bản thô trích xuất từ file do Frontend gửi lên để xử lý RAG Chunking
     private String textContent;
+    private String description;
 }

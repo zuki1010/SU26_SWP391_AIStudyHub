@@ -26,7 +26,6 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -39,33 +38,11 @@ public class SecurityConfig {
             "/api/auth/reset-password",
             "/api/auth/refresh",
             "/api/auth/logout",
-            "/api/v1/auth/register",
-            "/api/v1/auth/login",
-            "/api/v1/auth/forgot-password",
-            "/api/v1/auth/reset-password",
-            "/api/v1/auth/refresh",
-            "/api/v1/auth/logout",
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/api/chat/**",
-            "/api/v1/documents/**"
-    };
+            "/api/chat/**"
 
-    /**
-     * Read-only forum endpoints reachable by guests. Write actions on the same base paths
-     * remain protected by @PreAuthorize at the controller level.
-     */
-    private static final String[] FORUM_PUBLIC_GET_PATHS = {
-            "/api/v1/forum/posts",
-            "/api/v1/forum/posts/search",
-            "/api/v1/forum/posts/*",
-            "/api/v1/forum/posts/*/comments",
-            "/api/v1/forum/posts/*/documents",
-            "/api/v1/forum/comments/*/documents",
-            "/api/v1/forum/documents/*/preview",
-            "/api/v1/forum/documents/*/download",
-            "/api/v1/forum/categories"
     };
 
     @Bean
@@ -75,16 +52,20 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_PATHS).permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/api/v1/documents").authenticated()
-                        .requestMatchers(HttpMethod.OPTIONS, "/api/v1/documents/**").authenticated()
-                        // Forum: read-only endpoints are public (Guest can view posts/comments/shared docs);
-                        // write actions are still guarded by @PreAuthorize on the controllers.
-                        .requestMatchers(HttpMethod.GET, FORUM_PUBLIC_GET_PATHS).permitAll()
-                        .requestMatchers("/api/admin/**").authenticated()
-                        .anyRequest().authenticated())
-                .authenticationProvider(authenticationProvider())
+        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+        .requestMatchers(PUBLIC_PATHS).permitAll()
+
+
+        .requestMatchers("/api/v1/documents").authenticated()
+        .requestMatchers("/api/v1/documents/**").authenticated()
+
+        .requestMatchers("/api/v1/storage").authenticated()
+        .requestMatchers("/api/v1/storage/**").authenticated()
+
+
+        .anyRequest().authenticated()
+)
+.authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -109,19 +90,24 @@ public class SecurityConfig {
     }
 
     private static final List<String> ALLOWED_ORIGINS = List.of(
-            "http://localhost:5173",  // Vite
-            "http://localhost:3000"   // CRA
-    );
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(ALLOWED_ORIGINS);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://aistudyfe.onrender.com"
+);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+    @Bean
+public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration config = new CorsConfiguration();
+
+    config.setAllowedOrigins(ALLOWED_ORIGINS);
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+    config.setAllowedHeaders(List.of("*"));
+    config.setExposedHeaders(List.of("Content-Disposition"));
+    config.setAllowCredentials(true);
+
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", config);
+
+    return source;
+}
 }

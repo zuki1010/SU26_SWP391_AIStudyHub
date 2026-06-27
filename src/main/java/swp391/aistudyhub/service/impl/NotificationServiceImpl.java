@@ -11,7 +11,6 @@ import swp391.aistudyhub.entity.Notification;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.NotificationType;
 import swp391.aistudyhub.exception.AuthException;
-import swp391.aistudyhub.repository.NotificationRepository;
 import swp391.aistudyhub.service.NotificationService;
 
 import java.util.Objects;

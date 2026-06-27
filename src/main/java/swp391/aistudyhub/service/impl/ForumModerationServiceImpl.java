@@ -7,17 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import swp391.aistudyhub.dto.response.ReportResponse;
-import swp391.aistudyhub.entity.ForumComment;
-import swp391.aistudyhub.entity.ForumPost;
-import swp391.aistudyhub.entity.ForumReport;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.PostStatus;
 import swp391.aistudyhub.enums.ReportStatus;
 import swp391.aistudyhub.enums.TargetType;
 import swp391.aistudyhub.exception.AuthException;
-import swp391.aistudyhub.repository.ForumCommentRepository;
-import swp391.aistudyhub.repository.ForumPostRepository;
-import swp391.aistudyhub.repository.ForumReportRepository;
 import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.ForumModerationService;
 

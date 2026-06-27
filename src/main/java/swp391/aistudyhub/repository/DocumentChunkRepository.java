@@ -30,9 +30,11 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, UU
     // ĐÃ SỬA: Thêm dấu _ để Spring Data JPA tự hiểu cấu trúc liên kết sang bảng Document
     List<DocumentChunk> findByDocument_Id(UUID documentId);
 
-    // Xóa bỏ hàm deleteByDocumentId native query thừa vì đã có OnDelete CASCADE lo liệu.
+    // Thay thế hàm cũ bằng câu lệnh @Query tường minh để ép Postgres chạy lệnh DELETE thuần túy
+    @Modifying
     @Transactional
-    void deleteByDocument_Id(UUID documentId);
+    @Query("DELETE FROM DocumentChunk dc WHERE dc.document.id = :documentId")
+    void deleteByDocument_Id(@Param("documentId") UUID documentId);
 
     /**
      * ĐÃ TÍCH HỢP: Hàm tìm kiếm các phân đoạn tài liệu tương đồng nhất với câu hỏi (RAG Search).

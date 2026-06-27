@@ -37,6 +37,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final MailService mailService;
+    private final CloudStorageRepository cloudStorageRepository;
 
     @Value("${app.frontend.reset-password-url:http://localhost:3000/reset-password}")
     private String resetPasswordUrl;
@@ -60,6 +61,12 @@ public class AuthServiceImpl implements AuthService {
         user = userRepository.save(user);
 
         createRoleProfile(user, request);
+
+        CloudStorage storage = new CloudStorage();
+        storage.setUser(user);                  // Gắn tài khoản vừa tạo
+        storage.setTotalQuota(5368709120L);     // Cấp sẵn 5GB free
+        storage.setUsedQuota(0L);               // Dung lượng đã dùng ban đầu bằng 0
+        cloudStorageRepository.save(storage);
 
         return buildAuthResponse(user, null, null);
     }

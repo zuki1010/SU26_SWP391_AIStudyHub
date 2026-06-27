@@ -9,14 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import swp391.aistudyhub.dto.request.AttachDocumentRequest;
 import swp391.aistudyhub.dto.response.AttachedDocumentResponse;
 import swp391.aistudyhub.entity.Document;
-import swp391.aistudyhub.entity.ForumComment;
-import swp391.aistudyhub.entity.ForumPost;
-import swp391.aistudyhub.entity.ForumPostDocument;
 import swp391.aistudyhub.exception.AuthException;
 import swp391.aistudyhub.repository.DocumentRepository;
-import swp391.aistudyhub.repository.ForumCommentRepository;
-import swp391.aistudyhub.repository.ForumPostDocumentRepository;
-import swp391.aistudyhub.repository.ForumPostRepository;
 import swp391.aistudyhub.service.ForumDocumentService;
 
 import java.io.InputStream;
