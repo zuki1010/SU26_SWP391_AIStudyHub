@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
@@ -27,13 +28,12 @@ public class AdminServiceImpl implements AdminService {
 
 
     @Override
-    public Page<UserAccountResponseDTO> getAllCustomer(String key, int page, int size) {
+    public Page<UserAccountResponse> getAllCustomer(String key, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         if (key != null && !key.isEmpty()) {
-            return userRepository.findByEmailContainingIgnoreCaseOrCustomerProfileFullNameContainingIgnoreCase(key, key, pageable);
+            return userRepository.searchCustomers(key, pageable);
         }
-
-        return userRepository.findAll(pageable);
+        return userRepository.findBy(pageable);
     }
 
     @Override

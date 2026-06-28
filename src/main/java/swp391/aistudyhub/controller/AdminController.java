@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
@@ -29,10 +30,9 @@ public class AdminController {
     private AdminService adminService;
 
     @GetMapping("/account")
-    public ResponseEntity<Page<UserAccountResponseDTO>> getAllUser(@RequestParam(required = false) String key,
-                                                 @RequestParam(defaultValue = "0") int page,
-                                                 @RequestParam(defaultValue = "10") int size,
-                                                 UserAccountResponseDTO dto) {
+    public ResponseEntity<Page<UserAccountResponse>> getAllUser(@RequestParam(required = false) String key,
+                                                                @RequestParam(defaultValue = "0") int page,
+                                                                @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok().body(adminService.getAllCustomer(key,page,size));
     }
 
