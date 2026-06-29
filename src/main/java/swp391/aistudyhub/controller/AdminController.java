@@ -10,6 +10,7 @@ import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.service.AdminService;
 import swp391.aistudyhub.service.UserService;
 
@@ -36,16 +37,22 @@ public class AdminController {
         return ResponseEntity.ok().body(adminService.getAllCustomer(key, page, size));
     }
 
-    @PutMapping("/account/{id}")
+    @PutMapping("/account/status/{id}")
     public ResponseEntity<?> updateUserStatus(@PathVariable("id") UUID userId,
                                               @RequestParam AccountStatus status) {
         return ResponseEntity.ok().body(adminService.updateUserStatus(userId, status));
     }
 
     @GetMapping("/document")
-    public ResponseEntity<?> getAllDocumentStatistic(@RequestParam(defaultValue = "0") int page,
+    public ResponseEntity<?> getAllDocument(@RequestParam(defaultValue = "0") int page,
                                                      @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok().body(adminService.getAllDocument(page, size));
+    }
+
+    @PutMapping("/account/role/{id}")
+    public ResponseEntity<?> updateUserRole(@PathVariable("id") UUID userId,
+                                            @RequestParam UserRole role) {
+        return ResponseEntity.ok(null);
     }
 }
