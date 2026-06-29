@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.Document;
@@ -50,7 +51,8 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public long getAllDocument() {
-        return documentRepository.count();
+    public Page<DocumentResponse> getAllDocument(int page, int size) {
+        Pageable pageable = PageRequest.of(page,size, Sort.by("createdAt").descending());
+        return documentRepository.findBy(pageable);
     }
 }
