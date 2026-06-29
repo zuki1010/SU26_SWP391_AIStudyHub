@@ -297,4 +297,13 @@ public class DocumentServiceImpl implements DocumentService {
         // 4. Đóng gói dữ liệu trả về thông qua hàm map có sẵn trong service của bạn
         return mapToResponseDTO(updatedDoc);
     }
+
+    @Override
+@Transactional(readOnly = true)
+public List<DocumentResponseDTO> getPublicDocuments() {
+    return documentRepository.findByIsPublicTrueOrderByCreatedAtDesc()
+            .stream()
+            .map(this::mapToResponseDTO)
+            .toList();
+}
 }

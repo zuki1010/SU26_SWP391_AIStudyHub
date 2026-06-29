@@ -52,12 +52,21 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-        .requestMatchers(PUBLIC_PATHS).permitAll()
 
-        .requestMatchers("/api/v1/documents").authenticated()
+        .requestMatchers("/api/auth/login").permitAll()
+        .requestMatchers("/api/auth/register").permitAll()
+        .requestMatchers("/api/auth/forgot-password").permitAll()
+        .requestMatchers("/api/auth/reset-password").permitAll()
+
+        .requestMatchers("/swagger-ui/**").permitAll()
+        .requestMatchers("/swagger-ui.html").permitAll()
+        .requestMatchers("/v3/api-docs/**").permitAll()
+
+        // API public document phải mở quyền
+        .requestMatchers(HttpMethod.GET, "/api/v1/documents/public").permitAll()
+
+        // Các document API khác mới cần login
         .requestMatchers("/api/v1/documents/**").authenticated()
-
-        .requestMatchers("/api/v1/storage").authenticated()
         .requestMatchers("/api/v1/storage/**").authenticated()
 
         .anyRequest().authenticated()

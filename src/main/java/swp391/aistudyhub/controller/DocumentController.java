@@ -17,6 +17,7 @@ import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -95,6 +96,12 @@ public ResponseEntity<?> createDocument(
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(@RequestHeader("X-User-Id") UUID userId) {
         return ResponseEntity.ok(documentService.getAllDocumentsByUserId(userId));
     }
+
+    @GetMapping("/public")
+@PreAuthorize("permitAll()")
+public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
+    return ResponseEntity.ok(documentService.getPublicDocuments());
+}
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getDocumentById(

@@ -14,6 +14,7 @@ public interface DocumentService {
     List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId);
 
     DocumentResponseDTO getDocumentDetail(UUID documentId, UUID userId);
+    
 
     DocumentResponseDTO updateDocumentName(UUID documentId, UUID userId, String newName);
 
@@ -23,6 +24,7 @@ public interface DocumentService {
     List<Document> getMyDocuments();
 
     List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType);
+    List<DocumentResponseDTO> getPublicDocuments();
 
     DocumentResponseDTO toggleDocumentPublicStatus(UUID userId, UUID documentId, boolean isPublic);
 }
