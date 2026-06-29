@@ -64,8 +64,8 @@ public class Document {
     private List<DocumentVersion> documentVersions = new ArrayList<>();
 
     @Column(name = "description", columnDefinition = "TEXT")
-private String description;
+    private String description;
 
-@Column(name = "is_public", nullable = false)
-private Boolean isPublic = false;
+    @Column(name = "is_public", nullable = false)
+    private Boolean isPublic = false;
 }

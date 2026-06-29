@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.service.AdminService;
@@ -17,7 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin("*")
-@Tag(name = "Admin Dashboard", description = "View User Account")
+@Tag(name = "Admin Dashboard", description = "View User Account, View Document List")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
@@ -28,9 +30,9 @@ public class AdminController {
     private AdminService adminService;
 
     @GetMapping("/account")
-    public ResponseEntity<Page<User>> getAllUser(@RequestParam(required = false) String key,
-                                                 @RequestParam(defaultValue = "0") int page,
-                                                 @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Page<UserAccountResponse>> getAllUser(@RequestParam(required = false) String key,
+                                                                @RequestParam(defaultValue = "0") int page,
+                                                                @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok().body(adminService.getAllCustomer(key,page,size));
     }
 
@@ -40,4 +42,8 @@ public class AdminController {
         return ResponseEntity.ok().body(adminService.updateUserStatus(userId, status));
     }
 
+    @GetMapping("/document")
+    public ResponseEntity<?> getAllDocumentStatistic() {
+        return ResponseEntity.ok().body(adminService.getAllDocument());
+    }
 }

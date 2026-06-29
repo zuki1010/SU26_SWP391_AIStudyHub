@@ -13,6 +13,7 @@ import swp391.aistudyhub.dto.request.*;
 import swp391.aistudyhub.dto.response.AuthResponse;
 import swp391.aistudyhub.dto.response.UserProfileResponse;
 import swp391.aistudyhub.entity.*;
+import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.exception.AuthException;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.security.CustomUserDetails;
@@ -56,7 +57,7 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.getEmail().trim().toLowerCase());
         user.setPasswordHash(request.getPassword());
         user.setRole("ROLE_" + role);
-        user.setAccountStatus(swp391.aistudyhub.enums.AccountStatus.ACTIVE);
+        user.setAccountStatus(AccountStatus.ACTIVE);
         user.setCreatedAt(Instant.now());
         user = userRepository.save(user);
 
@@ -288,7 +289,7 @@ public class AuthServiceImpl implements AuthService {
                 .id(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .accountStatus(user.getAccountStatus() != null ? user.getAccountStatus().name() : null)
+                .accountStatus(user.getAccountStatus())
                 .createdAt(user.getCreatedAt());
 
         switch (user.getRole()) {

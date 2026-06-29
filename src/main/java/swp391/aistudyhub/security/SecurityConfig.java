@@ -41,7 +41,8 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/api/chat/**"
+            "/api/chat/**",
+            "/api/admin/**"
 
     };
 
@@ -52,20 +53,21 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-        .requestMatchers(PUBLIC_PATHS).permitAll()
-        
-
-        .requestMatchers("/api/v1/documents").authenticated()
-        .requestMatchers("/api/v1/documents/**").authenticated()
-
-        .requestMatchers("/api/v1/storage").authenticated()
-        .requestMatchers("/api/v1/storage/**").authenticated()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
 
 
-        .anyRequest().authenticated()
-)
-.authenticationProvider(authenticationProvider())
+                        .requestMatchers("/api/v1/documents").authenticated()
+                        .requestMatchers("/api/v1/documents/**").authenticated()
+
+                        .requestMatchers("/api/v1/storage").authenticated()
+                        .requestMatchers("/api/v1/storage/**").authenticated()
+
+
+                        .requestMatchers("/api/admin/**").authenticated()
+                        .anyRequest().authenticated()
+                )
+                .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -86,28 +88,28 @@ public class SecurityConfig {
     @Bean
     @SuppressWarnings("deprecation")
     public PasswordEncoder passwordEncoder() {
-       return NoOpPasswordEncoder.getInstance();
+        return NoOpPasswordEncoder.getInstance();
     }
 
     private static final List<String> ALLOWED_ORIGINS = List.of(
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "https://aistudyfe.onrender.com"
-);
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "https://aistudyfe.onrender.com"
+    );
 
     @Bean
-public CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration config = new CorsConfiguration();
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
 
-    config.setAllowedOrigins(ALLOWED_ORIGINS);
-    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-    config.setAllowedHeaders(List.of("*"));
-    config.setExposedHeaders(List.of("Content-Disposition"));
-    config.setAllowCredentials(true);
+        config.setAllowedOrigins(ALLOWED_ORIGINS);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Content-Disposition"));
+        config.setAllowCredentials(true);
 
-    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/**", config);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
 
-    return source;
-}
+        return source;
+    }
 }

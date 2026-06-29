@@ -237,22 +237,22 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     private DocumentResponseDTO mapToResponseDTO(Document document) {
-    DocumentResponseDTO dto = new DocumentResponseDTO();
+        DocumentResponseDTO dto = new DocumentResponseDTO();
 
-    dto.setDocumentId(document.getId());
-    dto.setDocumentName(document.getDocumentName());
-    dto.setFileType(document.getFileType());
-    dto.setPreviewUrl(document.getPreviewUrl());
-    dto.setDownloadUrl(document.getDownloadUrl());
-    dto.setCreatedAt(document.getCreatedAt());
+        dto.setDocumentId(document.getId());
+        dto.setDocumentName(document.getDocumentName());
+        dto.setFileType(document.getFileType());
+        dto.setPreviewUrl(document.getPreviewUrl());
+        dto.setDownloadUrl(document.getDownloadUrl());
+        dto.setCreatedAt(document.getCreatedAt());
 
-    dto.setFileSize(document.getFileSize());
-    dto.setDescription(document.getDescription());
-    dto.setTextContent(document.getDescription());
-    dto.setIsPublic(Boolean.TRUE.equals(document.getIsPublic()));
+        dto.setFileSize(document.getFileSize());
+        dto.setDescription(document.getDescription());
+        dto.setTextContent(document.getDescription());
+        dto.setIsPublic(Boolean.TRUE.equals(document.getIsPublic()));
 
-    return dto;
-}
+        return dto;
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -282,24 +282,24 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-@Transactional(readOnly = true)
-public List<DocumentResponseDTO> getPublicDocuments() {
-    return documentRepository.findPublicDocuments()
-            .stream()
-            .map(this::mapToResponseDTO)
-            .toList();
-}
+    @Transactional(readOnly = true)
+    public List<DocumentResponseDTO> getPublicDocuments() {
+        return documentRepository.findPublicDocuments()
+                .stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
 
-@Override
-@Transactional
-public DocumentResponseDTO updateDocumentVisibility(UUID documentId, UUID userId, Boolean isPublic) {
-    Document doc = documentRepository.findByIdAndUserId(documentId, userId)
-            .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền cập nhật"));
+    @Override
+    @Transactional
+    public DocumentResponseDTO updateDocumentVisibility(UUID documentId, UUID userId, Boolean isPublic) {
+        Document doc = documentRepository.findByIdAndUserId(documentId, userId)
+                .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền cập nhật"));
 
-    doc.setIsPublic(Boolean.TRUE.equals(isPublic));
+        doc.setIsPublic(Boolean.TRUE.equals(isPublic));
 
-    Document saved = documentRepository.save(doc);
+        Document saved = documentRepository.save(doc);
 
-    return mapToResponseDTO(saved);
-}
+        return mapToResponseDTO(saved);
+    }
 }
