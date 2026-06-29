@@ -1,6 +1,7 @@
 package swp391.aistudyhub.service;
 
 import org.springframework.data.domain.Page;
+import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.Document;
@@ -15,5 +16,5 @@ public interface AdminService {
 
     User updateUserStatus(UUID id, AccountStatus status);
 
-    Page<> getAllDocument();
+    Page<DocumentResponse> getAllDocument(int page, int size);
 }

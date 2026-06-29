@@ -33,17 +33,19 @@ public class AdminController {
     public ResponseEntity<Page<UserAccountResponse>> getAllUser(@RequestParam(required = false) String key,
                                                                 @RequestParam(defaultValue = "0") int page,
                                                                 @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok().body(adminService.getAllCustomer(key,page,size));
+        return ResponseEntity.ok().body(adminService.getAllCustomer(key, page, size));
     }
 
     @PutMapping("/account/{id}")
     public ResponseEntity<?> updateUserStatus(@PathVariable("id") UUID userId,
-                                                @RequestParam AccountStatus status) {
+                                              @RequestParam AccountStatus status) {
         return ResponseEntity.ok().body(adminService.updateUserStatus(userId, status));
     }
 
     @GetMapping("/document")
-    public ResponseEntity<?> getAllDocumentStatistic() {
-        return ResponseEntity.ok().body(adminService.getAllDocument());
+    public ResponseEntity<?> getAllDocumentStatistic(@RequestParam(defaultValue = "0") int page,
+                                                     @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok().body(adminService.getAllDocument(page, size));
     }
 }
