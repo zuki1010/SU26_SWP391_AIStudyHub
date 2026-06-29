@@ -26,6 +26,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
+                String path = request.getServletPath();
+
+if (request.getMethod().equals("OPTIONS")
+        || path.equals("/api/v1/documents/public")
+        || path.equals("/api/auth/login")
+        || path.equals("/api/auth/register")
+        || path.equals("/api/auth/forgot-password")
+        || path.equals("/api/auth/reset-password")
+        || path.startsWith("/swagger-ui")
+        || path.startsWith("/v3/api-docs")
+        || path.equals("/swagger-ui.html")) {
+    filterChain.doFilter(request, response);
+    return;
+}
 
         String authHeader = request.getHeader("Authorization");
 
@@ -36,21 +50,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        try {
-            if (SecurityContextHolder.getContext().getAuthentication() == null
-                    && jwtService.isTokenValid(token)
-                    && jwtService.isAccessToken(token)) {
+        if (SecurityContextHolder.getContext().getAuthentication() == null
+                && jwtService.isTokenValid(token)
+                && jwtService.isAccessToken(token)) {
 
-                String email = jwtService.extractEmail(token);
-                CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
+            String email = jwtService.extractEmail(token);
+            CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
 
-                var authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
-        } catch (Exception e) {
-            // Token không hợp lệ hoặc hết hạn — bỏ qua, để Spring Security tự quyết định
+            var authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
         filterChain.doFilter(request, response);

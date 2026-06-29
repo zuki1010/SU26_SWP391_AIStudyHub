@@ -237,22 +237,19 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     private DocumentResponseDTO mapToResponseDTO(Document document) {
-        DocumentResponseDTO dto = new DocumentResponseDTO();
+    DocumentResponseDTO dto = new DocumentResponseDTO();
 
-        dto.setDocumentId(document.getId());
-        dto.setDocumentName(document.getDocumentName());
-        dto.setFileType(document.getFileType());
-        dto.setPreviewUrl(document.getPreviewUrl());
-        dto.setDownloadUrl(document.getDownloadUrl());
-        dto.setCreatedAt(document.getCreatedAt());
-
-        dto.setFileSize(document.getFileSize());
-        dto.setDescription(document.getDescription());
-        dto.setTextContent(document.getDescription());
-        dto.setIsPublic(Boolean.TRUE.equals(document.getIsPublic()));
-
-        return dto;
-    }
+    dto.setDocumentId(document.getId());
+    dto.setDocumentName(document.getDocumentName());
+    dto.setFileType(document.getFileType());
+    dto.setPreviewUrl(document.getPreviewUrl());
+    dto.setDownloadUrl(document.getDownloadUrl());
+    dto.setCreatedAt(document.getCreatedAt());
+    dto.setDescription(document.getDescription());
+    dto.setTextContent(document.getDescription());
+    dto.setIsPublic(document.isPublic());
+    return dto;
+}
 
     @Override
     @Transactional(readOnly = true)
@@ -282,24 +279,31 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<DocumentResponseDTO> getPublicDocuments() {
-        return documentRepository.findPublicDocuments()
-                .stream()
-                .map(this::mapToResponseDTO)
-                .toList();
+    @Transactional
+    public DocumentResponseDTO toggleDocumentPublicStatus(UUID userId, UUID documentId, boolean isPublic) {
+        // 1. Tìm tài liệu dựa trên ID thô gửi lên
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu."));
+
+        // 2. Bảo mật: Kiểm tra xem User đang thực hiện có đúng là chủ sở hữu của tài liệu này không
+        if (!document.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa trạng thái của tài liệu này!");
+        }
+
+        // 3. Tiến hành thay đổi trạng thái lưu trữ
+        document.setPublic(isPublic);
+        Document updatedDoc = documentRepository.saveAndFlush(document);
+
+        // 4. Đóng gói dữ liệu trả về thông qua hàm map có sẵn trong service của bạn
+        return mapToResponseDTO(updatedDoc);
     }
 
     @Override
-    @Transactional
-    public DocumentResponseDTO updateDocumentVisibility(UUID documentId, UUID userId, Boolean isPublic) {
-        Document doc = documentRepository.findByIdAndUserId(documentId, userId)
-                .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền cập nhật"));
-
-        doc.setIsPublic(Boolean.TRUE.equals(isPublic));
-
-        Document saved = documentRepository.save(doc);
-
-        return mapToResponseDTO(saved);
-    }
+@Transactional(readOnly = true)
+public List<DocumentResponseDTO> getPublicDocuments() {
+    return documentRepository.findByIsPublicTrueOrderByCreatedAtDesc()
+            .stream()
+            .map(this::mapToResponseDTO)
+            .toList();
+}
 }

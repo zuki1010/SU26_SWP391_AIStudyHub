@@ -1,6 +1,5 @@
 package swp391.aistudyhub.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -26,14 +25,12 @@ public class DocumentShare {
     private UUID id;
 
     @NotNull
-    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "document_id", nullable = false)
     private Document document;
 
     @NotNull
-    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.NO_ACTION)
     @JoinColumn(name = "shared_with_user_id", nullable = false)

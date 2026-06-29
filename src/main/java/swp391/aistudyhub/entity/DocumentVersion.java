@@ -1,6 +1,5 @@
 package swp391.aistudyhub.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -26,7 +25,6 @@ public class DocumentVersion {
     private UUID id;
 
     @NotNull
-    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "document_id", nullable = false)

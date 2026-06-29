@@ -41,14 +41,17 @@ public class Document {
     @Column(name = "file_type", length = 50)
     private String fileType;
 
-    @Column(name = "file_size", nullable = false)
-    private Long fileSize = 0L;
-
     @Column(name = "preview_url", columnDefinition = "text")
     private String previewUrl;
 
     @Column(name = "download_url", columnDefinition = "text")
     private String downloadUrl;
+
+    @Column(name = "file_size")
+    private Long fileSize;
+
+    @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
+    private boolean isPublic = false;
 
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)
@@ -64,8 +67,5 @@ public class Document {
     private List<DocumentVersion> documentVersions = new ArrayList<>();
 
     @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
-
-    @Column(name = "is_public", nullable = false)
-    private Boolean isPublic = false;
+private String description;
 }

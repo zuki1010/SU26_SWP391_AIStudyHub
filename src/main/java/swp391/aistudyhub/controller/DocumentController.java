@@ -4,11 +4,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
+import swp391.aistudyhub.dto.request.DocumentTogglePublicRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.service.CloudStorageService;
@@ -16,7 +17,9 @@ import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
 
 import java.util.List;
 import java.util.UUID;
@@ -25,8 +28,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-@PreAuthorize("hasRole('CUSTOMER')")
-public class DocumentController {
+public class    DocumentController {
 
     @Autowired
     private DocumentService documentService;
@@ -38,62 +40,68 @@ public class DocumentController {
     private CloudStorageService cloudStorageService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
-    public ResponseEntity<?> createDocument(
-            @RequestHeader("X-User-Id") UUID userId,
-            @RequestPart("file") MultipartFile file,
-            @RequestParam("description") String description,
-            @RequestParam(value = "textContent", required = false) String textContent
-    ) {
-        try {
-            if (description == null || description.trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
-            }
-
-            String fileUrl = cloudStorageService.uploadFile(userId, file);
-
-            DocumentRequestDTO requestDTO = new DocumentRequestDTO();
-
-            requestDTO.setDocumentName(file.getOriginalFilename());
-            requestDTO.setFileSize(file.getSize());
-
-            String originalName = file.getOriginalFilename();
-            String fileType = (originalName != null && originalName.contains("."))
-                    ? originalName.substring(originalName.lastIndexOf(".") + 1)
-                    : "unknown";
-
-            requestDTO.setFileType(fileType);
-
-            requestDTO.setDescription(description.trim());
-
-            requestDTO.setTextContent(
-                    textContent != null && !textContent.trim().isEmpty()
-                            ? textContent.trim()
-                            : description.trim()
-            );
-
-            requestDTO.setPreviewUrl(fileUrl);
-            requestDTO.setDownloadUrl(fileUrl);
-
-            DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
-
-            Document docEntity = new Document();
-            docEntity.setId(response.getDocumentId());
-            documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(e.getMessage());
+@Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
+public ResponseEntity<?> createDocument(
+        @RequestHeader("X-User-Id") UUID userId,
+        @RequestPart("file") MultipartFile file,
+        @RequestParam("description") String description,
+        @RequestParam(value = "textContent", required = false) String textContent
+) {
+    try {
+        if (description == null || description.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
         }
+
+        String fileUrl = cloudStorageService.uploadFile(userId, file);
+
+        DocumentRequestDTO requestDTO = new DocumentRequestDTO();
+
+        requestDTO.setDocumentName(file.getOriginalFilename());
+        requestDTO.setFileSize(file.getSize());
+
+        String originalName = file.getOriginalFilename();
+        String fileType = (originalName != null && originalName.contains("."))
+                ? originalName.substring(originalName.lastIndexOf(".") + 1)
+                : "unknown";
+
+        requestDTO.setFileType(fileType);
+
+        requestDTO.setDescription(description.trim());
+
+        requestDTO.setTextContent(
+                textContent != null && !textContent.trim().isEmpty()
+                        ? textContent.trim()
+                        : description.trim()
+        );
+
+        requestDTO.setPreviewUrl(fileUrl);
+        requestDTO.setDownloadUrl(fileUrl);
+
+        DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
+
+        Document docEntity = new Document();
+        docEntity.setId(response.getDocumentId());
+        documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
+
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.badRequest().body(e.getMessage());
     }
+}
 
     // ĐA SỬA: Bỏ /{id} dư thừa trên URL vì bạn đã nhận diện user qua @RequestHeader
     @GetMapping("/all")
     public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(@RequestHeader("X-User-Id") UUID userId) {
         return ResponseEntity.ok(documentService.getAllDocumentsByUserId(userId));
     }
+
+    @GetMapping("/public")
+@PreAuthorize("permitAll()")
+public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
+    return ResponseEntity.ok(documentService.getPublicDocuments());
+}
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getDocumentById(
@@ -106,11 +114,6 @@ public class DocumentController {
             return ResponseEntity.status(403).body(e.getMessage());
         }
     }
-
-    @GetMapping("/public")
-public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
-    return ResponseEntity.ok(documentService.getPublicDocuments());
-}
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDocumentName(
@@ -126,29 +129,29 @@ public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteDocument(
-            @RequestHeader("X-User-Id") UUID userId,
-            @PathVariable("id") UUID documentId) {
-        try {
-            documentService.deleteDocument(documentId, userId);
+public ResponseEntity<?> deleteDocument(
+        @RequestHeader("X-User-Id") UUID userId,
+        @PathVariable("id") UUID documentId) {
+    try {
+        documentService.deleteDocument(documentId, userId);
 
-            return ResponseEntity.ok(
-                    java.util.Map.of(
-                            "success", true,
-                            "message", "Xóa thành công tài liệu và giải phóng bộ nhớ!"
-                    )
-            );
-        } catch (Exception e) {
-            e.printStackTrace();
+        return ResponseEntity.ok(
+                java.util.Map.of(
+                        "success", true,
+                        "message", "Xóa thành công tài liệu và giải phóng bộ nhớ!"
+                )
+        );
+    } catch (Exception e) {
+        e.printStackTrace();
 
-            return ResponseEntity.badRequest().body(
-                    java.util.Map.of(
-                            "success", false,
-                            "message", e.getMessage()
-                    )
-            );
-        }
+        return ResponseEntity.badRequest().body(
+                java.util.Map.of(
+                        "success", false,
+                        "message", e.getMessage()
+                )
+        );
     }
+}
 
     @GetMapping("/{id}/download")
     public ResponseEntity<?> downloadDocument(
@@ -206,20 +209,22 @@ public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
         return ResponseEntity.ok(results);
     }
 
-    @PutMapping("/{id}/toggle-public")
-public ResponseEntity<?> updateDocumentVisibility(
-        @RequestHeader("X-User-Id") UUID userId,
-        @PathVariable("id") UUID documentId,
-        @RequestBody java.util.Map<String, Boolean> body) {
-    try {
-        Boolean isPublic = body.get("isPublic");
-
-        DocumentResponseDTO response =
-                documentService.updateDocumentVisibility(documentId, userId, isPublic);
-
-        return ResponseEntity.ok(response);
-    } catch (Exception e) {
-        return ResponseEntity.badRequest().body(e.getMessage());
+    @PutMapping("/{documentId}/toggle-public")
+    public ResponseEntity<?> toggleDocumentPublic(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("documentId") UUID documentId,
+            @RequestBody DocumentTogglePublicRequestDTO requestDTO) {
+        try {
+            DocumentResponseDTO response = documentService.toggleDocumentPublicStatus(
+                    userId,
+                    documentId,
+                    requestDTO.getIsPublic()
+            );
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi hệ thống: " + e.getMessage());
+        }
     }
-}
 }

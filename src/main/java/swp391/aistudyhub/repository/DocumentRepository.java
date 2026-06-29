@@ -13,14 +13,13 @@ import java.util.UUID;
 
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSpecificationExecutor<Document> {
-
+    // ĐÃ SỬA: Tìm danh sách Document trực tiếp theo UserId (thay thế cho findByStorage_User_Id)
     List<Document> findByUserId(UUID userId);
 
+    // ĐÃ SỬA: Tìm Document theo ID và UserId (thay thế cho findByIdAndStorage_User_Id)
     Optional<Document> findByIdAndUserId(UUID id, UUID userId);
 
     @Query("SELECT COALESCE(SUM(d.fileSize), 0) FROM Document d WHERE d.user.id = :userId")
     long sumFileSizeByUserId(@Param("userId") UUID userId);
-
-    @Query("SELECT d FROM Document d WHERE d.isPublic = true ORDER BY d.createdAt DESC")
-    List<Document> findPublicDocuments();
+    List<Document> findByIsPublicTrueOrderByCreatedAtDesc();
 }

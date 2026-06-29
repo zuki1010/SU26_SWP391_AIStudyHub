@@ -10,7 +10,6 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Nationalized;
-import swp391.aistudyhub.enums.AccountStatus;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -47,9 +46,8 @@ public class User {
 
     @Size(max = 50)
     @ColumnDefault("'ACTIVE'")
-    @Enumerated(EnumType.STRING)
     @Column(name = "account_status", length = 50)
-    private AccountStatus accountStatus;
+    private String accountStatus;
 
     @CreationTimestamp
     @Column(name = "created_at")

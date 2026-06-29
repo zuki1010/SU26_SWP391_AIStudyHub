@@ -1,4 +1,0 @@
-package swp391.aistudyhub.enums;
-
-public enum PermissionType {
-}
