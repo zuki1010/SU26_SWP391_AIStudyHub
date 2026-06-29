@@ -42,4 +42,8 @@ public class AdminController {
         return ResponseEntity.ok().body(adminService.updateUserStatus(userId, status));
     }
 
+    @GetMapping("/document")
+    public ResponseEntity<?> getAllDocumentStatistic() {
+        return ResponseEntity.ok().body(adminService.getAllDocument());
+    }
 }

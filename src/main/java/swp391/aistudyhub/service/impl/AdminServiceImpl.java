@@ -8,9 +8,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
+import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.repository.CustomerProfileRepository;
+import swp391.aistudyhub.repository.DocumentRepository;
 import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.AdminService;
 
@@ -24,7 +26,7 @@ public class AdminServiceImpl implements AdminService {
     private UserRepository userRepository;
 
     @Autowired
-    private CustomerProfileRepository customerProfileRepository;
+    private DocumentRepository documentRepository;
 
 
     @Override
@@ -45,5 +47,10 @@ public class AdminServiceImpl implements AdminService {
 
         user.setAccountStatus(status);
         return user;
+    }
+
+    @Override
+    public long getAllDocument() {
+        return documentRepository.count();
     }
 }
