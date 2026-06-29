@@ -15,5 +15,5 @@ public interface AdminService {
 
     User updateUserStatus(UUID id, AccountStatus status);
 
-    long getAllDocument();
+    Page<> getAllDocument();
 }
