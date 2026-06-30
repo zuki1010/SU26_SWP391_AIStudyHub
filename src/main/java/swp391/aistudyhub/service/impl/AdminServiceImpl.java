@@ -60,7 +60,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public Page<DocumentResponse> getAllDocument(int page, int size) {
-        Pageable pageable = PageRequest.of(page,size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return documentRepository.findBy(pageable);
     }
 
@@ -77,13 +77,13 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public Page<ChatRequestResponse> getAllChat(int page, int size) {
-        Pageable pageable = PageRequest.of(page,size, Sort.by("sentAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("sentAt").descending());
         return chatMessageRepository.findBySenderType(pageable, SenderType.USER);
     }
 
     @Override
     public Page<StorageUsageResponse> getAllStorage(int page, int size) {
-        Pageable pageable = PageRequest.of(page,size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return cloudStorageRepository.findBy(pageable);
     }
 }
