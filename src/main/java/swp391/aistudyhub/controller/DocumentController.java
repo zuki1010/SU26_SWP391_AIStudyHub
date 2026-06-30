@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import swp391.aistudyhub.service.DocumentShareService;
 
 
 import java.util.List;
@@ -38,6 +39,9 @@ public class    DocumentController {
 
     @Autowired
     private CloudStorageService cloudStorageService;
+
+    @Autowired
+    private DocumentShareService documentShareService; // 🌟 Tiêm service share vào đây
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
@@ -225,6 +229,33 @@ public ResponseEntity<?> deleteDocument(
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi hệ thống: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/share")
+    @Operation(summary = "Chia sẻ quyền truy cập tài liệu cho người dùng khác")
+    public ResponseEntity<?> shareDocument(
+            @RequestHeader("X-User-Id") UUID ownerId,
+            @PathVariable("id") UUID documentId,
+            @RequestParam("targetUserId") UUID targetUserId,
+            @RequestParam(value = "permissionType", required = false, defaultValue = "view") String permissionType) {
+        try {
+            documentShareService.shareDocumentToUser(ownerId, documentId, targetUserId, permissionType);
+
+            return ResponseEntity.ok(
+                    java.util.Map.of(
+                            "success", true,
+                            "message", "Chia sẻ tài liệu thành công!"
+                    )
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(
+                    java.util.Map.of("success", false, "message", e.getMessage())
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    java.util.Map.of("success", false, "message", "Lỗi hệ thống: " + e.getMessage())
+            );
         }
     }
 }

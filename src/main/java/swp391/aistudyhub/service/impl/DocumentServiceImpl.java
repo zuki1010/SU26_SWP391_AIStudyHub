@@ -12,11 +12,9 @@ import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.CloudStorage;
 import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.entity.DocumentShare;
 import swp391.aistudyhub.entity.User;
-import swp391.aistudyhub.repository.CloudStorageRepository;
-import swp391.aistudyhub.repository.DocumentChunkRepository;
-import swp391.aistudyhub.repository.DocumentRepository;
-import swp391.aistudyhub.repository.UserRepository;
+import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.StorageUploadService;
 
@@ -42,6 +40,9 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private StorageUploadService storageUploadService;
+
+    @Autowired
+    private DocumentShareRepository documentShareRepository; // 🌟 Thêm dòng này để hết gạch đỏ
 
     @Override
     @Transactional
@@ -94,10 +95,19 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional(readOnly = true)
     public DocumentResponseDTO getDocumentDetail(UUID documentId, UUID userId) {
+        // 1. Tìm tài liệu trong hệ thống
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        if (doc.getUser() == null || !Objects.equals(doc.getUser().getId(), userId)) {
+        // 2. Định nghĩa các điều kiện hợp lệ để được quyền xem file
+        boolean isOwner = doc.getUser() != null && Objects.equals(doc.getUser().getId(), userId);
+        boolean isPublic = doc.isPublic(); // Giả định trường check public trong Entity Document của bạn là isPublic hoặc getIsPublic()
+
+        // Kiểm tra xem user này có được share đích danh trong bảng trung gian không
+        boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
+
+        // 3. Nếu KHÔNG PHẢI chủ sở hữu, KHÔNG PHẢI file public, và CŨNG KHÔNG ĐƯỢC SHARE -> Chặn lại ngay
+        if (!isOwner && !isPublic && !isSharedWithMe) {
             throw new RuntimeException("Bạn không có quyền xem tài liệu này");
         }
 
@@ -226,17 +236,21 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        if (doc.getUser() == null || !Objects.equals(doc.getUser().getId(), userId)) {
-            throw new RuntimeException("Bạn không có quyền truy cập tài liệu này");
+        boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
+        boolean isPublic = doc.isPublic();
+
+        // 🌟 Kiểm tra quyền truy cập qua bảng share trung gian
+        boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
+
+        if (!isOwner && !isPublic && !isSharedWithMe) {
+            throw new RuntimeException("Bạn không có quyền truy cập và tải tài liệu này");
         }
 
         try {
             String stringUrl = doc.getDownloadUrl();
             java.net.URL url = java.net.URI.create(stringUrl).toURL();
-
-            try (InputStream inputStream = url.openStream()) {
-                byte[] bytes = inputStream.readAllBytes();
-                return new ByteArrayResource(bytes);
+            try (java.io.InputStream inputStream = url.openStream()) {
+                return new ByteArrayResource(inputStream.readAllBytes());
             }
         } catch (Exception e) {
             throw new RuntimeException("Không thể tải file từ Cloud Storage: " + e.getMessage());
@@ -265,7 +279,21 @@ public class DocumentServiceImpl implements DocumentService {
         return documentRepository.findAll((root, query, cb) -> {
                     java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
 
-                    predicates.add(cb.equal(root.get("user").get("id"), userId));
+                    jakarta.persistence.criteria.Predicate isOwner = cb.equal(root.get("user").get("id"), userId);
+                    jakarta.persistence.criteria.Predicate isPublic = cb.equal(root.get("isPublic"), true);
+                    jakarta.persistence.criteria.Subquery<Long> shareSubquery = query.subquery(Long.class);
+                    jakarta.persistence.criteria.Root<DocumentShare> shareRoot = shareSubquery.from(DocumentShare.class);
+                    shareSubquery.select(cb.count(shareRoot));
+                    shareSubquery.where(
+                            cb.and(
+                                    cb.equal(shareRoot.get("document").get("id"), root.get("id")),
+                                    cb.equal(shareRoot.get("sharedWithUser").get("id"), userId)
+                            )
+                    );
+                    jakarta.persistence.criteria.Predicate isShared = cb.greaterThan(shareSubquery, 0L);
+
+                    // Gộp 3 điều kiện phân quyền này lại bằng toán tử OR
+                    predicates.add(cb.or(isOwner, isPublic, isShared));
 
                     if (searchName != null && !searchName.trim().isEmpty()) {
                         predicates.add(cb.like(cb.lower(root.get("documentName")), "%" + searchName.toLowerCase().trim() + "%"));
