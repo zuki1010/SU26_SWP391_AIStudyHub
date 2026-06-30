@@ -12,6 +12,7 @@ import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -36,4 +37,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findUserById(UUID id);
 
     Page<UserAccountResponse> findBy(Pageable pageable);
+
+    UserAccountResponse findProjectedById(UUID id);
+
+    @Modifying
+    @Query("UPDATE User u SET u.role = :role WHERE u.id = :id")
+    @Transactional
+    int updateUserRole(@PathParam("id") UUID id,@PathParam(("role")) UserRole role);
 }

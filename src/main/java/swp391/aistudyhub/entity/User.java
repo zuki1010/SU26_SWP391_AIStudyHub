@@ -11,6 +11,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Nationalized;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,8 +43,9 @@ public class User {
     @Size(max = 20)
     @NotNull
     @ColumnDefault("'CUSTOMER'")
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
-    private String role;
+    private UserRole role;
 
     @Size(max = 50)
     @ColumnDefault("'ACTIVE'")

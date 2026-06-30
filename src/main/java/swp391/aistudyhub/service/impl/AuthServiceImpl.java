@@ -14,6 +14,7 @@ import swp391.aistudyhub.dto.response.AuthResponse;
 import swp391.aistudyhub.dto.response.UserProfileResponse;
 import swp391.aistudyhub.entity.*;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.exception.AuthException;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.security.CustomUserDetails;
@@ -49,13 +50,13 @@ public class AuthServiceImpl implements AuthService {
             throw AuthException.conflict("Email is already registered");
         }
 
-        String role = request.getRole() != null ? request.getRole().toUpperCase() : "CUSTOMER";
+        UserRole role = request.getRole() != null ? request.getRole() : UserRole.CUSTOMER;
 
         User user = new User();
 //        user.setId(UUID.randomUUID());
         user.setEmail(request.getEmail().trim().toLowerCase());
         user.setPasswordHash(request.getPassword());
-        user.setRole("ROLE_" + role);
+        user.setRole(role);
         user.setAccountStatus(AccountStatus.ACTIVE);
         user.setCreatedAt(Instant.now());
         user = userRepository.save(user);
@@ -76,8 +77,8 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmailIgnoreCase(request.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> AuthException.unauthorized("Invalid email or password"));
 
-        String accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
-        String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole());
+        String accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
+        String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
 
         saveSession(user, refreshToken, request.getDeviceInfo(), resolveClientIp(httpRequest));
 
@@ -102,8 +103,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = session.getUser();
-        String newAccessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
-        String newRefreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole());
+        String newAccessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
+        String newRefreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
 
         userSessionRepository.delete(session);
         saveSession(user, newRefreshToken, session.getDeviceInfo(), session.getIpAddress());
@@ -174,7 +175,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> AuthException.notFound("User not found"));
 
-        switch (user.getRole()) {
+        switch (user.getRole().name()) {
             case "CUSTOMER" -> updateCustomerProfile(user, request);
             case "ADMIN" -> updateAdminProfile(user, request);
             case "MODERATOR" -> updateModeratorProfile(user, request);
@@ -185,7 +186,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void createRoleProfile(User user, RegisterRequest request) {
-        switch (user.getRole()) {
+        switch (user.getRole().name()) {
             case "CUSTOMER" -> {
                 CustomerProfile profile = new CustomerProfile();
 //                profile.setId(UUID.randomUUID());
@@ -261,10 +262,10 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse buildAuthResponse(User user, String accessToken, String refreshToken) {
         if (accessToken == null) {
-            accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole());
+            accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
         }
         if (refreshToken == null) {
-            refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole());
+            refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
             saveSession(user, refreshToken, null, null);
         }
 
@@ -281,11 +282,11 @@ public class AuthServiceImpl implements AuthService {
         UserProfileResponse.UserProfileResponseBuilder builder = UserProfileResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
-                .role(user.getRole())
+                .role(user.getRole().name())
                 .accountStatus(user.getAccountStatus())
                 .createdAt(user.getCreatedAt());
 
-        switch (user.getRole()) {
+        switch (user.getRole().name()) {
             case "CUSTOMER" -> customerProfileRepository.findByUser_Id(user.getId()).ifPresent(p -> {
                 builder.fullName(p.getFullName());
                 builder.studentCode(p.getStudentCode());

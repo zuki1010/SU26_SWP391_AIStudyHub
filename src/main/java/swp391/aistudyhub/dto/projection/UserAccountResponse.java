@@ -16,5 +16,5 @@ public interface UserAccountResponse {
 
     String getAdminProfileFullName();
 
-    String getRole();
+    UserRole getRole();
 }

@@ -6,6 +6,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 
 import java.util.Collection;
 import java.util.List;
@@ -17,7 +18,7 @@ public class CustomUserDetails implements UserDetails {
     private final UUID id;
     private final String email;
     private final String passwordHash;
-    private final String role;
+    private final UserRole role;
     private final AccountStatus accountStatus;
 
     public CustomUserDetails(User user) {
@@ -30,7 +31,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override

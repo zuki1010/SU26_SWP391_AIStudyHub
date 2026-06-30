@@ -12,6 +12,7 @@ import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.CustomerProfileRepository;
 import swp391.aistudyhub.repository.DocumentRepository;
 import swp391.aistudyhub.repository.UserRepository;
@@ -40,19 +41,30 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public User updateUserStatus(UUID id, AccountStatus status) {
+    public UserAccountResponse updateUserStatus(UUID id, AccountStatus status) {
         User user = userRepository.findUserById(id)
                 .orElseThrow(() -> new RuntimeException("This user is not exist!"));
 
         userRepository.updateUserStatus(id, status);
 
         user.setAccountStatus(status);
-        return user;
+        return userRepository.findProjectedById(id);
     }
 
     @Override
     public Page<DocumentResponse> getAllDocument(int page, int size) {
         Pageable pageable = PageRequest.of(page,size, Sort.by("createdAt").descending());
         return documentRepository.findBy(pageable);
+    }
+
+    @Override
+    public UserAccountResponse updateUserRole(UUID id, UserRole role) {
+        User user = userRepository.findUserById(id)
+                .orElseThrow(() -> new RuntimeException("This user is not exist!"));
+
+        userRepository.updateUserRole(id, role);
+
+        user.setRole(role);
+        return userRepository.findProjectedById(id);
     }
 }

@@ -53,6 +53,6 @@ public class AdminController {
     @PutMapping("/account/role/{id}")
     public ResponseEntity<?> updateUserRole(@PathVariable("id") UUID userId,
                                             @RequestParam UserRole role) {
-        return ResponseEntity.ok(null);
+        return ResponseEntity.ok(adminService.updateUserRole(userId, role));
     }
 }
