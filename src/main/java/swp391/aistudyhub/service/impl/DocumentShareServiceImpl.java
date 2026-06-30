@@ -53,13 +53,22 @@ public class DocumentShareServiceImpl implements DocumentShareService {
             throw new RuntimeException("Tài liệu này đã được chia sẻ cho người dùng này từ trước.");
         }
 
-        // 6. Tiến hành lưu bản ghi share mới
+        // 6. Tiến hành lưu bản ghi share mới kèm kiểm tra Whitelist quyền
         DocumentShare share = new DocumentShare();
         share.setDocument(doc);
         share.setSharedWithUser(targetUser);
 
+        // 🌟 THAY ĐỔI TẠI ĐÂY: Chuẩn hóa và ép chặt 3 bộ từ khóa quyền hợp lệ
         if (permissionType != null && !permissionType.trim().isEmpty()) {
-            share.setPermissionType(permissionType.trim().toLowerCase());
+            String pType = permissionType.trim().toLowerCase();
+
+            if (!pType.equals("view") && !pType.equals("download") && !pType.equals("edit")) {
+                throw new RuntimeException("Loại quyền không hợp lệ! Chỉ chấp nhận: view, download, edit");
+            }
+            share.setPermissionType(pType);
+        } else {
+            // Mặc định nếu Frontend không truyền param này lên hệ thống thì sẽ gán quyền cơ bản nhất là chỉ xem
+            share.setPermissionType("view");
         }
 
         documentShareRepository.save(share);

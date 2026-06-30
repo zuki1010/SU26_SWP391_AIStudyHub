@@ -39,6 +39,13 @@ public class DocumentServiceImpl implements DocumentService {
     private DocumentChunkRepository documentChunkRepository;
 
     @Autowired
+    private jakarta.persistence.EntityManager entityManager;
+
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Autowired
     private StorageUploadService storageUploadService;
 
     @Autowired
@@ -120,8 +127,15 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        if (doc.getUser() == null || !Objects.equals(doc.getUser().getId(), userId)) {
-            throw new RuntimeException("Bạn không có quyền sửa tài liệu này");
+        boolean isOwner = doc.getUser() != null && Objects.equals(doc.getUser().getId(), userId);
+
+        // 🌟 THAY ĐỔI: Kiểm tra xem user hiện tại có được cấp quyền 'edit' thông qua bảng share không
+        java.util.Optional<DocumentShare> shareOpt = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
+        boolean hasEditPermission = shareOpt.isPresent() && "edit".equalsIgnoreCase(shareOpt.get().getPermissionType());
+
+        // Chỉ cho phép chỉnh sửa nếu là Chủ sở hữu HOẶC có quyền 'edit'
+        if (!isOwner && !hasEditPermission) {
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa tài liệu này!");
         }
 
         doc.setDocumentName(newName);
@@ -130,12 +144,7 @@ public class DocumentServiceImpl implements DocumentService {
         return mapToResponseDTO(updatedDoc);
     }
 
-    @Autowired
-    private jakarta.persistence.EntityManager entityManager;
 
-
-    @Autowired
-    private RestTemplate restTemplate;
 
     @Override
     @Transactional
@@ -239,11 +248,21 @@ public class DocumentServiceImpl implements DocumentService {
         boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
         boolean isPublic = doc.isPublic();
 
-        // 🌟 Kiểm tra quyền truy cập qua bảng share trung gian
-        boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
+        // 🌟 THAY ĐỔI: Tìm bản ghi share cụ thể để bóc tách loại quyền (permissionType)
+        java.util.Optional<DocumentShare> shareOpt = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
 
-        if (!isOwner && !isPublic && !isSharedWithMe) {
-            throw new RuntimeException("Bạn không có quyền truy cập và tải tài liệu này");
+        boolean hasDownloadPermission = false;
+        if (shareOpt.isPresent()) {
+            String permission = shareOpt.get().getPermissionType();
+            // Hợp lệ nếu quyền là 'download' hoặc quyền 'edit' (quyền 'view' sẽ trả về false)
+            if ("download".equalsIgnoreCase(permission) || "edit".equalsIgnoreCase(permission)) {
+                hasDownloadPermission = true;
+            }
+        }
+
+        // Chặn nếu không thỏa mãn bất kỳ điều kiện nào (Không phải chủ, không public, không có quyền tải)
+        if (!isOwner && !isPublic && !hasDownloadPermission) {
+            throw new RuntimeException("Tài liệu này chỉ cho phép xem trực tuyến, bạn không có quyền tải xuống!");
         }
 
         try {
