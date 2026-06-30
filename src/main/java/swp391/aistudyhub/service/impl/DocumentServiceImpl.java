@@ -18,6 +18,7 @@ import swp391.aistudyhub.repository.DocumentChunkRepository;
 import swp391.aistudyhub.repository.DocumentRepository;
 import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.DocumentService;
+import swp391.aistudyhub.service.StorageUploadService;
 
 import java.io.InputStream;
 import java.util.List;
@@ -39,6 +40,9 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private DocumentChunkRepository documentChunkRepository;
 
+    @Autowired
+    private StorageUploadService storageUploadService;
+
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(UUID userId, DocumentRequestDTO requestDTO) {
@@ -52,6 +56,8 @@ public class DocumentServiceImpl implements DocumentService {
 
         long updatedUsedQuota = storage.getUsedQuota() + actualFileSize;
         if (updatedUsedQuota > storage.getTotalQuota()) {
+
+            storageUploadService.logFailure(storage, requestDTO.getDocumentName(), actualFileSize, "FAILED_QUOTA_FULL");
             throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
         }
 
@@ -71,6 +77,7 @@ public class DocumentServiceImpl implements DocumentService {
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.save(storage);
 
+        storageUploadService.logSuccess(storage, requestDTO.getDocumentName(), actualFileSize);
         return mapToResponseDTO(savedDoc);
     }
 
