@@ -7,7 +7,9 @@ import java.time.Instant;
 
 public interface UserAccountResponse {
     String getEmail();
+
     AccountStatus getAccountStatus();
+
     Instant getCreatedAt();
 
     String getCustomerProfileFullName();

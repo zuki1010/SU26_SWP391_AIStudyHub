@@ -1,7 +1,9 @@
 package swp391.aistudyhub.service;
 
 import org.springframework.data.domain.Page;
+import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
+import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.Document;
@@ -20,4 +22,8 @@ public interface AdminService {
     Page<DocumentResponse> getAllDocument(int page, int size);
 
     UserAccountResponse updateUserRole(UUID id, UserRole role);
+
+    Page<ChatRequestResponse> getAllChat(int page, int size);
+
+    Page<StorageUsageResponse> getAllStorage(int page, int size);
 }

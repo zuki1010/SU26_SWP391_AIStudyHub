@@ -55,4 +55,16 @@ public class AdminController {
                                             @RequestParam UserRole role) {
         return ResponseEntity.ok(adminService.updateUserRole(userId, role));
     }
+
+    @GetMapping("/chat")
+    public ResponseEntity<?> getAllChatToDay(@RequestParam(defaultValue = "0") int page,
+                                             @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(adminService.getAllChat(page, size));
+    }
+
+    @GetMapping("/storage")
+    public ResponseEntity<?> getAllStorageUsage(@RequestParam(defaultValue = "0") int page,
+                                                @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(null);
+    }
 }
