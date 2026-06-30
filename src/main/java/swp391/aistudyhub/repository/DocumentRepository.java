@@ -21,5 +21,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
 
     @Query("SELECT COALESCE(SUM(d.fileSize), 0) FROM Document d WHERE d.user.id = :userId")
     long sumFileSizeByUserId(@Param("userId") UUID userId);
+
     List<Document> findByIsPublicTrueOrderByCreatedAtDesc();
 }
