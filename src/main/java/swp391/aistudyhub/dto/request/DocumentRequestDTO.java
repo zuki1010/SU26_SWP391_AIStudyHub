@@ -1,4 +1,4 @@
-package swp391.aistudyhub.dto;
+package swp391.aistudyhub.dto.request;
 
 import lombok.Data;
 

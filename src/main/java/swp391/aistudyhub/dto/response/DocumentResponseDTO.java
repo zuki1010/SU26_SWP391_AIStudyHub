@@ -1,4 +1,4 @@
-package swp391.aistudyhub.dto;
+package swp391.aistudyhub.dto.response;
 
 import lombok.Data;
 import java.util.UUID;
