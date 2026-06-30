@@ -15,7 +15,7 @@ import java.util.*;
 @Component
 public class GeminiClient {
 
-    @Value("${gemini.api.key}")
+    @Value("${GEMINI_API_KEY}")
     private String geminiApiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();

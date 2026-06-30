@@ -36,7 +36,7 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, UU
     @Query("DELETE FROM DocumentChunk dc WHERE dc.document.id = :documentId")
     void deleteByDocument_Id(@Param("documentId") UUID documentId);
 
-    @Query(value = "SELECT * FROM document_chunks dc " +
+    @Query(value = "SELECT dc.chunk_content FROM document_chunks dc " +
             "WHERE dc.document_id IN (:documentIds) " +
             "ORDER BY dc.vector_embedding <=> cast(:queryVector as vector) " +
             "LIMIT :limitCount",
