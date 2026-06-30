@@ -294,40 +294,23 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional(readOnly = true)
     public List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType) {
+        List<Document> accessibleDocs = documentRepository.findAccessibleDocuments(userId);
 
-        return documentRepository.findAll((root, query, cb) -> {
-                    java.util.List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
-
-                    jakarta.persistence.criteria.Predicate isOwner = cb.equal(root.get("user").get("id"), userId);
-                    jakarta.persistence.criteria.Predicate isPublic = cb.equal(root.get("isPublic"), true);
-                    jakarta.persistence.criteria.Subquery<Long> shareSubquery = query.subquery(Long.class);
-                    jakarta.persistence.criteria.Root<DocumentShare> shareRoot = shareSubquery.from(DocumentShare.class);
-                    shareSubquery.select(cb.count(shareRoot));
-                    shareSubquery.where(
-                            cb.and(
-                                    cb.equal(shareRoot.get("document").get("id"), root.get("id")),
-                                    cb.equal(shareRoot.get("sharedWithUser").get("id"), userId)
-                            )
-                    );
-                    jakarta.persistence.criteria.Predicate isShared = cb.greaterThan(shareSubquery, 0L);
-
-                    // Gộp 3 điều kiện phân quyền này lại bằng toán tử OR
-                    predicates.add(cb.or(isOwner, isPublic, isShared));
-
+        return accessibleDocs.stream()
+                .filter(doc -> {
                     if (searchName != null && !searchName.trim().isEmpty()) {
-                        predicates.add(cb.like(cb.lower(root.get("documentName")), "%" + searchName.toLowerCase().trim() + "%"));
+                        return doc.getDocumentName() != null &&
+                                doc.getDocumentName().toLowerCase().contains(searchName.toLowerCase().trim());
                     }
-
-
-                    if (fileType != null && !fileType.trim().isEmpty()) {
-                        predicates.add(cb.like(cb.lower(root.get("fileType")), "%" + fileType.toLowerCase().trim() + "%"));
-                    }
-
-                    query.orderBy(cb.desc(root.get("createdAt")));
-
-                    return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+                    return true;
                 })
-                .stream()
+                .filter(doc -> {
+                    if (fileType != null && !fileType.trim().isEmpty()) {
+                        return doc.getFileType() != null &&
+                                doc.getFileType().toLowerCase().contains(fileType.toLowerCase().trim());
+                    }
+                    return true;
+                })
                 .map(this::mapToResponseDTO)
                 .toList();
     }

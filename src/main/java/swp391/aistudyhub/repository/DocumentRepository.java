@@ -28,4 +28,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
     List<Document> findByIsPublicTrueOrderByCreatedAtDesc();
 
     Page<DocumentResponse> findBy(Pageable pageable);
+
+    @Query("SELECT d FROM Document d WHERE d.user.id = :userId OR d.isPublic = true " +
+            "OR d.id IN (SELECT ds.document.id FROM DocumentShare ds WHERE ds.sharedWithUser.id = :userId)")
+    List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 }
