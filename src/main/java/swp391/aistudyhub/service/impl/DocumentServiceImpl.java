@@ -80,8 +80,6 @@ public class DocumentServiceImpl implements DocumentService {
 
         Document savedDoc = documentRepository.saveAndFlush(doc);
 
-        long realTotalUsedQuota = documentRepository.sumFileSizeByUserId(userId);
-
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.save(storage);
 
