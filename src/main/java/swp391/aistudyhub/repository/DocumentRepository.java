@@ -32,4 +32,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
     @Query("SELECT d FROM Document d WHERE d.user.id = :userId OR d.isPublic = true " +
             "OR d.id IN (SELECT ds.document.id FROM DocumentShare ds WHERE ds.sharedWithUser.id = :userId)")
     List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
+
+    // 🌟 ĐÃ TÍCH HỢP: Hàm tìm kiếm nâng cao theo Tên file HOẶC Tên danh mục (Category), hỗ trợ lọc theo ID danh mục
+    @Query("SELECT DISTINCT d FROM Document d " +
+            "LEFT JOIN d.user u " +
+            "LEFT JOIN DocumentShare ds ON ds.document.id = d.id AND ds.sharedWithUser.id = :userId " +
+            "LEFT JOIN d.documentCategories dc " +
+            "WHERE (u.id = :userId OR d.isPublic = true OR ds IS NOT NULL) " +
+            "AND (:searchText IS NULL OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
+            "    OR LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))) " +
+            "AND (:categoryId IS NULL OR dc.id = :categoryId)")
+    List<Document> searchDocumentsWithCategory(
+            @Param("userId") UUID userId,
+            @Param("searchText") String searchText,
+            @Param("categoryId") UUID categoryId);
 }

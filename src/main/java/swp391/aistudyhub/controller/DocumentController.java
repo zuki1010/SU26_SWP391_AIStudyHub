@@ -45,12 +45,13 @@ public class    DocumentController {
     private DocumentShareService documentShareService; // 🌟 Tiêm service share vào đây
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-@Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
-public ResponseEntity<?> createDocument(
+    @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
+    public ResponseEntity<?> createDocument(
         @RequestHeader("X-User-Id") UUID userId,
         @RequestPart("file") MultipartFile file,
         @RequestParam("description") String description,
-        @RequestParam(value = "textContent", required = false) String textContent
+        @RequestParam(value = "textContent", required = false) String textContent,
+        @RequestParam("categories") List<String> categoryNames
 ) {
     try {
         if (description == null || description.trim().isEmpty()) {
@@ -82,6 +83,7 @@ public ResponseEntity<?> createDocument(
 
         requestDTO.setPreviewUrl(fileUrl);
         requestDTO.setDownloadUrl(fileUrl);
+        requestDTO.setCategoryNames(categoryNames);
 
         DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
 
@@ -215,13 +217,25 @@ public ResponseEntity<?> deleteDocument(
         }
     }
 
+//    @GetMapping("/search")
+//    public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
+//            @RequestHeader("X-User-Id") UUID userId,
+//            @RequestParam(required = false) String name,
+//            @RequestParam(required = false) String type){
+//
+//
+//        List<DocumentResponseDTO> results = documentService.searchAndFilterDocuments(userId, name, type);
+//        return ResponseEntity.ok(results);
+//    }
+
     @GetMapping("/search")
+    @Operation(summary = "Tìm kiếm tài liệu linh hoạt theo Tên file, Tên danh mục hoặc Lọc theo ID danh mục")
     public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String type) {
-
-        List<DocumentResponseDTO> results = documentService.searchAndFilterDocuments(userId, name, type);
+            @RequestParam(value = "name", required = false) String name, // Từ khóa (Tên file học tên môn học)
+            @RequestParam(value = "categoryId", required = false) UUID categoryId // Lọc chính xác theo ID môn học
+    ) {
+        List<DocumentResponseDTO> results = documentService.searchDocumentsByFilter(userId, name, categoryId);
         return ResponseEntity.ok(results);
     }
 

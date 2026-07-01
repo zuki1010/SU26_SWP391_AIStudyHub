@@ -54,6 +54,8 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(UUID userId, DocumentRequestDTO requestDTO) {
+        List<String> categoryNames = requestDTO.getCategoryNames();
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng hệ thống."));
 
@@ -311,26 +313,38 @@ public class DocumentServiceImpl implements DocumentService {
     return dto;
 }
 
+//    @Override
+//    @Transactional(readOnly = true)
+//    public List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType) {
+//        List<Document> accessibleDocs = documentRepository.findAccessibleDocuments(userId);
+//
+//        return accessibleDocs.stream()
+//                .filter(doc -> {
+//                    if (searchName != null && !searchName.trim().isEmpty()) {
+//                        return doc.getDocumentName() != null &&
+//                                doc.getDocumentName().toLowerCase().contains(searchName.toLowerCase().trim());
+//                    }
+//                    return true;
+//                })
+//                .filter(doc -> {
+//                    if (fileType != null && !fileType.trim().isEmpty()) {
+//                        return doc.getFileType() != null &&
+//                                doc.getFileType().toLowerCase().contains(fileType.toLowerCase().trim());
+//                    }
+//                    return true;
+//                })
+//                .map(this::mapToResponseDTO)
+//                .toList();
+//    }
+
     @Override
     @Transactional(readOnly = true)
-    public List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType) {
-        List<Document> accessibleDocs = documentRepository.findAccessibleDocuments(userId);
+    public List<DocumentResponseDTO> searchDocumentsByFilter(UUID userId, String searchText, UUID categoryId) {
+        // 🌟 TỐI ƯU: Gọi trực tiếp câu Query nâng cao dưới DB thay vì filter bằng Stream Java (giúp tăng tốc hệ thống)
+        List<Document> documents = documentRepository.searchDocumentsWithCategory(userId, searchText, categoryId);
 
-        return accessibleDocs.stream()
-                .filter(doc -> {
-                    if (searchName != null && !searchName.trim().isEmpty()) {
-                        return doc.getDocumentName() != null &&
-                                doc.getDocumentName().toLowerCase().contains(searchName.toLowerCase().trim());
-                    }
-                    return true;
-                })
-                .filter(doc -> {
-                    if (fileType != null && !fileType.trim().isEmpty()) {
-                        return doc.getFileType() != null &&
-                                doc.getFileType().toLowerCase().contains(fileType.toLowerCase().trim());
-                    }
-                    return true;
-                })
+        // Map danh sách Entity sang DocumentResponseDTO đúng cấu trúc trả về
+        return documents.stream()
                 .map(this::mapToResponseDTO)
                 .toList();
     }

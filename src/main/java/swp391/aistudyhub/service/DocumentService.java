@@ -23,7 +23,7 @@ public interface DocumentService {
     Resource downloadDocumentFile(UUID documentId, UUID userId);
     List<Document> getMyDocuments();
 
-    List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType);
+    List<DocumentResponseDTO> searchDocumentsByFilter(UUID userId, String searchText, UUID categoryId);
     List<DocumentResponseDTO> getPublicDocuments();
 
     DocumentResponseDTO toggleDocumentPublicStatus(UUID userId, UUID documentId, boolean isPublic);
