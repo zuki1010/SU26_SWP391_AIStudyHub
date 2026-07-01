@@ -23,6 +23,7 @@ import swp391.aistudyhub.service.DocumentShareService;
 
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -266,6 +267,33 @@ public ResponseEntity<?> deleteDocument(
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     java.util.Map.of("success", false, "message", "Lỗi hệ thống: " + e.getMessage())
+            );
+        }
+    }
+
+    @PutMapping("/{id}/share")
+    @Operation(summary = "Thay đổi quyền truy cập tài liệu của người được share (view, download, edit)")
+    public ResponseEntity<?> updateSharePermission(
+            @RequestHeader("X-User-Id") UUID ownerId,
+            @PathVariable("id") UUID documentId,
+            @RequestParam("targetUserId") UUID targetUserId,
+            @RequestParam("permissionType") String permissionType) {
+        try {
+            documentShareService.updateSharePermission(ownerId, documentId, targetUserId, permissionType);
+
+            return ResponseEntity.ok(
+                    Map.of(
+                            "success", true,
+                            "message", "Cập nhật quyền truy cập thành công sang: " + permissionType
+                    )
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "message", e.getMessage())
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    Map.of("success", false, "message", "Lỗi hệ thống: " + e.getMessage())
             );
         }
     }

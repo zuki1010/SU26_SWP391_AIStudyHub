@@ -12,4 +12,5 @@ public interface DocumentShareRepository extends JpaRepository<DocumentShare, UU
     // Khớp chính xác với cấu trúc DocumentShare (document.id và sharedWithUser.id)
     boolean existsByDocument_IdAndSharedWithUser_Id(UUID documentId, UUID userId);
     Optional<DocumentShare> findByDocument_IdAndSharedWithUser_Id(UUID documentId, UUID userId);
+
 }

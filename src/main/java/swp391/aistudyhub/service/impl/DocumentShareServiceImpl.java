@@ -73,4 +73,31 @@ public class DocumentShareServiceImpl implements DocumentShareService {
 
         documentShareRepository.save(share);
     }
+
+    @Override
+    @Transactional
+    public void updateSharePermission(UUID ownerId, UUID documentId, UUID targetUserId, String newPermissionType) {
+        // 1. Kiểm tra tài liệu tồn tại
+        swp391.aistudyhub.entity.Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+
+        // 2. Bảo mật: Chỉ chủ sở hữu mới được sửa quyền của người khác
+        if (doc.getUser() == null || !doc.getUser().getId().equals(ownerId)) {
+            throw new RuntimeException("Bạn không phải chủ sở hữu để thay đổi quyền tài liệu này!");
+        }
+
+        // 3. Tìm bản ghi share hiện tại từ Repository của bạn
+        DocumentShare share = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, targetUserId)
+                .orElseThrow(() -> new RuntimeException("Tài liệu này chưa từng được chia sẻ cho người dùng này."));
+
+        // 4. Chuẩn hóa quyền mới (chỉ chấp nhận: view, download, edit)
+        String permission = newPermissionType.trim().toLowerCase();
+        if (!permission.equals("view") && !permission.equals("download") && !permission.equals("edit")) {
+            throw new RuntimeException("Quyền không hợp lệ! Chỉ chấp nhận: view, download, edit.");
+        }
+
+        // 5. Cập nhật và lưu lại
+        share.setPermissionType(permission);
+        documentShareRepository.save(share);
+    }
 }

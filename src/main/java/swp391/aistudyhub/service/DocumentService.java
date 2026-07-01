@@ -29,4 +29,5 @@ public interface DocumentService {
     DocumentResponseDTO toggleDocumentPublicStatus(UUID userId, UUID documentId, boolean isPublic);
 
     Resource getFileResourceForPreview(UUID documentId, UUID userId);
+
 }
