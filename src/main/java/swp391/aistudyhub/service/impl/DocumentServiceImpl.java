@@ -237,32 +237,8 @@ public class DocumentServiceImpl implements DocumentService {
         return documentRepository.findByUserId(user.getId());
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Resource downloadDocumentFile(UUID documentId, UUID userId) {
-        Document doc = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
-
-        boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
-        boolean isPublic = doc.isPublic();
-
-        // 🌟 THAY ĐỔI: Tìm bản ghi share cụ thể để bóc tách loại quyền (permissionType)
-        java.util.Optional<DocumentShare> shareOpt = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
-
-        boolean hasDownloadPermission = false;
-        if (shareOpt.isPresent()) {
-            String permission = shareOpt.get().getPermissionType();
-            // Hợp lệ nếu quyền là 'download' hoặc quyền 'edit' (quyền 'view' sẽ trả về false)
-            if ("download".equalsIgnoreCase(permission) || "edit".equalsIgnoreCase(permission)) {
-                hasDownloadPermission = true;
-            }
-        }
-
-        // Chặn nếu không thỏa mãn bất kỳ điều kiện nào (Không phải chủ, không public, không có quyền tải)
-        if (!isOwner && !isPublic && !hasDownloadPermission) {
-            throw new RuntimeException("Tài liệu này chỉ cho phép xem trực tuyến, bạn không có quyền tải xuống!");
-        }
-
+    // 🌟 1. HÀM BỔ TRỢ (PRIVATE): Chỉ làm nhiệm vụ đọc stream file từ Cloud Storage
+    private Resource fetchFileResourceFromCloud(Document doc) {
         try {
             String stringUrl = doc.getDownloadUrl();
             java.net.URL url = java.net.URI.create(stringUrl).toURL();
@@ -272,6 +248,52 @@ public class DocumentServiceImpl implements DocumentService {
         } catch (Exception e) {
             throw new RuntimeException("Không thể tải file từ Cloud Storage: " + e.getMessage());
         }
+    }
+
+    // 🌟 2. HÀM PHỤC VỤ DOWNLOAD: Giữ nguyên logic chặn quyền nghiêm ngặt (Yêu cầu 'download' hoặc 'edit')
+    @Override
+    @Transactional(readOnly = true)
+    public Resource downloadDocumentFile(UUID documentId, UUID userId) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+
+        boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
+        boolean isPublic = doc.isPublic();
+
+        java.util.Optional<DocumentShare> shareOpt = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
+
+        boolean hasDownloadPermission = false;
+        if (shareOpt.isPresent()) {
+            String permission = shareOpt.get().getPermissionType();
+            if ("download".equalsIgnoreCase(permission) || "edit".equalsIgnoreCase(permission)) {
+                hasDownloadPermission = true;
+            }
+        }
+
+        if (!isOwner && !isPublic && !hasDownloadPermission) {
+            throw new RuntimeException("Tài liệu này chỉ cho phép xem trực tuyến, bạn không có quyền tải xuống!");
+        }
+
+        return fetchFileResourceFromCloud(doc);
+    }
+
+    // 🌟 3. HÀM PHỤC VỤ PREVIEW (MỚI): Cho phép bất kỳ ai có quyền tiếp cận (view, download, edit) đều được xem luồng file
+    @Override
+    @Transactional(readOnly = true)
+    public Resource getFileResourceForPreview(UUID documentId, UUID userId) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+
+        boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
+        boolean isPublic = doc.isPublic();
+        // Cứ có bản ghi tồn tại trong bảng share (bất kể quyền gì: view, download, edit) thì được coi là hợp lệ để xem trước
+        boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
+
+        if (!isOwner && !isPublic && !isSharedWithMe) {
+            throw new RuntimeException("Bạn không có quyền xem trước tài liệu này!");
+        }
+
+        return fetchFileResourceFromCloud(doc);
     }
 
     private DocumentResponseDTO mapToResponseDTO(Document document) {
@@ -334,11 +356,35 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-@Transactional(readOnly = true)
-public List<DocumentResponseDTO> getPublicDocuments() {
-    return documentRepository.findByIsPublicTrueOrderByCreatedAtDesc()
+    @Transactional(readOnly = true)
+    public List<DocumentResponseDTO> getPublicDocuments() {
+        return documentRepository.findByIsPublicTrueOrderByCreatedAtDesc()
             .stream()
             .map(this::mapToResponseDTO)
             .toList();
-}
+    }
+
+    // Hàm bổ trợ: Chỉ lấy dữ liệu file từ Cloud sau khi đã xác thực quyền cơ bản (Chính chủ / Public / Được Share bất kỳ quyền nào)
+    private Resource getFileResourceFromServer(UUID documentId, UUID userId) {
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+
+        boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
+        boolean isPublic = doc.isPublic();
+        boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
+
+        if (!isOwner && !isPublic && !isSharedWithMe) {
+            throw new RuntimeException("Bạn không có quyền truy cập tài liệu này!");
+        }
+
+        try {
+            String stringUrl = doc.getDownloadUrl();
+            java.net.URL url = java.net.URI.create(stringUrl).toURL();
+            try (java.io.InputStream inputStream = url.openStream()) {
+                return new ByteArrayResource(inputStream.readAllBytes());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể tải file từ Cloud Storage: " + e.getMessage());
+        }
+    }
 }

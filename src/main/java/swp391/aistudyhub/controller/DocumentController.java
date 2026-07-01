@@ -182,21 +182,32 @@ public ResponseEntity<?> deleteDocument(
             @RequestHeader("X-User-Id") UUID userId,
             @PathVariable("id") UUID documentId) {
         try {
-            Resource fileResource = documentService.downloadDocumentFile(documentId, userId);
+            Resource fileResource = documentService.getFileResourceForPreview(documentId, userId);
             DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
 
+            String fileType = (detail.getFileType() != null) ? detail.getFileType().toLowerCase().trim() : "unknown";
+
             MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-            if (detail.getFileType().equalsIgnoreCase("pdf")) {
+            if (fileType.equalsIgnoreCase("pdf")) {
                 mediaType = MediaType.APPLICATION_PDF;
-            } else if (detail.getFileType().equalsIgnoreCase("png")) {
+            } else if (fileType.equalsIgnoreCase("png")) {
                 mediaType = MediaType.IMAGE_PNG;
-            } else if (detail.getFileType().equalsIgnoreCase("jpg") || detail.getFileType().equalsIgnoreCase("jpeg")) {
+            } else if (fileType.equalsIgnoreCase("jpg") || fileType.equalsIgnoreCase("jpeg")) {
                 mediaType = MediaType.IMAGE_JPEG;
             }
 
+            String fullFileName = detail.getDocumentName();
+            if (!fullFileName.toLowerCase().endsWith("." + fileType)) {
+                fullFileName = fullFileName + "." + fileType;
+            }
+
+            org.springframework.http.ContentDisposition contentDisposition = org.springframework.http.ContentDisposition.builder("inline")
+                    .filename(fullFileName, java.nio.charset.StandardCharsets.UTF_8)
+                    .build();
+
             return ResponseEntity.ok()
                     .contentType(mediaType)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + detail.getDocumentName() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
                     .body(fileResource);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
