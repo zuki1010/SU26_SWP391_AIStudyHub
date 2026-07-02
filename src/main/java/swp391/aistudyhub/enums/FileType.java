@@ -10,6 +10,7 @@ public enum FileType {
     MP4("mp4"),
     ZIP("zip"),
     TXT("txt"),
+    JPEG("jpeg"),
     DOC("doc");
 
     private final String extension;

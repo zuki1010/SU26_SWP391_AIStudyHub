@@ -142,7 +142,7 @@ public class DocumentServiceImpl implements DocumentService {
                 fileKey = downloadUrl.substring(downloadUrl.indexOf("/documents/") + 11);
             } else {
                 // Phương án dự phòng nếu không tìm thấy link dạng chuẩn: dùng userId/documentId.extension
-                String extension = document.getFileType().toLowerCase().trim();
+                String extension = document.getFileType().name().trim().toLowerCase();
                 fileKey = userId.toString() + "/" + documentId.toString() + "." + extension;
             }
 

@@ -14,6 +14,7 @@ import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.service.CloudStorageService;
 import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
@@ -67,8 +68,7 @@ public ResponseEntity<?> createDocument(
         String fileType = (originalName != null && originalName.contains("."))
                 ? originalName.substring(originalName.lastIndexOf(".") + 1)
                 : "unknown";
-
-        requestDTO.setFileType(fileType);
+        requestDTO.setFileType(FileType.valueOf(fileType));
 
         requestDTO.setDescription(description.trim());
 
@@ -185,11 +185,11 @@ public ResponseEntity<?> deleteDocument(
             DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
 
             MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-            if (detail.getFileType().equalsIgnoreCase("pdf")) {
+            if (detail.getFileType() == FileType.PDF) {
                 mediaType = MediaType.APPLICATION_PDF;
-            } else if (detail.getFileType().equalsIgnoreCase("png")) {
+            } else if (detail.getFileType() == FileType.PNG) {
                 mediaType = MediaType.IMAGE_PNG;
-            } else if (detail.getFileType().equalsIgnoreCase("jpg") || detail.getFileType().equalsIgnoreCase("jpeg")) {
+            } else if (detail.getFileType() == FileType.JPG || detail.getFileType() == FileType.JPEG) {
                 mediaType = MediaType.IMAGE_JPEG;
             }
 

@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import swp391.aistudyhub.enums.FileType;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,8 +39,9 @@ public class Document {
     private String documentName;
 
     @Size(max = 50)
+    @Enumerated(EnumType.STRING)
     @Column(name = "file_type", length = 50)
-    private String fileType;
+    private FileType fileType;
 
     @Column(name = "preview_url", columnDefinition = "text")
     private String previewUrl;
