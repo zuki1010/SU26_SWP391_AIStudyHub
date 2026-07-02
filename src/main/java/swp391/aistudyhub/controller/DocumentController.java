@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.request.DocumentTogglePublicRequestDTO;
+import swp391.aistudyhub.dto.request.StartSessionDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
@@ -32,7 +33,7 @@ import java.util.UUID;
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
 @PreAuthorize("hasRole('CUSTOMER')")
-public class    DocumentController {
+public class DocumentController {
 
     @Autowired
     private DocumentService documentService;
@@ -44,67 +45,67 @@ public class    DocumentController {
     private CloudStorageService cloudStorageService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-@Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
-public ResponseEntity<?> createDocument(
-        @RequestHeader("X-User-Id") UUID userId,
-        @RequestPart("file") MultipartFile file,
-        @RequestParam("description") String description,
-        @RequestParam(value = "textContent", required = false) String textContent
-) {
-    try {
-        if (description == null || description.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
+    @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
+    public ResponseEntity<?> createDocument(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("description") String description,
+            @RequestParam(value = "textContent", required = false) String textContent
+    ) {
+        try {
+            if (description == null || description.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
+            }
+
+            String fileUrl = cloudStorageService.uploadFile(userId, file);
+
+            DocumentRequestDTO requestDTO = new DocumentRequestDTO();
+
+            requestDTO.setDocumentName(file.getOriginalFilename());
+            requestDTO.setFileSize(file.getSize());
+
+            String originalName = file.getOriginalFilename();
+            String fileType = (originalName != null && originalName.contains("."))
+                    ? originalName.substring(originalName.lastIndexOf(".") + 1)
+                    : "unknown";
+            requestDTO.setFileType(FileType.valueOf(fileType));
+
+            requestDTO.setDescription(description.trim());
+
+            requestDTO.setTextContent(
+                    textContent != null && !textContent.trim().isEmpty()
+                            ? textContent.trim()
+                            : description.trim()
+            );
+
+            requestDTO.setPreviewUrl(fileUrl);
+            requestDTO.setDownloadUrl(fileUrl);
+
+            DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
+
+            Document docEntity = new Document();
+            docEntity.setId(response.getDocumentId());
+            documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
-
-        String fileUrl = cloudStorageService.uploadFile(userId, file);
-
-        DocumentRequestDTO requestDTO = new DocumentRequestDTO();
-
-        requestDTO.setDocumentName(file.getOriginalFilename());
-        requestDTO.setFileSize(file.getSize());
-
-        String originalName = file.getOriginalFilename();
-        String fileType = (originalName != null && originalName.contains("."))
-                ? originalName.substring(originalName.lastIndexOf(".") + 1)
-                : "unknown";
-        requestDTO.setFileType(FileType.valueOf(fileType));
-
-        requestDTO.setDescription(description.trim());
-
-        requestDTO.setTextContent(
-                textContent != null && !textContent.trim().isEmpty()
-                        ? textContent.trim()
-                        : description.trim()
-        );
-
-        requestDTO.setPreviewUrl(fileUrl);
-        requestDTO.setDownloadUrl(fileUrl);
-
-        DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
-
-        Document docEntity = new Document();
-        docEntity.setId(response.getDocumentId());
-        documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
-
-        return ResponseEntity.ok(response);
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.badRequest().body(e.getMessage());
     }
-}
 
     // ĐA SỬA: Bỏ /{id} dư thừa trên URL vì bạn đã nhận diện user qua @RequestHeader
     @GetMapping("/all")
-    public ResponseEntity<List<DocumentResponseDTO>> getAllMyDocuments(@RequestHeader("X-User-Id") UUID userId) {
-        return ResponseEntity.ok(documentService.getAllDocumentsByUserId(userId));
+    public ResponseEntity<?> getAllMyDocuments() {
+        return ResponseEntity.ok(documentService.getAllDocumentsByUser());
     }
 
     @GetMapping("/public")
-@PreAuthorize("permitAll()")
-public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
-    return ResponseEntity.ok(documentService.getPublicDocuments());
-}
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
+        return ResponseEntity.ok(documentService.getPublicDocuments());
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getDocumentById(
@@ -132,29 +133,29 @@ public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
     }
 
     @DeleteMapping("/{id}")
-public ResponseEntity<?> deleteDocument(
-        @RequestHeader("X-User-Id") UUID userId,
-        @PathVariable("id") UUID documentId) {
-    try {
-        documentService.deleteDocument(documentId, userId);
+    public ResponseEntity<?> deleteDocument(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable("id") UUID documentId) {
+        try {
+            documentService.deleteDocument(documentId, userId);
 
-        return ResponseEntity.ok(
-                java.util.Map.of(
-                        "success", true,
-                        "message", "Xóa thành công tài liệu và giải phóng bộ nhớ!"
-                )
-        );
-    } catch (Exception e) {
-        e.printStackTrace();
+            return ResponseEntity.ok(
+                    java.util.Map.of(
+                            "success", true,
+                            "message", "Xóa thành công tài liệu và giải phóng bộ nhớ!"
+                    )
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
 
-        return ResponseEntity.badRequest().body(
-                java.util.Map.of(
-                        "success", false,
-                        "message", e.getMessage()
-                )
-        );
+            return ResponseEntity.badRequest().body(
+                    java.util.Map.of(
+                            "success", false,
+                            "message", e.getMessage()
+                    )
+            );
+        }
     }
-}
 
     @GetMapping("/{id}/download")
     public ResponseEntity<?> downloadDocument(
@@ -185,11 +186,11 @@ public ResponseEntity<?> deleteDocument(
             DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
 
             MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-            if (detail.getFileType() == FileType.PDF) {
+            if (detail.getFileType() == FileType.pdf) {
                 mediaType = MediaType.APPLICATION_PDF;
-            } else if (detail.getFileType() == FileType.PNG) {
+            } else if (detail.getFileType() == FileType.png) {
                 mediaType = MediaType.IMAGE_PNG;
-            } else if (detail.getFileType() == FileType.JPG || detail.getFileType() == FileType.JPEG) {
+            } else if (detail.getFileType() == FileType.jpg || detail.getFileType() == FileType.jpeg) {
                 mediaType = MediaType.IMAGE_JPEG;
             }
 

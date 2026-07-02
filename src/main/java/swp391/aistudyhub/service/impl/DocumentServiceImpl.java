@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
@@ -76,12 +77,29 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId) {
+    public List<DocumentResponseDTO> getAllDocumentsByUser() {
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
         // ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
-        return documentRepository.findByUserId(userId)
-                .stream()
-                .map(this::mapToResponseDTO)
-                .toList();
+
+        List<Document> documents = documentRepository.findByUser(user);
+
+        // Convert từ Document sang DocumentResponseDTO
+        return documents.stream()
+                .map(doc -> {
+                    DocumentResponseDTO dto = new DocumentResponseDTO();
+                    dto.setDocumentId(doc.getId());
+                    dto.setDocumentName(doc.getDocumentName());
+                    //set may cai khac vo giup em luon
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
