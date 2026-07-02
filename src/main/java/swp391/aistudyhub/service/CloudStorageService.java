@@ -6,6 +6,6 @@ import swp391.aistudyhub.dto.response.CloudStorageUsageResponseDTO;
 import java.util.UUID;
 
 public interface CloudStorageService {
-    String uploadFile(UUID userId, MultipartFile file);
-    CloudStorageUsageResponseDTO getCloudStorageUsage(UUID userId);
+    String uploadFile(MultipartFile file);
+    CloudStorageUsageResponseDTO getCloudStorageUsage();
 }

@@ -52,7 +52,6 @@ public class    DocumentController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
     public ResponseEntity<?> createDocument(
-        @RequestHeader("X-User-Id") UUID userId,
         @RequestPart("file") MultipartFile file,
         @RequestParam("description") String description,
         @RequestParam(value = "textContent", required = false) String textContent,
@@ -64,7 +63,7 @@ public class    DocumentController {
                     .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
         }
 
-            String fileUrl = cloudStorageService.uploadFile(userId, file);
+            String fileUrl = cloudStorageService.uploadFile(file);
 
             DocumentRequestDTO requestDTO = new DocumentRequestDTO();
 
@@ -89,7 +88,7 @@ public class    DocumentController {
         requestDTO.setDownloadUrl(fileUrl);
         requestDTO.setCategoryNames(categoryNames);
 
-            DocumentResponseDTO response = documentService.createDocument(userId, requestDTO);
+            DocumentResponseDTO response = documentService.createDocument(requestDTO);
 
             Document docEntity = new Document();
             docEntity.setId(response.getDocumentId());
@@ -116,10 +115,10 @@ public class    DocumentController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getDocumentById(
-            @RequestHeader("X-User-Id") UUID userId,
+
             @PathVariable("id") UUID documentId) {
         try {
-            DocumentResponseDTO response = documentService.getDocumentDetail(documentId, userId);
+            DocumentResponseDTO response = documentService.getDocumentDetail(documentId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(403).body(e.getMessage());
@@ -128,11 +127,11 @@ public class    DocumentController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDocumentName(
-            @RequestHeader("X-User-Id") UUID userId,
+
             @PathVariable("id") UUID documentId,
             @RequestParam("newName") String newName) {
         try {
-            DocumentResponseDTO response = documentService.updateDocumentName(documentId, userId, newName);
+            DocumentResponseDTO response = documentService.updateDocumentName(documentId, newName);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -141,10 +140,10 @@ public class    DocumentController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteDocument(
-            @RequestHeader("X-User-Id") UUID userId,
+
             @PathVariable("id") UUID documentId) {
         try {
-            documentService.deleteDocument(documentId, userId);
+            documentService.deleteDocument(documentId);
 
             return ResponseEntity.ok(
                     java.util.Map.of(
@@ -166,13 +165,13 @@ public class    DocumentController {
 
     @GetMapping("/{id}/download")
     public ResponseEntity<?> downloadDocument(
-            @RequestHeader("X-User-Id") UUID userId,
+
             @PathVariable("id") UUID documentId) {
         try {
-            Resource fileResource = documentService.downloadDocumentFile(documentId, userId);
+            Resource fileResource = documentService.downloadDocumentFile(documentId);
 
             // ĐA TỐI ƯU: Lấy thông tin chi tiết để gán đúng tên file gốc và định dạng khi tải về
-            DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
+            DocumentResponseDTO detail = documentService.getDocumentDetail(documentId);
             String fileName = detail.getDocumentName() + "." + detail.getFileType();
 
             return ResponseEntity.ok()
@@ -186,11 +185,11 @@ public class    DocumentController {
 
     @GetMapping("/{id}/preview-file")
     public ResponseEntity<?> previewDocumentFile(
-            @RequestHeader("X-User-Id") UUID userId,
+
             @PathVariable("id") UUID documentId) {
         try {
-            Resource fileResource = documentService.getFileResourceForPreview(documentId, userId);
-            DocumentResponseDTO detail = documentService.getDocumentDetail(documentId, userId);
+            Resource fileResource = documentService.getFileResourceForPreview(documentId);
+            DocumentResponseDTO detail = documentService.getDocumentDetail(documentId);
 
 
 
@@ -235,22 +234,22 @@ public class    DocumentController {
     @GetMapping("/search")
     @Operation(summary = "Tìm kiếm tài liệu linh hoạt theo Tên file, Tên danh mục hoặc Lọc theo ID danh mục")
     public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
-            @RequestHeader("X-User-Id") UUID userId,
+
             @RequestParam(value = "name", required = false) String name, // Từ khóa (Tên file học tên môn học)
             @RequestParam(value = "categoryId", required = false) UUID categoryId // Lọc chính xác theo ID môn học
     ) {
-        List<DocumentResponseDTO> results = documentService.searchDocumentsByFilter(userId, name, categoryId);
+        List<DocumentResponseDTO> results = documentService.searchDocumentsByFilter( name, categoryId);
         return ResponseEntity.ok(results);
     }
 
     @PutMapping("/{documentId}/toggle-public")
     public ResponseEntity<?> toggleDocumentPublic(
-            @RequestHeader("X-User-Id") UUID userId,
+
             @PathVariable("documentId") UUID documentId,
             @RequestBody DocumentTogglePublicRequestDTO requestDTO) {
         try {
             DocumentResponseDTO response = documentService.toggleDocumentPublicStatus(
-                    userId,
+
                     documentId,
                     requestDTO.getIsPublic()
             );
@@ -265,12 +264,12 @@ public class    DocumentController {
     @PostMapping("/{id}/share")
     @Operation(summary = "Chia sẻ quyền truy cập tài liệu cho người dùng khác")
     public ResponseEntity<?> shareDocument(
-            @RequestHeader("X-User-Id") UUID ownerId,
+
             @PathVariable("id") UUID documentId,
             @RequestParam("targetUserId") UUID targetUserId,
             @RequestParam(value = "permissionType", required = false, defaultValue = "view") String permissionType) {
         try {
-            documentShareService.shareDocumentToUser(ownerId, documentId, targetUserId, permissionType);
+            documentShareService.shareDocumentToUser(documentId, targetUserId, permissionType);
 
             return ResponseEntity.ok(
                     java.util.Map.of(
@@ -292,12 +291,12 @@ public class    DocumentController {
     @PutMapping("/{id}/share")
     @Operation(summary = "Thay đổi quyền truy cập tài liệu của người được share (view, download, edit)")
     public ResponseEntity<?> updateSharePermission(
-            @RequestHeader("X-User-Id") UUID ownerId,
+
             @PathVariable("id") UUID documentId,
             @RequestParam("targetUserId") UUID targetUserId,
             @RequestParam("permissionType") String permissionType) {
         try {
-            documentShareService.updateSharePermission(ownerId, documentId, targetUserId, permissionType);
+            documentShareService.updateSharePermission( documentId, targetUserId, permissionType);
 
             return ResponseEntity.ok(
                     Map.of(

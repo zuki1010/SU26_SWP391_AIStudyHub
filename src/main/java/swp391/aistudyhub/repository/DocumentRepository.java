@@ -11,6 +11,7 @@ import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.enums.SubjectCode;
 
 import java.util.Collection;
 import java.util.List;
@@ -42,13 +43,12 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
     @Query("SELECT DISTINCT d FROM Document d " +
             "LEFT JOIN d.user u " +
             "LEFT JOIN DocumentShare ds ON ds.document.id = d.id AND ds.sharedWithUser.id = :userId " +
-            "LEFT JOIN d.documentCategories dc " +
+            "LEFT JOIN DocumentCategory dc ON dc.document.id = d.id " +
             "WHERE (u.id = :userId OR d.isPublic = true OR ds IS NOT NULL) " +
-            "AND (:searchText IS NULL OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
-            "    OR LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))) " +
-            "AND (:categoryId IS NULL OR dc.id = :categoryId)")
+                    "AND (:searchText IS NULL OR :searchText = '' " +
+                    "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
+                    "    OR LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%')))") // Quét đồng thời cả 2 cột
     List<Document> searchDocumentsWithCategory(
             @Param("userId") UUID userId,
-            @Param("searchText") String searchText,
-            @Param("categoryId") UUID categoryId);
+            @Param("searchText") String searchText);;
 }

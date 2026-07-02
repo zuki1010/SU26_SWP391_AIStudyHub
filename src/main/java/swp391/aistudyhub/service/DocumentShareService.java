@@ -4,7 +4,7 @@ import java.util.UUID; // 🌟 Đảm bảo import đúng dòng này
 
 public interface DocumentShareService {
     // Ép hẳn package java.util.UUID vào tham số để tránh import nhầm
-    void shareDocumentToUser(java.util.UUID ownerId, java.util.UUID documentId, java.util.UUID targetUserId, String permissionType);
+    void shareDocumentToUser( java.util.UUID documentId, java.util.UUID targetUserId, String permissionType);
 
-    void updateSharePermission(UUID ownerId, UUID documentId, UUID targetUserId, String newPermissionType);
+    void updateSharePermission( UUID documentId, UUID targetUserId, String newPermissionType);
 }

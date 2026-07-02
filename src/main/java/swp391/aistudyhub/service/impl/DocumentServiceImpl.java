@@ -1,5 +1,6 @@
 package swp391.aistudyhub.service.impl;
 
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -10,10 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
-import swp391.aistudyhub.entity.CloudStorage;
-import swp391.aistudyhub.entity.Document;
-import swp391.aistudyhub.entity.DocumentShare;
-import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.entity.*;
+import swp391.aistudyhub.enums.SubjectCode;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.StorageUploadService;
@@ -42,7 +41,6 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private jakarta.persistence.EntityManager entityManager;
 
-
     @Autowired
     private RestTemplate restTemplate;
 
@@ -50,15 +48,21 @@ public class DocumentServiceImpl implements DocumentService {
     private StorageUploadService storageUploadService;
 
     @Autowired
-    private DocumentShareRepository documentShareRepository; // 🌟 Thêm dòng này để hết gạch đỏ
+    private DocumentShareRepository documentShareRepository;
+
 
     @Override
     @Transactional
-    public DocumentResponseDTO createDocument(UUID userId, DocumentRequestDTO requestDTO) {
-        List<String> categoryNames = requestDTO.getCategoryNames();
+    public DocumentResponseDTO createDocument(DocumentRequestDTO requestDTO) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng hệ thống."));
+        UUID userId = user.getId();
 
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình không gian lưu trữ của người dùng này."));
@@ -67,21 +71,64 @@ public class DocumentServiceImpl implements DocumentService {
 
         long updatedUsedQuota = storage.getUsedQuota() + actualFileSize;
         if (updatedUsedQuota > storage.getTotalQuota()) {
-
             storageUploadService.logFailure(storage, requestDTO.getDocumentName(), actualFileSize, "FAILED_QUOTA_FULL");
             throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
         }
 
-        Document doc = new Document();
-        doc.setUser(user);
-        doc.setDocumentName(requestDTO.getDocumentName());
-        doc.setFileType(requestDTO.getFileType());
-        doc.setPreviewUrl(requestDTO.getPreviewUrl());
-        doc.setDownloadUrl(requestDTO.getDownloadUrl());
-        doc.setFileSize(actualFileSize);
-        doc.setDescription(requestDTO.getDescription());
+        // 1. 🌟 TỰ SINH SẴN ID CHO CẢ HAI BẢNG NGAY TỪ ĐẦU (Gán chuẩn luôn, không gán NULL)
+        java.util.UUID generatedDocumentId = java.util.UUID.randomUUID();
+        java.util.UUID generatedCategoryId = null;
+        String selectedSubject = null;
 
-        Document savedDoc = documentRepository.saveAndFlush(doc);
+        if (requestDTO.getCategoryNames() != null && !requestDTO.getCategoryNames().isEmpty()) {
+            selectedSubject = requestDTO.getCategoryNames().get(0).trim().toUpperCase();
+            try {
+                // Kiểm tra môn học hợp lệ theo Enum
+                SubjectCode subject = SubjectCode.valueOf(selectedSubject);
+                generatedCategoryId = java.util.UUID.randomUUID();
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Mã môn học '" + selectedSubject + "' không tồn tại trong hệ thống mã môn!");
+            }
+        }
+
+        // 2. 🌟 CHÈN BẢNG DOCUMENTS TRƯỚC (Nạp thẳng generatedCategoryId xịn vào)
+        String sqlInsertDoc = "INSERT INTO documents (document_id, user_id, category_id, document_name, file_type, preview_url, download_url, file_size, description, is_public, created_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        entityManager.createNativeQuery(sqlInsertDoc)
+                .setParameter(1, generatedDocumentId)
+                .setParameter(2, userId)
+                .setParameter(3, generatedCategoryId) // Khớp khít ID danh mục xịn ngay từ phát súng đầu tiên
+                .setParameter(4, requestDTO.getDocumentName())
+                .setParameter(5, requestDTO.getFileType())
+                .setParameter(6, requestDTO.getPreviewUrl())
+                .setParameter(7, requestDTO.getDownloadUrl())
+                .setParameter(8, actualFileSize)
+                .setParameter(9, requestDTO.getDescription())
+                .setParameter(10, false)
+                .setParameter(11, java.time.OffsetDateTime.now())
+                .executeUpdate();
+
+        // 3. 🌟 CHÈN BẢNG DOCUMENT_CATEGORIES NGAY SAU ĐÓ TRONG CÙNG 1 TRANSACTION
+        if (generatedCategoryId != null) {
+            String sqlInsertCategory = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at) " +
+                    "VALUES (?, ?, ?, ?, ?)";
+
+            entityManager.createNativeQuery(sqlInsertCategory)
+                    .setParameter(1, generatedCategoryId)
+                    .setParameter(2, generatedDocumentId) // Khóa ngoại trỏ ngược về Document ID (Thỏa mãn NOT NULL)
+                    .setParameter(3, selectedSubject)
+                    .setParameter(4, "SUBJECT")
+                    .setParameter(5, java.time.OffsetDateTime.now())
+                    .executeUpdate();
+        }
+
+        // Ép toàn bộ dữ liệu xuống Postgres cùng một lúc
+        entityManager.flush();
+
+        // 4. Lấy lại thực thể Document từ DB để map sang Response DTO trơn tru cho luồng code phía sau
+        Document savedDoc = documentRepository.findById(generatedDocumentId)
+                .orElseThrow(() -> new RuntimeException("Lỗi hệ thống: Không thể khởi tạo tài liệu."));
 
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.save(storage);
@@ -97,15 +144,11 @@ public class DocumentServiceImpl implements DocumentService {
         if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
             throw new RuntimeException("You are not login yet!");
         }
-
         User user = userRepository.findByEmailIgnoreCase(au.getName())
                 .orElseThrow(() -> new RuntimeException("This user is not found!"));
 
-        // ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
-
         List<Document> documents = documentRepository.findByUser(user);
 
-        // Convert từ Document sang DocumentResponseDTO
         return documents.stream()
                 .map(doc -> {
                     DocumentResponseDTO dto = new DocumentResponseDTO();
@@ -124,19 +167,24 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public DocumentResponseDTO getDocumentDetail(UUID documentId, UUID userId) {
-        // 1. Tìm tài liệu trong hệ thống
+    public DocumentResponseDTO getDocumentDetail(UUID documentId) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        UUID userId = user.getId();
+
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        // 2. Định nghĩa các điều kiện hợp lệ để được quyền xem file
         boolean isOwner = doc.getUser() != null && Objects.equals(doc.getUser().getId(), userId);
-        boolean isPublic = doc.isPublic(); // Giả định trường check public trong Entity Document của bạn là isPublic hoặc getIsPublic()
-
-        // Kiểm tra xem user này có được share đích danh trong bảng trung gian không
+        boolean isPublic = doc.isPublic();
         boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
 
-        // 3. Nếu KHÔNG PHẢI chủ sở hữu, KHÔNG PHẢI file public, và CŨNG KHÔNG ĐƯỢC SHARE -> Chặn lại ngay
         if (!isOwner && !isPublic && !isSharedWithMe) {
             throw new RuntimeException("Bạn không có quyền xem tài liệu này");
         }
@@ -146,17 +194,25 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public DocumentResponseDTO updateDocumentName(UUID documentId, UUID userId, String newName) {
+    public DocumentResponseDTO updateDocumentName(UUID documentId, String newName) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        UUID userId = user.getId();
+
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
         boolean isOwner = doc.getUser() != null && Objects.equals(doc.getUser().getId(), userId);
 
-        // 🌟 THAY ĐỔI: Kiểm tra xem user hiện tại có được cấp quyền 'edit' thông qua bảng share không
         java.util.Optional<DocumentShare> shareOpt = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
         boolean hasEditPermission = shareOpt.isPresent() && "edit".equalsIgnoreCase(shareOpt.get().getPermissionType());
 
-        // Chỉ cho phép chỉnh sửa nếu là Chủ sở hữu HOẶC có quyền 'edit'
         if (!isOwner && !hasEditPermission) {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa tài liệu này!");
         }
@@ -167,40 +223,41 @@ public class DocumentServiceImpl implements DocumentService {
         return mapToResponseDTO(updatedDoc);
     }
 
-
-
     @Override
     @Transactional
-    public void deleteDocument(UUID documentId, UUID userId) {
+    public void deleteDocument(UUID documentId) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        UUID userId = user.getId();
+
         Document document = documentRepository.findByIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền xóa"));
-
 
         long actualFileSize = (document.getFileSize() != null) ? document.getFileSize() : 0L;
 
         try {
-            // Giải pháp lấy tên file thông minh: Trích xuất tên file thực tế từ link downloadUrl đã lưu trong DB
             String downloadUrl = document.getDownloadUrl();
             if (downloadUrl == null || downloadUrl.trim().isEmpty()) {
                 downloadUrl = document.getPreviewUrl();
             }
 
-            // Tìm phần tên file vật lý nằm sau chữ /documents/
             String fileKey = "";
             if (downloadUrl != null && downloadUrl.contains("/documents/")) {
                 fileKey = downloadUrl.substring(downloadUrl.indexOf("/documents/") + 11);
             } else {
-                // Phương án dự phòng nếu không tìm thấy link dạng chuẩn: dùng userId/documentId.extension
                 String extension = document.getFileType().name().trim().toLowerCase();
                 fileKey = userId.toString() + "/" + documentId.toString() + "." + extension;
             }
 
-            // Endpoint chính xác để gọi phương thức DELETE của Supabase Storage
             String supabaseUrl = "https://ybgeblpkptrsefpafthb.supabase.co/storage/v1/object/documents/" + fileKey;
 
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-
-            // ⚠️ CHÚ Ý QUAN TRỌNG: Hãy dán mã Service Role Key của bạn vào đây (Bắt buộc dùng Service Role để có quyền xóa)
             String supabaseToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliZ2VibHBrcHRyc2VmcGFmdGhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDYwNDM0MSwiZXhwIjoyMDk2MTgwMzQxfQ.T0MpOxyT3aFSdVMy-o4j22D8OxO9hXzRLzDjkbputUI";
 
             headers.set("Authorization", "Bearer " + supabaseToken);
@@ -208,17 +265,14 @@ public class DocumentServiceImpl implements DocumentService {
 
             org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
 
-            // Gửi lệnh xóa lên cloud Supabase
             restTemplate.exchange(supabaseUrl, org.springframework.http.HttpMethod.DELETE, entity, String.class);
             System.out.println("==> Đã xóa file vật lý thành công trên Supabase Bucket: " + fileKey);
 
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             String errorResponse = e.getResponseBodyAsString();
-            // Nếu file thực tế trên Cloud vốn dĩ đã bị mất từ trước (404 Not Found), ta log cảnh báo và vẫn cho chạy tiếp xuống dưới để dọn DB
             if (e.getStatusCode().value() == 404 || errorResponse.contains("not_found")) {
                 System.out.println("==> Cảnh báo: File không tìm thấy trên Cloud (404), tiến hành dọn dẹp tiếp Database.");
             } else {
-                // Nếu gặp các lỗi khác (403 Unauthorized, 400 lỗi cú pháp hệ thống...), lập tức chặn đứng (ném RuntimeException) để Rollback Transaction, không cho xóa DB local!
                 throw new RuntimeException("Không thể xóa file vật lý trên Supabase Bucket. Mã lỗi: " + e.getStatusCode() + " - Chi tiết: " + errorResponse);
             }
         } catch (Exception e) {
@@ -233,7 +287,6 @@ public class DocumentServiceImpl implements DocumentService {
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
 
-
         long newUsedQuota = Math.max(0, storage.getUsedQuota() - actualFileSize);
         storage.setUsedQuota(newUsedQuota);
 
@@ -242,43 +295,23 @@ public class DocumentServiceImpl implements DocumentService {
         entityManager.flush();
         entityManager.clear();
 
-
         documentChunkRepository.deleteByDocument_Id(documentId);
         documentRepository.delete(document);
     }
 
-    public List<Document> getMyDocuments() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("Người dùng chưa được xác thực hệ thống");
-        }
-
-        String currentUserEmail = authentication.getName();
-
-        User user = userRepository.findByEmailIgnoreCase(currentUserEmail)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + currentUserEmail));
-
-// ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
-        return documentRepository.findByUserId(user.getId());
-    }
-
-    // 🌟 1. HÀM BỔ TRỢ (PRIVATE): Chỉ làm nhiệm vụ đọc stream file từ Cloud Storage
-    private Resource fetchFileResourceFromCloud(Document doc) {
-        try {
-            String stringUrl = doc.getDownloadUrl();
-            java.net.URL url = java.net.URI.create(stringUrl).toURL();
-            try (java.io.InputStream inputStream = url.openStream()) {
-                return new ByteArrayResource(inputStream.readAllBytes());
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Không thể tải file từ Cloud Storage: " + e.getMessage());
-        }
-    }
-
-    // 🌟 2. HÀM PHỤC VỤ DOWNLOAD: Giữ nguyên logic chặn quyền nghiêm ngặt (Yêu cầu 'download' hoặc 'edit')
     @Override
     @Transactional(readOnly = true)
-    public Resource downloadDocumentFile(UUID documentId, UUID userId) {
+    public Resource downloadDocumentFile(UUID documentId) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        UUID userId = user.getId();
+
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
@@ -302,16 +335,24 @@ public class DocumentServiceImpl implements DocumentService {
         return fetchFileResourceFromCloud(doc);
     }
 
-    // 🌟 3. HÀM PHỤC VỤ PREVIEW (MỚI): Cho phép bất kỳ ai có quyền tiếp cận (view, download, edit) đều được xem luồng file
     @Override
     @Transactional(readOnly = true)
-    public Resource getFileResourceForPreview(UUID documentId, UUID userId) {
+    public Resource getFileResourceForPreview(UUID documentId) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        UUID userId = user.getId();
+
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
         boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
         boolean isPublic = doc.isPublic();
-        // Cứ có bản ghi tồn tại trong bảng share (bất kể quyền gì: view, download, edit) thì được coi là hợp lệ để xem trước
         boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
 
         if (!isOwner && !isPublic && !isSharedWithMe) {
@@ -321,52 +362,20 @@ public class DocumentServiceImpl implements DocumentService {
         return fetchFileResourceFromCloud(doc);
     }
 
-    private DocumentResponseDTO mapToResponseDTO(Document document) {
-    DocumentResponseDTO dto = new DocumentResponseDTO();
-
-    dto.setDocumentId(document.getId());
-    dto.setDocumentName(document.getDocumentName());
-    dto.setFileType(document.getFileType());
-    dto.setPreviewUrl(document.getPreviewUrl());
-    dto.setDownloadUrl(document.getDownloadUrl());
-    dto.setCreatedAt(document.getCreatedAt());
-    dto.setDescription(document.getDescription());
-    dto.setTextContent(document.getDescription());
-    dto.setIsPublic(document.isPublic());
-    return dto;
-}
-
-//    @Override
-//    @Transactional(readOnly = true)
-//    public List<DocumentResponseDTO> searchAndFilterDocuments(UUID userId, String searchName, String fileType) {
-//        List<Document> accessibleDocs = documentRepository.findAccessibleDocuments(userId);
-//
-//        return accessibleDocs.stream()
-//                .filter(doc -> {
-//                    if (searchName != null && !searchName.trim().isEmpty()) {
-//                        return doc.getDocumentName() != null &&
-//                                doc.getDocumentName().toLowerCase().contains(searchName.toLowerCase().trim());
-//                    }
-//                    return true;
-//                })
-//                .filter(doc -> {
-//                    if (fileType != null && !fileType.trim().isEmpty()) {
-//                        return doc.getFileType() != null &&
-//                                doc.getFileType().toLowerCase().contains(fileType.toLowerCase().trim());
-//                    }
-//                    return true;
-//                })
-//                .map(this::mapToResponseDTO)
-//                .toList();
-//    }
-
     @Override
     @Transactional(readOnly = true)
-    public List<DocumentResponseDTO> searchDocumentsByFilter(UUID userId, String searchText, UUID categoryId) {
-        // 🌟 TỐI ƯU: Gọi trực tiếp câu Query nâng cao dưới DB thay vì filter bằng Stream Java (giúp tăng tốc hệ thống)
-        List<Document> documents = documentRepository.searchDocumentsWithCategory(userId, searchText, categoryId);
+    public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText, UUID categoryId) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
 
-        // Map danh sách Entity sang DocumentResponseDTO đúng cấu trúc trả về
+        List<Document> documents = documentRepository.searchDocumentsWithCategory(user.getId(), searchText != null ? searchText.trim() : null
+        );
+
         return documents.stream()
                 .map(this::mapToResponseDTO)
                 .toList();
@@ -374,21 +383,25 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public DocumentResponseDTO toggleDocumentPublicStatus(UUID userId, UUID documentId, boolean isPublic) {
-        // 1. Tìm tài liệu dựa trên ID thô gửi lên
+    public DocumentResponseDTO toggleDocumentPublicStatus(UUID documentId, boolean isPublic) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu."));
 
-        // 2. Bảo mật: Kiểm tra xem User đang thực hiện có đúng là chủ sở hữu của tài liệu này không
-        if (!document.getUser().getId().equals(userId)) {
+        if (!document.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa trạng thái của tài liệu này!");
         }
 
-        // 3. Tiến hành thay đổi trạng thái lưu trữ
         document.setPublic(isPublic);
         Document updatedDoc = documentRepository.saveAndFlush(document);
 
-        // 4. Đóng gói dữ liệu trả về thông qua hàm map có sẵn trong service của bạn
         return mapToResponseDTO(updatedDoc);
     }
 
@@ -396,24 +409,24 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional(readOnly = true)
     public List<DocumentResponseDTO> getPublicDocuments() {
         return documentRepository.findByIsPublicTrueOrderByCreatedAtDesc()
-            .stream()
-            .map(this::mapToResponseDTO)
-            .toList();
+                .stream()
+                .map(this::mapToResponseDTO)
+                .toList();
     }
 
-    // Hàm bổ trợ: Chỉ lấy dữ liệu file từ Cloud sau khi đã xác thực quyền cơ bản (Chính chủ / Public / Được Share bất kỳ quyền nào)
-    private Resource getFileResourceFromServer(UUID documentId, UUID userId) {
-        Document doc = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
-
-        boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
-        boolean isPublic = doc.isPublic();
-        boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
-
-        if (!isOwner && !isPublic && !isSharedWithMe) {
-            throw new RuntimeException("Bạn không có quyền truy cập tài liệu này!");
+    public List<Document> getMyDocuments() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Người dùng chưa được xác thực hệ thống");
         }
+        String currentUserEmail = authentication.getName();
+        User user = userRepository.findByEmailIgnoreCase(currentUserEmail)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + currentUserEmail));
 
+        return documentRepository.findByUserId(user.getId());
+    }
+
+    private Resource fetchFileResourceFromCloud(Document doc) {
         try {
             String stringUrl = doc.getDownloadUrl();
             java.net.URL url = java.net.URI.create(stringUrl).toURL();
@@ -423,5 +436,19 @@ public class DocumentServiceImpl implements DocumentService {
         } catch (Exception e) {
             throw new RuntimeException("Không thể tải file từ Cloud Storage: " + e.getMessage());
         }
+    }
+
+    private DocumentResponseDTO mapToResponseDTO(Document document) {
+        DocumentResponseDTO dto = new DocumentResponseDTO();
+        dto.setDocumentId(document.getId());
+        dto.setDocumentName(document.getDocumentName());
+        dto.setFileType(document.getFileType());
+        dto.setPreviewUrl(document.getPreviewUrl());
+        dto.setDownloadUrl(document.getDownloadUrl());
+        dto.setCreatedAt(document.getCreatedAt());
+        dto.setDescription(document.getDescription());
+        dto.setTextContent(document.getDescription());
+        dto.setIsPublic(document.isPublic());
+        return dto;
     }
 }

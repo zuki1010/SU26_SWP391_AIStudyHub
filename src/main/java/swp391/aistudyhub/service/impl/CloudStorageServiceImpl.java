@@ -3,14 +3,18 @@ package swp391.aistudyhub.service.impl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.dto.response.CloudStorageUsageResponseDTO;
 import swp391.aistudyhub.entity.CloudStorage; // Đảm bảo đã import Entity này
+import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.repository.CloudStorageRepository;
 import swp391.aistudyhub.repository.DocumentRepository;
+import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.CloudStorageService;
 
 import java.io.IOException;
@@ -21,6 +25,9 @@ public class CloudStorageServiceImpl implements CloudStorageService {
 
     @Autowired
     private CloudStorageRepository cloudStorageRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Value("${supabase.url}")
     private String supabaseUrl;
@@ -35,7 +42,17 @@ public class CloudStorageServiceImpl implements CloudStorageService {
 
     @Override
     @Transactional
-    public String uploadFile(UUID userId, MultipartFile file) {
+    public String uploadFile( MultipartFile file) {
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        // 🌟 3. TÁI TẠO BIẾN userId TỪ USER NGẦM ĐỂ CÁC LOGIC PHÍA DƯỚI HẾT BÁO ĐỎ
+        UUID userId = user.getId();
+
         // 1. BỔ SUNG: Lấy thông tin cấu hình Storage của User từ DB local lên kiểm tra trước
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình bộ nhớ của người dùng"));
@@ -90,7 +107,17 @@ public class CloudStorageServiceImpl implements CloudStorageService {
 
     @Override
     @Transactional(readOnly = true)
-    public CloudStorageUsageResponseDTO getCloudStorageUsage(UUID userId) {
+    public CloudStorageUsageResponseDTO getCloudStorageUsage() {
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        // Tái tạo lại biến userId để giữ nguyên logic tính toán phía dưới của bạn
+        UUID userId = user.getId();
+
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình bộ nhớ của người dùng"));
 

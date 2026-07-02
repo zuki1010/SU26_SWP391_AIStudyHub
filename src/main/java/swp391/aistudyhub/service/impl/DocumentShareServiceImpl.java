@@ -1,6 +1,8 @@
 package swp391.aistudyhub.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import swp391.aistudyhub.entity.Document;
@@ -28,7 +30,17 @@ public class DocumentShareServiceImpl implements DocumentShareService {
 
     @Override
     @Transactional
-    public void shareDocumentToUser(UUID ownerId, UUID documentId, UUID targetUserId, String permissionType) {
+    public void shareDocumentToUser(UUID documentId, UUID targetUserId, String permissionType) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN (Thay thế ownerId truyền vào)
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User currentUser = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        UUID ownerId = currentUser.getId();
+
         // 1. Kiểm tra tài liệu tồn tại
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu."));
@@ -58,7 +70,7 @@ public class DocumentShareServiceImpl implements DocumentShareService {
         share.setDocument(doc);
         share.setSharedWithUser(targetUser);
 
-        // 🌟 THAY ĐỔI TẠI ĐÂY: Chuẩn hóa và ép chặt 3 bộ từ khóa quyền hợp lệ
+        // Chuẩn hóa và ép chặt 3 bộ từ khóa quyền hợp lệ
         if (permissionType != null && !permissionType.trim().isEmpty()) {
             String pType = permissionType.trim().toLowerCase();
 
@@ -67,7 +79,6 @@ public class DocumentShareServiceImpl implements DocumentShareService {
             }
             share.setPermissionType(pType);
         } else {
-            // Mặc định nếu Frontend không truyền param này lên hệ thống thì sẽ gán quyền cơ bản nhất là chỉ xem
             share.setPermissionType("view");
         }
 
@@ -76,9 +87,19 @@ public class DocumentShareServiceImpl implements DocumentShareService {
 
     @Override
     @Transactional
-    public void updateSharePermission(UUID ownerId, UUID documentId, UUID targetUserId, String newPermissionType) {
+    public void updateSharePermission(UUID documentId, UUID targetUserId, String newPermissionType) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN (Thay thế ownerId truyền vào)
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+        User currentUser = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        UUID ownerId = currentUser.getId();
+
         // 1. Kiểm tra tài liệu tồn tại
-        swp391.aistudyhub.entity.Document doc = documentRepository.findById(documentId)
+        Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
         // 2. Bảo mật: Chỉ chủ sở hữu mới được sửa quyền của người khác
@@ -91,6 +112,9 @@ public class DocumentShareServiceImpl implements DocumentShareService {
                 .orElseThrow(() -> new RuntimeException("Tài liệu này chưa từng được chia sẻ cho người dùng này."));
 
         // 4. Chuẩn hóa quyền mới (chỉ chấp nhận: view, download, edit)
+        if (newPermissionType == null || newPermissionType.trim().isEmpty()) {
+            throw new RuntimeException("Quyền mới không được để trống!");
+        }
         String permission = newPermissionType.trim().toLowerCase();
         if (!permission.equals("view") && !permission.equals("download") && !permission.equals("edit")) {
             throw new RuntimeException("Quyền không hợp lệ! Chỉ chấp nhận: view, download, edit.");
