@@ -96,7 +96,12 @@ public class DocumentServiceImpl implements DocumentService {
                     DocumentResponseDTO dto = new DocumentResponseDTO();
                     dto.setDocumentId(doc.getId());
                     dto.setDocumentName(doc.getDocumentName());
-                    //set may cai khac vo giup em luon
+                    dto.setFileType(doc.getFileType());
+                    dto.setPreviewUrl(doc.getPreviewUrl());
+                    dto.setDownloadUrl(doc.getDownloadUrl());
+                    dto.setCreatedAt(doc.getCreatedAt());
+                    dto.setDescription(doc.getDescription());
+                    dto.setIsPublic(doc.isPublic());
                     return dto;
                 })
                 .collect(Collectors.toList());
