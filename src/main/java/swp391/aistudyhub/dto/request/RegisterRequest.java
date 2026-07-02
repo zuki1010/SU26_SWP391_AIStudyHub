@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.enums.UserRole;
 
 @Getter
 @Setter
@@ -24,7 +26,7 @@ public class RegisterRequest {
     private String fullName;
 
     @Pattern(regexp = "CUSTOMER|ADMIN|MODERATOR", message = "role must be CUSTOMER, ADMIN, or MODERATOR")
-    private String role = "CUSTOMER";
+    private UserRole role = UserRole.CUSTOMER;
 
     @Size(max = 50)
     private String studentCode;

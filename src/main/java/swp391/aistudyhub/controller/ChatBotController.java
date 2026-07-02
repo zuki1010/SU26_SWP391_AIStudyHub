@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
@@ -19,13 +20,11 @@ import java.util.UUID;
 @RequestMapping("/api/chat")
 @Tag(name = "AI ChatBot", description = "Create session, chat")
 @SecurityRequirement(name = "bearerAuth")
+@PreAuthorize("hasRole('CUSTOMER')")
 public class ChatBotController {
 
     @Autowired
     private ChatBotService chatBotService;
-
-    @Autowired
-    private DocumentService documentService;
 
     @PostMapping("/start")
     public ResponseEntity<?> startChat(@RequestBody(required = false) StartSessionDTO dto) {

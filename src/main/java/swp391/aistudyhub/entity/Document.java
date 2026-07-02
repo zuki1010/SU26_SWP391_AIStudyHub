@@ -67,5 +67,5 @@ public class Document {
     private List<DocumentVersion> documentVersions = new ArrayList<>();
 
     @Column(name = "description", columnDefinition = "TEXT")
-private String description;
+    private String description;
 }

@@ -43,8 +43,9 @@ public class User {
     @Size(max = 20)
     @NotNull
     @ColumnDefault("'CUSTOMER'")
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
-    private String role;
+    private UserRole role;
 
     @Size(max = 50)
     @ColumnDefault("'ACTIVE'")

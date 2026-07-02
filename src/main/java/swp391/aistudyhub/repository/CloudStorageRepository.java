@@ -1,5 +1,9 @@
 package swp391.aistudyhub.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import swp391.aistudyhub.dto.projection.DocumentResponse;
+import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,4 +24,6 @@ public interface CloudStorageRepository extends JpaRepository<CloudStorage, UUID
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
     @org.springframework.data.jpa.repository.Query("UPDATE CloudStorage c SET c.usedQuota = c.usedQuota + :fileSize WHERE c.user.id = :userId")
     void plusUsedQuota(@org.springframework.data.repository.query.Param("userId") java.util.UUID userId, @org.springframework.data.repository.query.Param("fileSize") long fileSize);
+
+    Page<StorageUsageResponse> findBy(Pageable pageable);
 }

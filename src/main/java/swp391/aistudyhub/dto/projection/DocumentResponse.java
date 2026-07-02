@@ -1,5 +1,6 @@
 package swp391.aistudyhub.dto.projection;
 
+import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.AdminProfileRepository;
 import swp391.aistudyhub.repository.CustomerProfileRepository;
 import swp391.aistudyhub.repository.ModeratorProfileRepository;
@@ -31,7 +32,7 @@ public interface DocumentResponse {
         if (getUserId() == null) return "Unknown";
 
         return userRepo.findById(getUserId()).map(user -> {
-            String role = user.getRole();
+            UserRole role = user.getRole();
 
             if ("CUSTOMER".equals(role)) {
                 return customerRepo.findByUser_Id(user.getId())
