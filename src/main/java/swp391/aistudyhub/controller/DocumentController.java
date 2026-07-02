@@ -11,6 +11,8 @@ import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.request.DocumentTogglePublicRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
+import swp391.aistudyhub.dto.request.DocumentRequestDTO;
+import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.service.CloudStorageService;
 import swp391.aistudyhub.service.DocumentChunkService;
@@ -30,6 +32,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
+@PreAuthorize("hasRole('CUSTOMER')")
 public class    DocumentController {
 
     @Autowired

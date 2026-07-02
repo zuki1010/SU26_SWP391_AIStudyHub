@@ -92,7 +92,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional(readOnly = true)
     @Override
     public List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId) {
-// ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
+        // ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
         return documentRepository.findByUserId(userId)
                 .stream()
                 .map(this::mapToResponseDTO)
