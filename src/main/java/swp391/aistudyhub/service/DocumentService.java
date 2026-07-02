@@ -4,6 +4,7 @@ import org.springframework.core.io.Resource;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.entity.User;
 
 import java.util.List;
 import java.util.UUID;
@@ -11,7 +12,7 @@ import java.util.UUID;
 public interface DocumentService {
     DocumentResponseDTO createDocument(UUID userId, DocumentRequestDTO requestDTO);
 
-    List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId);
+    List<DocumentResponseDTO> getAllDocumentsByUser();
 
     DocumentResponseDTO getDocumentDetail(UUID documentId, UUID userId);
     

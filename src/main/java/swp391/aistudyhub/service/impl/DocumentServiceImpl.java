@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
@@ -91,12 +92,34 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<DocumentResponseDTO> getAllDocumentsByUserId(UUID userId) {
+    public List<DocumentResponseDTO> getAllDocumentsByUser() {
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
         // ĐÃ ĐỔI: Gọi findByUserId (bỏ gạch dưới) khớp với Repository
-        return documentRepository.findByUserId(userId)
-                .stream()
-                .map(this::mapToResponseDTO)
-                .toList();
+
+        List<Document> documents = documentRepository.findByUser(user);
+
+        // Convert từ Document sang DocumentResponseDTO
+        return documents.stream()
+                .map(doc -> {
+                    DocumentResponseDTO dto = new DocumentResponseDTO();
+                    dto.setDocumentId(doc.getId());
+                    dto.setDocumentName(doc.getDocumentName());
+                    dto.setFileType(doc.getFileType());
+                    dto.setPreviewUrl(doc.getPreviewUrl());
+                    dto.setDownloadUrl(doc.getDownloadUrl());
+                    dto.setCreatedAt(doc.getCreatedAt());
+                    dto.setDescription(doc.getDescription());
+                    dto.setIsPublic(doc.isPublic());
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -168,7 +191,7 @@ public class DocumentServiceImpl implements DocumentService {
                 fileKey = downloadUrl.substring(downloadUrl.indexOf("/documents/") + 11);
             } else {
                 // Phương án dự phòng nếu không tìm thấy link dạng chuẩn: dùng userId/documentId.extension
-                String extension = document.getFileType().toLowerCase().trim();
+                String extension = document.getFileType().name().trim().toLowerCase();
                 fileKey = userId.toString() + "/" + documentId.toString() + "." + extension;
             }
 

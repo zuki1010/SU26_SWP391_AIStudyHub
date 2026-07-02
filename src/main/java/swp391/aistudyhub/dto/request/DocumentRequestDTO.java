@@ -1,6 +1,7 @@
 package swp391.aistudyhub.dto.request;
 
 import lombok.Data;
+import swp391.aistudyhub.enums.FileType;
 
 import java.util.List;
 
@@ -8,7 +9,7 @@ import java.util.List;
 public class DocumentRequestDTO {
 
     private String documentName;
-    private String fileType;
+    private FileType fileType;
     private String previewUrl;
     private String downloadUrl;
     private Long fileSize;
