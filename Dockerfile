@@ -23,3 +23,4 @@ COPY --from=build /app/target/*.jar app.jar
 
 # Lệnh khởi chạy ứng dụng Spring Boot
 ENTRYPOINT ["java", "-jar", "app.jar"]
+

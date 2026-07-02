@@ -1,5 +1,6 @@
 package swp391.aistudyhub.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -7,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import swp391.aistudyhub.enums.FileType;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,6 +27,7 @@ public class Document {
     private UUID id;
 
     @NotNull
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "user_id", nullable = false)
@@ -36,8 +39,9 @@ public class Document {
     private String documentName;
 
     @Size(max = 50)
+    @Enumerated(EnumType.STRING)
     @Column(name = "file_type", length = 50)
-    private String fileType;
+    private FileType fileType;
 
     @Column(name = "preview_url", columnDefinition = "text")
     private String previewUrl;

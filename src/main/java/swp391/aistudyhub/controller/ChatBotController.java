@@ -26,9 +26,6 @@ public class ChatBotController {
     @Autowired
     private ChatBotService chatBotService;
 
-    @Autowired
-    private DocumentService documentService;
-
     @PostMapping("/start")
     public ResponseEntity<?> startChat(@RequestBody(required = false) StartSessionDTO dto) {
         UUID sessionId = chatBotService.createNewChatSession(dto);

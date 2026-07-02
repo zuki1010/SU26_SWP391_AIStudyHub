@@ -20,12 +20,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin("*")
-@Tag(name = "Admin Dashboard", description = "View User Account")
+@Tag(name = "Admin Dashboard", description = "View User Account, View Document List")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
-
-    @Autowired
-    private UserService userService;
 
     @Autowired
     private AdminService adminService;
@@ -65,6 +62,23 @@ public class AdminController {
     @GetMapping("/storage")
     public ResponseEntity<?> getAllStorageUsage(@RequestParam(defaultValue = "0") int page,
                                                 @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(adminService.getAllStorage(page, size));
+    }
+
+    @PutMapping("/config-storage")
+    public ResponseEntity<?> configureTotalStorageQuota() {
+        return ResponseEntity.ok(null);
+    }
+    @PutMapping("/config-aitoken")
+    public ResponseEntity<?> configureChatToken() {
+        return ResponseEntity.ok(null);
+    }
+    @PutMapping("/config-file-size")
+    public ResponseEntity<?> configureMaxFileSize() {
+        return ResponseEntity.ok(null);
+    }
+    @PutMapping("/config-file-type")
+    public ResponseEntity<?> configureAvailableFileType() {
         return ResponseEntity.ok(null);
     }
 }

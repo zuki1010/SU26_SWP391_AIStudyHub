@@ -83,7 +83,8 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public Page<StorageUsageResponse> getAllStorage(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("usedQuota").descending());
         return cloudStorageRepository.findBy(pageable);
+
     }
 }
