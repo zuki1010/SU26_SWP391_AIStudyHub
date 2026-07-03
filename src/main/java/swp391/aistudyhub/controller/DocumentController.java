@@ -72,7 +72,7 @@ public class    DocumentController {
 
             String originalName = file.getOriginalFilename();
             String fileType = (originalName != null && originalName.contains("."))
-                    ? originalName.substring(originalName.lastIndexOf(".") + 1)
+                    ? originalName.substring(originalName.lastIndexOf(".") + 1).toLowerCase()
                     : "unknown";
             requestDTO.setFileType(FileType.valueOf(fileType));
 

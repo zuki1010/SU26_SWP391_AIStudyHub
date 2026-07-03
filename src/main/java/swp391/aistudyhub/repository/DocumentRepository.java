@@ -45,7 +45,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
             "LEFT JOIN DocumentShare ds ON ds.document.id = d.id AND ds.sharedWithUser.id = :userId " +
             "LEFT JOIN DocumentCategory dc ON dc.document.id = d.id " +
             "WHERE (u.id = :userId OR d.isPublic = true OR ds IS NOT NULL) " +
-                    "AND (:searchText IS NULL OR :searchText = '' " +
+                    "AND (CAST(:searchText AS string) IS NULL OR :searchText = '' " +
                     "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
                     "    OR LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%')))") // Quét đồng thời cả 2 cột
     List<Document> searchDocumentsWithCategory(

@@ -39,7 +39,6 @@ public class Document {
     @Column(name = "document_name", nullable = false)
     private String documentName;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "file_type", length = 50)
     private FileType fileType;
 

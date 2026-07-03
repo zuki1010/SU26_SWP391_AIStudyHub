@@ -25,6 +25,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -41,10 +42,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/api/chat/**",
-            "/api/admin/**",
-            "/api/v1/documents/**"
-
+            "/api/v1/documents/public"
     };
 
     @Bean
@@ -55,16 +53,17 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
 
-                         .requestMatchers("/api/v1/documents/public").permitAll()
+                        .requestMatchers("/api/v1/documents/public").permitAll()
                         .requestMatchers("/api/v1/documents").authenticated()
                         .requestMatchers("/api/v1/documents/**").authenticated()
 
                         .requestMatchers("/api/v1/storage").authenticated()
                         .requestMatchers("/api/v1/storage/**").authenticated()
 
-
+                        .requestMatchers("/api/chat/**").authenticated()
                         .requestMatchers("/api/admin/**").authenticated()
                         .anyRequest().authenticated()
                 )
