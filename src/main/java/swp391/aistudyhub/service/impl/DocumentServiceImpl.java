@@ -75,60 +75,42 @@ public class DocumentServiceImpl implements DocumentService {
             throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
         }
 
-        // 1. 🌟 TỰ SINH SẴN ID CHO CẢ HAI BẢNG NGAY TỪ ĐẦU (Gán chuẩn luôn, không gán NULL)
-        java.util.UUID generatedDocumentId = java.util.UUID.randomUUID();
-        java.util.UUID generatedCategoryId = null;
-        String selectedSubject = null;
+        Document doc = new Document();
+        doc.setUser(user);
+        doc.setDocumentName(requestDTO.getDocumentName());
+        doc.setFileType(requestDTO.getFileType());
+        doc.setPreviewUrl(requestDTO.getPreviewUrl());
+        doc.setDownloadUrl(requestDTO.getDownloadUrl());
+        doc.setFileSize(actualFileSize);
+        doc.setDescription(requestDTO.getDescription());
+        doc.setCategoryId(null); // 🌟 Giữ null ở bảng documents theo ý bạn để né xích khóa ngoại chéo
 
+        Document savedDoc = documentRepository.saveAndFlush(doc);
+
+        // 2. CHÈN DỮ LIỆU VÀO BẢNG document_categories BẰNG SQL THUẦN
         if (requestDTO.getCategoryNames() != null && !requestDTO.getCategoryNames().isEmpty()) {
-            selectedSubject = requestDTO.getCategoryNames().get(0).trim().toUpperCase();
+            String selectedSubject = requestDTO.getCategoryNames().get(0).trim().toUpperCase();
             try {
                 // Kiểm tra môn học hợp lệ theo Enum
                 SubjectCode subject = SubjectCode.valueOf(selectedSubject);
-                generatedCategoryId = java.util.UUID.randomUUID();
+
+                String sqlInsertCategory = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at) " +
+                        "VALUES (?, ?, ?, ?, ?)";
+
+                entityManager.createNativeQuery(sqlInsertCategory)
+                        .setParameter(1, java.util.UUID.randomUUID()) // Tự sinh ID cho danh mục mới
+                        .setParameter(2, savedDoc.getId())           // Khóa ngoại trỏ về Document vừa lưu (Thỏa mãn NOT NULL)
+                        .setParameter(3, subject.name())             // Tên môn học (Ví dụ: PRN212)
+                        .setParameter(4, "SUBJECT")
+                        .setParameter(5, java.time.OffsetDateTime.now())
+                        .executeUpdate();
+
+                entityManager.flush(); // Đồng bộ ngay xuống Postgres
+
             } catch (IllegalArgumentException e) {
                 throw new RuntimeException("Mã môn học '" + selectedSubject + "' không tồn tại trong hệ thống mã môn!");
             }
         }
-
-        // 2. 🌟 CHÈN BẢNG DOCUMENTS TRƯỚC (Nạp thẳng generatedCategoryId xịn vào)
-        String sqlInsertDoc = "INSERT INTO documents (document_id, user_id, category_id, document_name, file_type, preview_url, download_url, file_size, description, is_public, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        entityManager.createNativeQuery(sqlInsertDoc)
-                .setParameter(1, generatedDocumentId)
-                .setParameter(2, userId)
-                .setParameter(3, generatedCategoryId) // Khớp khít ID danh mục xịn ngay từ phát súng đầu tiên
-                .setParameter(4, requestDTO.getDocumentName())
-                .setParameter(5, requestDTO.getFileType())
-                .setParameter(6, requestDTO.getPreviewUrl())
-                .setParameter(7, requestDTO.getDownloadUrl())
-                .setParameter(8, actualFileSize)
-                .setParameter(9, requestDTO.getDescription())
-                .setParameter(10, false)
-                .setParameter(11, java.time.OffsetDateTime.now())
-                .executeUpdate();
-
-        // 3. 🌟 CHÈN BẢNG DOCUMENT_CATEGORIES NGAY SAU ĐÓ TRONG CÙNG 1 TRANSACTION
-        if (generatedCategoryId != null) {
-            String sqlInsertCategory = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at) " +
-                    "VALUES (?, ?, ?, ?, ?)";
-
-            entityManager.createNativeQuery(sqlInsertCategory)
-                    .setParameter(1, generatedCategoryId)
-                    .setParameter(2, generatedDocumentId) // Khóa ngoại trỏ ngược về Document ID (Thỏa mãn NOT NULL)
-                    .setParameter(3, selectedSubject)
-                    .setParameter(4, "SUBJECT")
-                    .setParameter(5, java.time.OffsetDateTime.now())
-                    .executeUpdate();
-        }
-
-        // Ép toàn bộ dữ liệu xuống Postgres cùng một lúc
-        entityManager.flush();
-
-        // 4. Lấy lại thực thể Document từ DB để map sang Response DTO trơn tru cho luồng code phía sau
-        Document savedDoc = documentRepository.findById(generatedDocumentId)
-                .orElseThrow(() -> new RuntimeException("Lỗi hệ thống: Không thể khởi tạo tài liệu."));
 
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.save(storage);
