@@ -87,29 +87,91 @@ public class DocumentServiceImpl implements DocumentService {
 
         Document savedDoc = documentRepository.saveAndFlush(doc);
 
-        // 2. CHÈN DỮ LIỆU VÀO BẢNG document_categories BẰNG SQL THUẦN
+        // 2. XỬ LÝ LƯU DANH MỤC (ĐẢM BẢO NHIỀU DOCUMENT DÙNG CHUNG 1 CATEGORY ĐÃ CÓ)
         if (requestDTO.getCategoryNames() != null && !requestDTO.getCategoryNames().isEmpty()) {
-            String selectedSubject = requestDTO.getCategoryNames().get(0).trim().toUpperCase();
+            String selectedSubject = requestDTO.getCategoryNames().get(0).trim();
+
             try {
-                // Kiểm tra môn học hợp lệ theo Enum
-                SubjectCode subject = SubjectCode.valueOf(selectedSubject);
+                // Kiểm tra môn học hợp lệ theo bộ Enum hệ thống
+                SubjectCode subject = SubjectCode.valueOf(selectedSubject.toUpperCase());
+                selectedSubject = subject.name();
 
-                String sqlInsertCategory = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at) " +
-                        "VALUES (?, ?, ?, ?, ?)";
+                // 🔍 Bước A: Tìm xem hệ thống ĐÃ CÓ môn học này chưa (Môn hệ thống có user_id IS NULL)
+                String sqlCheckCategory = "SELECT category_id FROM document_categories WHERE UPPER(category_name) = ? AND user_id IS NULL LIMIT 1";
+                List<?> existingIds = entityManager.createNativeQuery(sqlCheckCategory)
+                        .setParameter(1, selectedSubject.toUpperCase())
+                        .getResultList();
 
-                entityManager.createNativeQuery(sqlInsertCategory)
-                        .setParameter(1, java.util.UUID.randomUUID()) // Tự sinh ID cho danh mục mới
-                        .setParameter(2, savedDoc.getId())           // Khóa ngoại trỏ về Document vừa lưu (Thỏa mãn NOT NULL)
-                        .setParameter(3, subject.name())             // Tên môn học (Ví dụ: PRN212)
-                        .setParameter(4, "SUBJECT")
-                        .setParameter(5, java.time.OffsetDateTime.now())
+                java.util.UUID targetCategoryId;
+
+                if (!existingIds.isEmpty()) {
+                    // 👉 Nếu ĐÃ CÓ: Lấy luôn ID cũ để dùng chung
+                    targetCategoryId = (java.util.UUID) existingIds.get(0);
+                } else {
+                    // 👉 Nếu CHƯA CÓ: Tạo mới dòng danh mục hệ thống
+                    targetCategoryId = java.util.UUID.randomUUID();
+                    String sqlInsertNewCategory = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at, user_id) " +
+                            "VALUES (?, ?, ?, ?, ?, NULL)";
+                    entityManager.createNativeQuery(sqlInsertNewCategory)
+                            .setParameter(1, targetCategoryId)
+                            .setParameter(2, savedDoc.getId()) // Gán tạm thời document_id đầu tiên kích hoạt môn này
+                            .setParameter(3, selectedSubject)
+                            .setParameter(4, "SUBJECT")
+                            .setParameter(5, java.time.OffsetDateTime.now())
+                            .executeUpdate();
+                }
+
+                // 🌟 Bước B: Cập nhật ngược lại khóa ngoại category_id cho Document vừa tạo để chúng ăn chung ID
+                String sqlUpdateDoc = "UPDATE documents SET category_id = ? WHERE document_id = ?";
+                entityManager.createNativeQuery(sqlUpdateDoc)
+                        .setParameter(1, targetCategoryId)
+                        .setParameter(2, savedDoc.getId())
                         .executeUpdate();
 
-                entityManager.flush(); // Đồng bộ ngay xuống Postgres
+                // 🔥 ĐỒNG BỘ LÊN RAM: Gán luôn vào savedDoc để hàm mapToResponseDTO ở cuối không bị trả về null
+                savedDoc.setCategoryId(targetCategoryId);
 
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Mã môn học '" + selectedSubject + "' không tồn tại trong hệ thống mã môn!");
+                // 🌟 XỬ LÝ MÔN TỰ NHẬP Ở MỤC "KHÁC" (Chỉ cá nhân người đó nhìn thấy)
+                String customSubjectName = selectedSubject;
+
+                // 🔍 Tìm xem chính User này đã từng tự tạo môn có tên này chưa
+                String sqlCheckCustom = "SELECT category_id FROM document_categories WHERE UPPER(category_name) = ? AND user_id = ? LIMIT 1";
+                List<?> existingCustomIds = entityManager.createNativeQuery(sqlCheckCustom)
+                        .setParameter(1, customSubjectName.toUpperCase())
+                        .setParameter(2, userId)
+                        .getResultList();
+
+                java.util.UUID targetCustomId;
+
+                if (!existingCustomIds.isEmpty()) {
+                    targetCustomId = (java.util.UUID) existingCustomIds.get(0);
+                } else {
+                    targetCustomId = java.util.UUID.randomUUID();
+                    String sqlInsertCustom = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at, user_id) " +
+                            "VALUES (?, ?, ?, ?, ?, ?)";
+                    entityManager.createNativeQuery(sqlInsertCustom)
+                            .setParameter(1, targetCustomId)
+                            .setParameter(2, savedDoc.getId())
+                            .setParameter(3, customSubjectName)
+                            .setParameter(4, "CUSTOM_SUBJECT")
+                            .setParameter(5, java.time.OffsetDateTime.now())
+                            .setParameter(6, userId)
+                            .executeUpdate();
+                }
+
+                // Cập nhật ngược lại khóa ngoại cho bảng documents
+                String sqlUpdateDocCustom = "UPDATE documents SET category_id = ? WHERE document_id = ?";
+                entityManager.createNativeQuery(sqlUpdateDocCustom)
+                        .setParameter(1, targetCustomId)
+                        .setParameter(2, savedDoc.getId())
+                        .executeUpdate();
+
+                // 🔥 ĐỒNG BỘ LÊN RAM: Gán luôn vào savedDoc để hàm mapToResponseDTO ở cuối không bị trả về null
+                savedDoc.setCategoryId(targetCustomId);
             }
+
+            entityManager.flush(); // Đẩy toàn bộ dữ liệu đồng bộ xuống database
         }
 
         storage.setUsedQuota(updatedUsedQuota);
