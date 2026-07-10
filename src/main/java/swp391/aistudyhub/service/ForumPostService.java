@@ -2,6 +2,7 @@ package swp391.aistudyhub.service;
 
 import swp391.aistudyhub.dto.request.ForumPostRequestDTO;
 import swp391.aistudyhub.dto.response.ForumPostResponseDTO;
+import swp391.aistudyhub.dto.response.ForumPostRevisionResponseDTO;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,4 +20,6 @@ public interface ForumPostService {
     void deletePost(UUID postId);
 
     ForumPostResponseDTO toggleVisibility(UUID postId);
+
+    List<ForumPostRevisionResponseDTO> getRevisionsByPostId(UUID postId);
 }

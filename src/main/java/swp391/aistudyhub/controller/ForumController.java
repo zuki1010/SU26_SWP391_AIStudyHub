@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.ForumPostRequestDTO;
 import swp391.aistudyhub.dto.response.ForumPostResponseDTO;
+import swp391.aistudyhub.dto.response.ForumPostRevisionResponseDTO;
 import swp391.aistudyhub.service.ForumPostService;
 
 import java.util.List;
@@ -90,6 +91,17 @@ public class ForumController {
         try {
             ForumPostResponseDTO response = forumPostService.toggleVisibility(postId);
             return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/revisions")
+    @Operation(summary = "Xem lịch sử chỉnh sửa (revisions) của một bài viết")
+    public ResponseEntity<?> getRevisions(@PathVariable("id") UUID postId) {
+        try {
+            List<ForumPostRevisionResponseDTO> revisions = forumPostService.getRevisionsByPostId(postId);
+            return ResponseEntity.ok(revisions);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

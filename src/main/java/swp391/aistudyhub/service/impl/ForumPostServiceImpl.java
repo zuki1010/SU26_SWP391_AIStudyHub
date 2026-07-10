@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import swp391.aistudyhub.dto.request.ForumPostRequestDTO;
 import swp391.aistudyhub.dto.response.ForumPostResponseDTO;
+import swp391.aistudyhub.dto.response.ForumPostRevisionResponseDTO;
 import swp391.aistudyhub.entity.ForumPost;
 import swp391.aistudyhub.entity.ForumPostRevision;
 import swp391.aistudyhub.entity.User;
@@ -171,6 +172,17 @@ public class ForumPostServiceImpl implements ForumPostService {
         return toResponseDTO(forumPostRepository.save(post));
     }
 
+    @Override
+    public List<ForumPostRevisionResponseDTO> getRevisionsByPostId(UUID postId) {
+        if (!forumPostRepository.existsById(postId)) {
+            throw new RuntimeException("Không tìm thấy bài viết!");
+        }
+        return forumPostRevisionRepository.findByPostIdOrderByCreatedAtDesc(postId)
+                .stream()
+                .map(this::toRevisionResponseDTO)
+                .collect(Collectors.toList());
+    }
+
     private ForumPostResponseDTO toResponseDTO(ForumPost post) {
         ForumPostResponseDTO dto = new ForumPostResponseDTO();
         dto.setId(post.getId());
@@ -184,6 +196,20 @@ public class ForumPostServiceImpl implements ForumPostService {
         dto.setIsPinned(post.getIsPinned());
         dto.setCreatedAt(post.getCreatedAt());
         dto.setUpdatedAt(post.getUpdatedAt());
+        return dto;
+    }
+
+    private ForumPostRevisionResponseDTO toRevisionResponseDTO(ForumPostRevision revision) {
+        ForumPostRevisionResponseDTO dto = new ForumPostRevisionResponseDTO();
+        dto.setId(revision.getId());
+        dto.setPostId(revision.getPostId());
+        dto.setRevisionNo(revision.getRevisionNo());
+        dto.setTitle(revision.getTitle());
+        dto.setContent(revision.getContent());
+        dto.setStatus(revision.getStatus());
+        dto.setEditedBy(revision.getEditedBy());
+        dto.setEditedByName(revision.getEditedByName());
+        dto.setCreatedAt(revision.getCreatedAt());
         return dto;
     }
 }
