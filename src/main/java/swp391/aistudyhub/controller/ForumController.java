@@ -63,6 +63,27 @@ public class ForumController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Xóa bài viết (bao gồm các revision của bài viết)")
+    public ResponseEntity<?> deletePost(@PathVariable("id") UUID postId) {
+        try {
+            forumPostService.deletePost(postId);
+            return ResponseEntity.ok(
+                    java.util.Map.of(
+                            "success", true,
+                            "message", "Xóa bài viết thành công!"
+                    )
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    java.util.Map.of(
+                            "success", false,
+                            "message", e.getMessage()
+                    )
+            );
+        }
+    }
+
     @PutMapping("/{id}/toggle-visibility")
     @Operation(summary = "Chuyển đổi hiển thị bài viết PUBLIC <-> PRIVATE")
     public ResponseEntity<?> toggleVisibility(@PathVariable("id") UUID postId) {

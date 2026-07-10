@@ -133,6 +133,23 @@ public class ForumPostServiceImpl implements ForumPostService {
 
     @Override
     @Transactional
+    public void deletePost(UUID postId) {
+        User user = getCurrentUser();
+
+        ForumPost post = forumPostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết!"));
+
+        if (post.getUserId() != null && !post.getUserId().equals(user.getId())) {
+            throw new RuntimeException("Bạn không có quyền xóa bài viết này!");
+        }
+
+        // Xóa các revision trước để tránh vi phạm khóa ngoại
+        forumPostRevisionRepository.deleteByPostId(postId);
+        forumPostRepository.delete(post);
+    }
+
+    @Override
+    @Transactional
     public ForumPostResponseDTO toggleVisibility(UUID postId) {
         User user = getCurrentUser();
 

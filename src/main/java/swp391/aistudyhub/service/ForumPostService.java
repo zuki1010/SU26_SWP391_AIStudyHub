@@ -16,5 +16,7 @@ public interface ForumPostService {
 
     ForumPostResponseDTO updatePost(UUID postId, ForumPostRequestDTO requestDTO);
 
+    void deletePost(UUID postId);
+
     ForumPostResponseDTO toggleVisibility(UUID postId);
 }
