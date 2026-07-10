@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @Service
 public class ChatBotServiceImpl implements ChatBotService {
 
+    private static final int MAX_DAILY_CHAT_TOKENS_DEFAULT = 50000;
+
     @Autowired
     private GeminiClient geminiClient;
 
@@ -49,9 +51,6 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Autowired
     private DocumentChunkService documentChunkService;
-
-    @Autowired
-    private RestTemplate restTemplate;
 
     @Override
     public UUID createNewChatSession(StartSessionDTO dto) {
