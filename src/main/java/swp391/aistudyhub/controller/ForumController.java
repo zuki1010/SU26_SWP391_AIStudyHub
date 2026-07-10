@@ -49,4 +49,28 @@ public class ForumController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Cập nhật bài viết (phiên bản cũ được lưu vào revisions)")
+    public ResponseEntity<?> updatePost(
+            @PathVariable("id") UUID postId,
+            @RequestBody ForumPostRequestDTO requestDTO) {
+        try {
+            ForumPostResponseDTO response = forumPostService.updatePost(postId, requestDTO);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/toggle-visibility")
+    @Operation(summary = "Chuyển đổi hiển thị bài viết PUBLIC <-> PRIVATE")
+    public ResponseEntity<?> toggleVisibility(@PathVariable("id") UUID postId) {
+        try {
+            ForumPostResponseDTO response = forumPostService.toggleVisibility(postId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

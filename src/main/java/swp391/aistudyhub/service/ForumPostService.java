@@ -13,4 +13,8 @@ public interface ForumPostService {
     List<ForumPostResponseDTO> getAllPosts();
 
     ForumPostResponseDTO getPostById(UUID postId);
+
+    ForumPostResponseDTO updatePost(UUID postId, ForumPostRequestDTO requestDTO);
+
+    ForumPostResponseDTO toggleVisibility(UUID postId);
 }
