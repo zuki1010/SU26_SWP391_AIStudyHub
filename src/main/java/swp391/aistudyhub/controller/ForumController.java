@@ -10,6 +10,9 @@ import swp391.aistudyhub.dto.request.ForumPostRequestDTO;
 import swp391.aistudyhub.dto.response.ForumPostResponseDTO;
 import swp391.aistudyhub.service.ForumPostService;
 
+import java.util.List;
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/forum/posts")
 @CrossOrigin(origins = "*")
@@ -24,6 +27,23 @@ public class ForumController {
     public ResponseEntity<?> createPost(@RequestBody ForumPostRequestDTO requestDTO) {
         try {
             ForumPostResponseDTO response = forumPostService.createPost(requestDTO);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/all")
+    @Operation(summary = "Lấy danh sách tất cả bài viết trên diễn đàn")
+    public ResponseEntity<List<ForumPostResponseDTO>> getAllPosts() {
+        return ResponseEntity.ok(forumPostService.getAllPosts());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Xem chi tiết một bài viết theo id")
+    public ResponseEntity<?> getPostById(@PathVariable("id") UUID postId) {
+        try {
+            ForumPostResponseDTO response = forumPostService.getPostById(postId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

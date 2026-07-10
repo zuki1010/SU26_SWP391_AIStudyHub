@@ -15,6 +15,9 @@ import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.ForumPostService;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ForumPostServiceImpl implements ForumPostService {
@@ -68,6 +71,21 @@ public class ForumPostServiceImpl implements ForumPostService {
         post.setUpdatedAt(Instant.now());
 
         return toResponseDTO(forumPostRepository.save(post));
+    }
+
+    @Override
+    public List<ForumPostResponseDTO> getAllPosts() {
+        return forumPostRepository.findAllByOrderByIsPinnedDescCreatedAtDesc()
+                .stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ForumPostResponseDTO getPostById(UUID postId) {
+        ForumPost post = forumPostRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bài viết!"));
+        return toResponseDTO(post);
     }
 
     private ForumPostResponseDTO toResponseDTO(ForumPost post) {
