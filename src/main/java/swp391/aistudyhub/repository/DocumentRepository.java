@@ -39,16 +39,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
             "OR d.id IN (SELECT ds.document.id FROM DocumentShare ds WHERE ds.sharedWithUser.id = :userId)")
     List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 
-    // 🌟 ĐÃ TÍCH HỢP: Hàm tìm kiếm nâng cao theo Tên file HOẶC Tên danh mục (Category), hỗ trợ lọc theo ID danh mục
-    @Query("SELECT DISTINCT d FROM Document d " +
-            "LEFT JOIN d.user u " +
-            "LEFT JOIN DocumentShare ds ON ds.document.id = d.id AND ds.sharedWithUser.id = :userId " +
-            "LEFT JOIN DocumentCategory dc ON dc.document.id = d.id " +
-            "WHERE (u.id = :userId OR d.isPublic = true OR ds IS NOT NULL) " +
-                    "AND (:searchText IS NULL OR :searchText = '' " +
-                    "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
-                    "    OR LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%')))") // Quét đồng thời cả 2 cột
-    List<Document> searchDocumentsWithCategory(
+    // 🌟 HÀM TÌM KIẾM THÔNG MINH CHO TÀI LIỆU PUBLIC (Gõ mã môn hoặc tên file)
+    // 🌟 HÀM SEARCH ĐỈNH CAO: Tìm tài liệu PRIVATE của tôi + tài liệu PUBLIC của toàn trường
+    @Query("SELECT d FROM Document d " +
+            "WHERE (d.user.id = :userId OR d.isPublic = true) " + // Điều kiện bảo mật quyết định ở đây
+            "AND (:searchText IS NULL OR :searchText = '' " +
+            "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
+            "    OR LOWER(CAST(d.categoryId AS string)) LIKE LOWER(CONCAT('%', :searchText, '%')))")
+    List<Document> searchSmartAccessibleDocuments(
             @Param("userId") UUID userId,
-            @Param("searchText") String searchText);;
+            @Param("searchText") String searchText);
 }

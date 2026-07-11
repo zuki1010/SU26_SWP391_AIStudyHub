@@ -439,8 +439,8 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText, UUID categoryId) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
+    public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
+        // 🌟 LẤY USER NGẦM TỪ TOKEN (Bắt buộc để check file Private)
         Authentication au = SecurityContextHolder.getContext().getAuthentication();
         if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
             throw new RuntimeException("You are not login yet!");
@@ -448,8 +448,11 @@ public class DocumentServiceImpl implements DocumentService {
         User user = userRepository.findByEmailIgnoreCase(au.getName())
                 .orElseThrow(() -> new RuntimeException("This user is not found!"));
 
-        List<Document> documents = documentRepository.searchDocumentsWithCategory(user.getId(), searchText != null ? searchText.trim() : null
-        );
+        // Đưa chuỗi về dạng chữ HOA để so khớp chuẩn với mã môn trong Enum
+        String cleanSearchText = (searchText != null && !searchText.trim().isEmpty()) ? searchText.trim().toUpperCase() : null;
+
+        // Gọi hàm Repo thông minh truyền vào cả User ID của người đang đăng nhập
+        List<Document> documents = documentRepository.searchSmartAccessibleDocuments(user.getId(), cleanSearchText);
 
         return documents.stream()
                 .map(this::mapToResponseDTO)

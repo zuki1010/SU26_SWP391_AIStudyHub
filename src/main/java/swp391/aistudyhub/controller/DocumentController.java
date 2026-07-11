@@ -34,7 +34,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-@PreAuthorize("hasRole('CUSTOMER')")
+@PreAuthorize("hasAuthority('CUSTOMER')")
 public class    DocumentController {
 
     @Autowired
@@ -235,10 +235,10 @@ public class    DocumentController {
     @Operation(summary = "Tìm kiếm tài liệu linh hoạt theo Tên file, Tên danh mục hoặc Lọc theo ID danh mục")
     public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
 
-            @RequestParam(value = "name", required = false) String name, // Từ khóa (Tên file học tên môn học)
-            @RequestParam(value = "categoryId", required = false) UUID categoryId // Lọc chính xác theo ID môn học
+            @RequestParam(value = "name", required = false) String name // Từ khóa (Tên file học tên môn học)
+
     ) {
-        List<DocumentResponseDTO> results = documentService.searchDocumentsByFilter( name, categoryId);
+        List<DocumentResponseDTO> results = documentService.searchDocumentsByFilter( name);
         return ResponseEntity.ok(results);
     }
 
