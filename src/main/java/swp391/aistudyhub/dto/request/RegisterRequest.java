@@ -25,7 +25,6 @@ public class RegisterRequest {
     @Size(max = 255)
     private String fullName;
 
-    @Pattern(regexp = "CUSTOMER|ADMIN|MODERATOR", message = "role must be CUSTOMER, ADMIN, or MODERATOR")
     private UserRole role = UserRole.CUSTOMER;
 
     @Size(max = 50)
