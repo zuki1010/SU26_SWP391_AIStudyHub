@@ -40,14 +40,13 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Size(max = 20)
     @NotNull
     @ColumnDefault("'CUSTOMER'")
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
     private UserRole role;
 
-    @Size(max = 50)
+    @NotNull
     @ColumnDefault("'ACTIVE'")
     @Enumerated(EnumType.STRING)
     @Column(name = "account_status", length = 50)
