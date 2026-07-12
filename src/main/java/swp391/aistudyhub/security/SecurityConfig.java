@@ -25,6 +25,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -55,8 +56,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
 
-                        .requestMatchers("/api/v1/documents/search/**").authenticated()
-                        .requestMatchers("/api/v1/documents/search").authenticated()
                         .requestMatchers("/api/v1/documents/public").permitAll()
 
                         .requestMatchers("/api/v1/documents").authenticated()

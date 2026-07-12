@@ -220,25 +220,14 @@ public class    DocumentController {
         }
     }
 
-//    @GetMapping("/search")
-//    public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
-//            @RequestHeader("X-User-Id") UUID userId,
-//            @RequestParam(required = false) String name,
-//            @RequestParam(required = false) String type){
-//
-//
-//        List<DocumentResponseDTO> results = documentService.searchAndFilterDocuments(userId, name, type);
-//        return ResponseEntity.ok(results);
-//    }
 
     @GetMapping("/search")
     @Operation(summary = "Tìm kiếm tài liệu linh hoạt theo Tên file, Tên danh mục hoặc Lọc theo ID danh mục")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
-
-            @RequestParam(value = "name", required = false) String name // Từ khóa (Tên file học tên môn học)
-
+            @RequestParam(value = "name", required = false) String searchText
     ) {
-        List<DocumentResponseDTO> results = documentService.searchDocumentsByFilter( name);
+        List<DocumentResponseDTO> results = documentService.searchDocumentsByFilter(searchText);
         return ResponseEntity.ok(results);
     }
 
