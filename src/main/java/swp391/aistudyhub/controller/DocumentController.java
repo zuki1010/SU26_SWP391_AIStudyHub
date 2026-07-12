@@ -34,7 +34,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-@PreAuthorize("hasRole('CUSTOMER')")
+
 public class    DocumentController {
 
     @Autowired
@@ -51,6 +51,7 @@ public class    DocumentController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
+    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<?> createDocument(
         @RequestPart("file") MultipartFile file,
         @RequestParam("description") String description,
@@ -114,6 +115,7 @@ public class    DocumentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getDocumentById(
 
             @PathVariable("id") UUID documentId) {
