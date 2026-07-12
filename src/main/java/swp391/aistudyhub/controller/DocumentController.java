@@ -34,7 +34,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/documents")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-@PreAuthorize("hasAuthority('CUSTOMER')")
+@PreAuthorize("hasRole('CUSTOMER')")
 public class    DocumentController {
 
     @Autowired
