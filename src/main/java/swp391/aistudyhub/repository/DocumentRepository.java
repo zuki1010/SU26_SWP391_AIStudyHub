@@ -39,20 +39,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
             "OR d.id IN (SELECT ds.document.id FROM DocumentShare ds WHERE ds.sharedWithUser.id = :userId)")
     List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 
-//    // 🌟 HÀM TÌM KIẾM HOÀN HẢO: Ép kiểu tường minh giúp PostgreSQL nhận diện tham số $2, cam kết 200 OK!
-//    @Query("SELECT d FROM Document d WHERE " +
-//            "(d.user.id = :userId OR d.isPublic = true) " +
-//            "AND (CAST(:searchText AS string) IS NULL OR :searchText = '' " +
-//            "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
-//            "    OR d.id IN (" +
-//            "        SELECT dc.document.id FROM DocumentCategory dc " +
-//            "        WHERE LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))" +
-//            "    )" +
-//            ")")
-//    List<Document> searchSmartAccessibleDocuments(
-//            @Param("userId") java.util.UUID userId,
-//            @Param("searchText") String searchText);
-
     @Query("SELECT d FROM Document d WHERE " +
             "(" +
             "   d.user.id = :userId " +             // 1. Tài liệu do chính mình sở hữu
