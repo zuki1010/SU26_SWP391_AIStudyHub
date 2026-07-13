@@ -11,6 +11,7 @@ import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.enums.SubjectCode;
 
 import java.util.Collection;
 import java.util.List;
@@ -33,4 +34,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
     Page<DocumentResponse> findBy(Pageable pageable);
 
     List<Document> findByUser(User user);
+
+    @Query("SELECT d FROM Document d WHERE d.user.id = :userId OR d.isPublic = true " +
+            "OR d.id IN (SELECT ds.document.id FROM DocumentShare ds WHERE ds.sharedWithUser.id = :userId)")
+    List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
+
+    // 🌟 HÀM TÌM KIẾM THÔNG MINH CHO TÀI LIỆU PUBLIC (Gõ mã môn hoặc tên file)
+    // 🌟 HÀM SEARCH ĐỈNH CAO: Tìm tài liệu PRIVATE của tôi + tài liệu PUBLIC của toàn trường
+    @Query("SELECT d FROM Document d " +
+            "WHERE (d.user.id = :userId OR d.isPublic = true) " + // Điều kiện bảo mật quyết định ở đây
+            "AND (:searchText IS NULL OR :searchText = '' " +
+            "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
+            "    OR LOWER(CAST(d.categoryId AS string)) LIKE LOWER(CONCAT('%', :searchText, '%')))")
+    List<Document> searchSmartAccessibleDocuments(
+            @Param("userId") UUID userId,
+            @Param("searchText") String searchText);
 }

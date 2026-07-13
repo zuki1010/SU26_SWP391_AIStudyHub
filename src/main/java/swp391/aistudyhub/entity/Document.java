@@ -9,6 +9,7 @@ import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import swp391.aistudyhub.enums.FileType;
+import swp391.aistudyhub.enums.SubjectCode;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,7 +39,6 @@ public class Document {
     @Column(name = "document_name", nullable = false)
     private String documentName;
 
-    @Size(max = 50)
     @Enumerated(EnumType.STRING)
     @Column(name = "file_type", length = 50)
     private FileType fileType;
@@ -54,6 +54,9 @@ public class Document {
 
     @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
     private boolean isPublic = false;
+
+    @Column(name = "category_id")
+    private UUID categoryId;
 
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)

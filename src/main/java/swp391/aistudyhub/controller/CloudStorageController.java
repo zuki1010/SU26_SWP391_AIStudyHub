@@ -22,7 +22,7 @@ public class CloudStorageController {
     @Operation(summary = "Xem thông tin dung lượng bộ nhớ đã sử dụng ")
     public ResponseEntity<?> getStorageUsage(@RequestHeader("X-User-Id") UUID userId) {
         try {
-            CloudStorageUsageResponseDTO response = cloudStorageService.getCloudStorageUsage(userId);
+            CloudStorageUsageResponseDTO response = cloudStorageService.getCloudStorageUsage();
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

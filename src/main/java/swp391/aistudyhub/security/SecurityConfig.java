@@ -41,9 +41,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/api/chat/**",
-            "/api/admin/**",
-            "/api/v1/documents/**"
+            "/api/chat/**"
 
     };
 
@@ -57,6 +55,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
 
+                        .requestMatchers("/api/v1/documents/search/**").authenticated()
+                        .requestMatchers("/api/v1/documents/search").authenticated()
+                        .requestMatchers("/api/v1/documents/public").permitAll()
 
                         .requestMatchers("/api/v1/documents").authenticated()
                         .requestMatchers("/api/v1/documents/**").authenticated()
