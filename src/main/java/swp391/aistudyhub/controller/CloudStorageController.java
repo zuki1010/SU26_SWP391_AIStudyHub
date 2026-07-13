@@ -12,6 +12,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/storage")
+@CrossOrigin(origins = "*")
 @Tag(name = "Cloud Storage Management", description = "Các API quản lý dung lượng bộ nhớ đám mây")
 public class CloudStorageController {
 
