@@ -39,16 +39,17 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
             "OR d.id IN (SELECT ds.document.id FROM DocumentShare ds WHERE ds.sharedWithUser.id = :userId)")
     List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 
-    // 🌟 ĐÃ TÍCH HỢP: Hàm tìm kiếm nâng cao theo Tên file HOẶC Tên danh mục (Category), hỗ trợ lọc theo ID danh mục
-    @Query("SELECT DISTINCT d FROM Document d " +
-            "LEFT JOIN d.user u " +
-            "LEFT JOIN DocumentShare ds ON ds.document.id = d.id AND ds.sharedWithUser.id = :userId " +
-            "LEFT JOIN DocumentCategory dc ON dc.document.id = d.id " +
-            "WHERE (u.id = :userId OR d.isPublic = true OR ds IS NOT NULL) " +
-                    "AND (:searchText IS NULL OR :searchText = '' " +
-                    "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
-                    "    OR LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%')))") // Quét đồng thời cả 2 cột
-    List<Document> searchDocumentsWithCategory(
-            @Param("userId") UUID userId,
-            @Param("searchText") String searchText);;
+    // 🌟 HÀM TÌM KIẾM HOÀN HẢO: Ép kiểu tường minh giúp PostgreSQL nhận diện tham số $2, cam kết 200 OK!
+    @Query("SELECT d FROM Document d WHERE " +
+            "(d.user.id = :userId OR d.isPublic = true) " +
+            "AND (CAST(:searchText AS string) IS NULL OR :searchText = '' " +
+            "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
+            "    OR d.id IN (" +
+            "        SELECT dc.document.id FROM DocumentCategory dc " +
+            "        WHERE LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))" +
+            "    )" +
+            ")")
+    List<Document> searchSmartAccessibleDocuments(
+            @Param("userId") java.util.UUID userId,
+            @Param("searchText") String searchText);
 }

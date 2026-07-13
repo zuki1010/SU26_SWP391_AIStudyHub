@@ -17,7 +17,7 @@ public interface DocumentService {
     void deleteDocument(UUID documentId);
     Resource downloadDocumentFile(UUID documentId);
     Resource getFileResourceForPreview(UUID documentId);
-    List<DocumentResponseDTO> searchDocumentsByFilter(String name, UUID categoryId);
+    List<DocumentResponseDTO> searchDocumentsByFilter(String name);
     DocumentResponseDTO toggleDocumentPublicStatus(UUID documentId, boolean isPublic);
     List<DocumentResponseDTO> getPublicDocuments();
 

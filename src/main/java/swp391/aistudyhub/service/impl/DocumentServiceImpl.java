@@ -439,17 +439,20 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText, UUID categoryId) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
+    public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
+        // 1. LẤY USER NGẦM TỪ TOKEN
         Authentication au = SecurityContextHolder.getContext().getAuthentication();
         if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
+            throw new RuntimeException("You are not logged in yet!");
         }
         User user = userRepository.findByEmailIgnoreCase(au.getName())
                 .orElseThrow(() -> new RuntimeException("This user is not found!"));
 
-        List<Document> documents = documentRepository.searchDocumentsWithCategory(user.getId(), searchText != null ? searchText.trim() : null
-        );
+        // 2. Chuẩn hóa chuỗi tìm kiếm
+        String cleanSearchText = (searchText != null && !searchText.trim().isEmpty()) ? searchText.trim() : null;
+
+        // 3. Thực thi gọi Repo thông minh
+        List<Document> documents = documentRepository.searchSmartAccessibleDocuments(user.getId(), cleanSearchText);
 
         return documents.stream()
                 .map(this::mapToResponseDTO)
