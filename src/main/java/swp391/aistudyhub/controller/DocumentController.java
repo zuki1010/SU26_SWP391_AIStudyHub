@@ -10,9 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.request.DocumentTogglePublicRequestDTO;
-import swp391.aistudyhub.dto.request.StartSessionDTO;
-import swp391.aistudyhub.dto.response.DocumentResponseDTO;
-import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.enums.FileType;
@@ -306,16 +303,24 @@ public class    DocumentController {
         }
     }
 
+    // =========================================================================
+    // 1. API DÀNH CHO USER (CUSTOMER): Gửi yêu cầu duyệt Public bài hoặc rút về Private
+    // =========================================================================
     @PutMapping("/{documentId}/public-status")
+    @Operation(summary = "Customer gửi yêu cầu Public tài liệu (chuyển sang PENDING) hoặc chủ động rút về Private")
+    @PreAuthorize("hasRole('CUSTOMER')") // Nên thêm để phân quyền chặt chẽ từ Gate
     public ResponseEntity<DocumentResponseDTO> togglePublicStatus(
             @PathVariable UUID documentId,
             @RequestParam boolean isPublic) {
         return ResponseEntity.ok(documentService.toggleDocumentPublicStatus(documentId, isPublic));
     }
 
-    // 2. API dành riêng cho MODERATOR và ADMIN thực hiện Phê duyệt
-    // Decision chỉ nhận: "ACCEPT" hoặc "DENY"
+    // =========================================================================
+    // 2. API DÀNH RIÊNG CHO MODERATOR VÀ ADMIN: Thực hiện Phê duyệt (ACCEPT / DENY)
+    // =========================================================================
     @PutMapping("/{documentId}/review")
+    @Operation(summary = "Admin/Moderator phê duyệt yêu cầu công khai tài liệu (ACCEPT hoặc DENY)")
+    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')") // Chặn quyền Staff ngay từ Controller
     public ResponseEntity<DocumentResponseDTO> reviewDocument(
             @PathVariable UUID documentId,
             @RequestParam String decision) {

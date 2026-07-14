@@ -546,7 +546,7 @@ public class DocumentServiceImpl implements DocumentService {
         User user = userRepository.findByEmailIgnoreCase(currentUserEmail)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + currentUserEmail));
 
-        return documentRepository.findByUserId(user.getId());
+        return documentRepository.findByUser(user);
     }
 
     private Resource fetchFileResourceFromCloud(Document doc) {
