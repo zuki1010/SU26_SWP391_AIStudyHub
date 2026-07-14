@@ -52,4 +52,25 @@ public class CommentController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Xóa bình luận (chỉ chủ bình luận)")
+    public ResponseEntity<?> deleteComment(@PathVariable("id") UUID commentId) {
+        try {
+            commentService.deleteComment(commentId);
+            return ResponseEntity.ok(
+                    java.util.Map.of(
+                            "success", true,
+                            "message", "Xóa bình luận thành công!"
+                    )
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    java.util.Map.of(
+                            "success", false,
+                            "message", e.getMessage()
+                    )
+            );
+        }
+    }
 }

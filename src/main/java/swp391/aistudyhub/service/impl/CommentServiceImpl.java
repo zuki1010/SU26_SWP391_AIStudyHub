@@ -103,6 +103,21 @@ public class CommentServiceImpl implements CommentService {
         return toResponseDTO(commentRepository.save(comment));
     }
 
+    @Override
+    @Transactional
+    public void deleteComment(UUID commentId) {
+        User user = getCurrentUser();
+
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bình luận!"));
+
+        if (!comment.getUserId().equals(user.getId())) {
+            throw new RuntimeException("Bạn không có quyền xóa bình luận này!");
+        }
+
+        commentRepository.delete(comment);
+    }
+
     private CommentResponseDTO toResponseDTO(Comment comment) {
         CommentResponseDTO dto = new CommentResponseDTO();
         dto.setCommentId(comment.getCommentId());

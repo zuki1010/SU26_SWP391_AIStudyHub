@@ -13,4 +13,6 @@ public interface CommentService {
     List<CommentResponseDTO> getCommentsByDocument(UUID documentId);
 
     CommentResponseDTO updateComment(UUID commentId, String content);
+
+    void deleteComment(UUID commentId);
 }
