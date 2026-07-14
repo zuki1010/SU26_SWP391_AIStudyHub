@@ -55,7 +55,7 @@ public class Document {
     @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
     private boolean isPublic = false;
 
-    @Column(name = "status", nullable = false, columnDefinition = "varchar(50) default 'DEFAULT'")
+    @Column(name = "status", nullable = false, length = 50)
     private String status = "DEFAULT";
 
     @ManyToOne(fetch = FetchType.LAZY)
