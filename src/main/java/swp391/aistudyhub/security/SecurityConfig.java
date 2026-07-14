@@ -56,16 +56,37 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_PATHS).permitAll()
 
-                        .requestMatchers("/api/v1/documents/public").permitAll()
-                        .requestMatchers("/api/v1/documents/*/review").hasAnyRole("MODERATOR", "ADMIN")
+                        // Auth public APIs
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh",
+                                "/api/auth/logout"
+                        ).permitAll()
 
-                        .requestMatchers("/api/v1/documents").authenticated()
-                        .requestMatchers("/api/v1/documents/**").authenticated()
+                        // Swagger
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
 
-                        .requestMatchers("/api/v1/storage").authenticated()
-                        .requestMatchers("/api/v1/storage/**").authenticated()
+                        // Public documents page
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/public").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/public/").permitAll()
 
-                        .requestMatchers("/api/admin/**").authenticated()
+                        // Customer APIs
+                        .requestMatchers("/api/v1/documents").hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/documents/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/storage").hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/storage/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/chat/**").hasRole("CUSTOMER")
+
+                        // Admin APIs
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
@@ -102,8 +123,21 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(ALLOWED_ORIGINS);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "https://aistudyfe.onrender.com"
+        ));
+
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Content-Disposition"));
         config.setAllowCredentials(true);
