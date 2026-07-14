@@ -57,13 +57,13 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_PATHS).permitAll()
 
                         .requestMatchers("/api/v1/documents/public").permitAll()
+                        .requestMatchers("/api/v1/documents/*/review").hasAnyRole("MODERATOR", "ADMIN")
 
                         .requestMatchers("/api/v1/documents").authenticated()
                         .requestMatchers("/api/v1/documents/**").authenticated()
 
                         .requestMatchers("/api/v1/storage").authenticated()
                         .requestMatchers("/api/v1/storage/**").authenticated()
-
 
                         .requestMatchers("/api/admin/**").authenticated()
                         .anyRequest().authenticated()

@@ -17,5 +17,5 @@ public class    DocumentResponseDTO {
     private String description;
     private String textContent;
     private Boolean isPublic;
-
+    private String status;
 }

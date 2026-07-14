@@ -1,6 +1,5 @@
 package swp391.aistudyhub.service.impl;
 
-import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -225,18 +224,7 @@ public class DocumentServiceImpl implements DocumentService {
         List<Document> documents = documentRepository.findByUser(user);
 
         return documents.stream()
-                .map(doc -> {
-                    DocumentResponseDTO dto = new DocumentResponseDTO();
-                    dto.setDocumentId(doc.getId());
-                    dto.setDocumentName(doc.getDocumentName());
-                    dto.setFileType(doc.getFileType());
-                    dto.setPreviewUrl(doc.getPreviewUrl());
-                    dto.setDownloadUrl(doc.getDownloadUrl());
-                    dto.setCreatedAt(doc.getCreatedAt());
-                    dto.setDescription(doc.getDescription());
-                    dto.setIsPublic(doc.isPublic());
-                    return dto;
-                })
+                .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
     }
 
@@ -462,7 +450,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public DocumentResponseDTO toggleDocumentPublicStatus(UUID documentId, boolean isPublic) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
+        // 🌟 1. LẤY USER NGẦM TỪ TOKEN
         Authentication au = SecurityContextHolder.getContext().getAuthentication();
         if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
             throw new RuntimeException("You are not login yet!");
@@ -473,13 +461,70 @@ public class DocumentServiceImpl implements DocumentService {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu."));
 
+        // Chỉ chủ sở hữu mới được quyền yêu cầu Public tài liệu của chính họ
         if (!document.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa trạng thái của tài liệu này!");
         }
 
-        document.setPublic(isPublic);
-        Document updatedDoc = documentRepository.saveAndFlush(document);
+        if (isPublic) {
+            // 🌟 NẾU USER MUỐN CHUYỂN SANG PUBLIC:
+            // Không được set true ngay lập tức. Chuyển trạng thái sang PENDING để chờ duyệt.
+            document.setPublic(false);
+            document.setStatus("PENDING"); // Giả định cột status lưu String: "DEFAULT", "PENDING", "SUCCESS"
+        } else {
+            // NẾU USER MUỐN RÚT VỀ PRIVATE:
+            // Cho phép rút về Private ngay lập tức mà không cần ai duyệt
+            document.setPublic(false);
+            document.setStatus("DEFAULT");
+            document.setApprovedBy(null); // Reset lại thông tin người duyệt cũ nếu có
+        }
 
+        Document updatedDoc = documentRepository.saveAndFlush(document);
+        return mapToResponseDTO(updatedDoc);
+    }
+
+    @Override
+    @Transactional
+    public DocumentResponseDTO approvePublicRequest(UUID documentId, String decision) {
+        // 🌟 1. LẤY THÔNG TIN MODERATOR/ADMIN ĐANG ĐĂNG NHẬP
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+
+        // Kiểm tra xem user có quyền MODERATOR hoặc ADMIN hay không (Security Check phụ ở Service)
+        boolean isStaff = au.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_MODERATOR") || a.getAuthority().equals("ROLE_ADMIN"));
+        if (!isStaff) {
+            throw new RuntimeException("Bạn không có quyền thực hiện thao tác duyệt này!");
+        }
+
+        User reviewer = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người duyệt trên hệ thống!"));
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu phê duyệt."));
+
+        // 🌟 2. KIỂM TRA TRẠNG THÁI TÀI LIỆU
+        if (!"PENDING".equalsIgnoreCase(document.getStatus())) {
+            throw new RuntimeException("Tài liệu này hiện không có yêu cầu phê duyệt nào cần xử lý hoặc đã được duyệt trước đó!");
+        }
+
+        // 🌟 3. XỬ LÝ QUYẾT ĐỊNH (ACCEPT / DENY)
+        if ("ACCEPT".equalsIgnoreCase(decision)) {
+            document.setPublic(true);
+            document.setStatus("SUCCESS");
+        } else if ("DENY".equalsIgnoreCase(decision)) {
+            document.setPublic(false);
+            document.setStatus("DEFAULT"); // Đưa về trạng thái mặc định ban đầu
+        } else {
+            throw new RuntimeException("Quyết định phê duyệt không hợp lệ! Chỉ chấp nhận 'ACCEPT' hoặc 'DENY'.");
+        }
+
+        // Lưu vết lại người duyệt (MODERATOR/ADMIN đầu tiên xử lý)
+        document.setApprovedBy(reviewer); // Thiết lập mối quan hệ với thực thể User duyệt
+
+        Document updatedDoc = documentRepository.saveAndFlush(document);
         return mapToResponseDTO(updatedDoc);
     }
 
@@ -527,6 +572,7 @@ public class DocumentServiceImpl implements DocumentService {
         dto.setDescription(document.getDescription());
         dto.setTextContent(document.getDescription());
         dto.setIsPublic(document.isPublic());
+        dto.setStatus(document.getStatus());
         return dto;
     }
 }

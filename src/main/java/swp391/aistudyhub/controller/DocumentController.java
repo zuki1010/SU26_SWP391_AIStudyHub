@@ -305,4 +305,20 @@ public class    DocumentController {
             );
         }
     }
+
+    @PutMapping("/{documentId}/public-status")
+    public ResponseEntity<DocumentResponseDTO> togglePublicStatus(
+            @PathVariable UUID documentId,
+            @RequestParam boolean isPublic) {
+        return ResponseEntity.ok(documentService.toggleDocumentPublicStatus(documentId, isPublic));
+    }
+
+    // 2. API dành riêng cho MODERATOR và ADMIN thực hiện Phê duyệt
+    // Decision chỉ nhận: "ACCEPT" hoặc "DENY"
+    @PutMapping("/{documentId}/review")
+    public ResponseEntity<DocumentResponseDTO> reviewDocument(
+            @PathVariable UUID documentId,
+            @RequestParam String decision) {
+        return ResponseEntity.ok(documentService.approvePublicRequest(documentId, decision));
+    }
 }

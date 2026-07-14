@@ -55,6 +55,13 @@ public class Document {
     @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
     private boolean isPublic = false;
 
+    @Column(name = "status", nullable = false, columnDefinition = "varchar(50) default 'DEFAULT'")
+    private String status = "DEFAULT";
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;
+
     @Column(name = "category_id")
     private UUID categoryId;
 
