@@ -11,4 +11,6 @@ public interface CommentService {
     CommentResponseDTO createComment(CommentRequestDTO requestDTO);
 
     List<CommentResponseDTO> getCommentsByDocument(UUID documentId);
+
+    CommentResponseDTO updateComment(UUID commentId, String content);
 }

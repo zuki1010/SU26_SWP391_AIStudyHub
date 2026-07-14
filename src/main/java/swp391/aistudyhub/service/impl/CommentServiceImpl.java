@@ -83,6 +83,26 @@ public class CommentServiceImpl implements CommentService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public CommentResponseDTO updateComment(UUID commentId, String content) {
+        if (content == null || content.trim().isEmpty()) {
+            throw new RuntimeException("Nội dung bình luận không được để trống!");
+        }
+
+        User user = getCurrentUser();
+
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bình luận!"));
+
+        if (!comment.getUserId().equals(user.getId())) {
+            throw new RuntimeException("Bạn không có quyền sửa bình luận này!");
+        }
+
+        comment.setContent(content.trim());
+        return toResponseDTO(commentRepository.save(comment));
+    }
+
     private CommentResponseDTO toResponseDTO(Comment comment) {
         CommentResponseDTO dto = new CommentResponseDTO();
         dto.setCommentId(comment.getCommentId());

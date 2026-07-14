@@ -39,4 +39,17 @@ public class CommentController {
             @PathVariable("documentId") UUID documentId) {
         return ResponseEntity.ok(commentService.getCommentsByDocument(documentId));
     }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Sửa bình luận (chỉ chủ bình luận)")
+    public ResponseEntity<?> updateComment(
+            @PathVariable("id") UUID commentId,
+            @RequestParam("content") String content) {
+        try {
+            CommentResponseDTO response = commentService.updateComment(commentId, content);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
