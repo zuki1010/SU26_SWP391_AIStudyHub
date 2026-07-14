@@ -9,6 +9,7 @@ import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import swp391.aistudyhub.enums.FileType;
+import swp391.aistudyhub.enums.SubjectCode;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -42,20 +43,20 @@ public class Document {
     @Column(name = "file_type", length = 50)
     private FileType fileType;
 
-    @Column(name = "file_size", nullable = false)
-    private Long fileSize = 0L;
-
-    @Column(name = "preview_url", columnDefinition = "TEXT")
+    @Column(name = "preview_url", columnDefinition = "text")
     private String previewUrl;
 
-    @Column(name = "download_url", columnDefinition = "TEXT")
+    @Column(name = "download_url", columnDefinition = "text")
     private String downloadUrl;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "file_size")
+    private Long fileSize;
 
-    @Column(name = "is_public", nullable = false)
-    private Boolean isPublic = false;
+    @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
+    private boolean isPublic = false;
+
+    @Column(name = "category_id")
+    private UUID categoryId;
 
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)
@@ -70,16 +71,6 @@ public class Document {
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> documentVersions = new ArrayList<>();
 
-    /**
-     * Giữ thêm 2 method này để tương thích với code cũ đang gọi:
-     * document.isPublic()
-     * document.setPublic(...)
-     */
-    public boolean isPublic() {
-        return Boolean.TRUE.equals(isPublic);
-    }
-
-    public void setPublic(boolean isPublic) {
-        this.isPublic = isPublic;
-    }
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 }

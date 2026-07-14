@@ -6,9 +6,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -19,11 +23,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmailIgnoreCase(String email);
 
-    Page<User> findByEmailContainingIgnoreCaseOrCustomerProfileFullNameContainingIgnoreCase(
-            String emailKeyword,
-            String fullNameKeyword,
-            Pageable pageable
-    );
+    @Query("SELECT u FROM User u " +
+            "LEFT JOIN u.customerProfile cp " +
+            "WHERE LOWER(u.email) LIKE LOWER(CONCAT('%', :key, '%')) " +
+            "OR LOWER(cp.fullName) LIKE LOWER(CONCAT('%', :key, '%'))")
+    Page<UserAccountResponse> searchCustomers(@Param("key") String key, Pageable pageable);
 
     @Modifying
     @Query("UPDATE User u SET u.accountStatus = :status WHERE u.id = :id")
@@ -31,4 +35,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     int updateUserStatus(@PathParam("id") UUID id,@PathParam(("status")) AccountStatus status);
 
     Optional<User> findUserById(UUID id);
+
+    Page<UserAccountResponse> findBy(Pageable pageable);
+
+    UserAccountResponse findProjectedById(UUID id);
+
+    @Modifying
+    @Query("UPDATE User u SET u.role = :role WHERE u.id = :id")
+    @Transactional
+    int updateUserRole(@PathParam("id") UUID id,@PathParam(("role")) UserRole role);
 }
