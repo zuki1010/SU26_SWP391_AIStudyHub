@@ -44,7 +44,8 @@ public class SecurityConfig {
             "/api/chat/**",
             "/api/admin/**",
             "/api/v1/documents/**",
-            "/api/v1/forum/**"
+            "/api/v1/forum/**",
+            "/api/v1/comments/**"
 
     };
 
