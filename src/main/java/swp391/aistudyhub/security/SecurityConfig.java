@@ -32,20 +32,6 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsServiceImpl userDetailsService;
 
-    private static final String[] PUBLIC_PATHS = {
-            "/api/auth/register",
-            "/api/auth/login",
-            "/api/auth/forgot-password",
-            "/api/auth/reset-password",
-            "/api/auth/refresh",
-            "/api/auth/logout",
-            "/v3/api-docs/**",
-            "/swagger-ui/**",
-            "/swagger-ui.html",
-            "/api/chat/**"
-
-    };
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -54,18 +40,38 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(PUBLIC_PATHS).permitAll()
 
-                        .requestMatchers("/api/v1/documents/public").permitAll()
+                        // Auth public APIs
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh",
+                                "/api/auth/logout"
+                        ).permitAll()
 
-                        .requestMatchers("/api/v1/documents").authenticated()
-                        .requestMatchers("/api/v1/documents/**").authenticated()
+                        // Swagger
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
 
-                        .requestMatchers("/api/v1/storage").authenticated()
-                        .requestMatchers("/api/v1/storage/**").authenticated()
+                        // Public documents page
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/public").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/public/").permitAll()
 
+                        // Customer APIs
+                        .requestMatchers("/api/v1/documents").hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/documents/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/storage").hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/storage/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/chat/**").hasRole("CUSTOMER")
 
-                        .requestMatchers("/api/admin/**").authenticated()
+                        // Admin APIs
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
@@ -86,24 +92,35 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * Tạm dùng plain text giống project hiện tại để không làm hỏng dữ liệu cũ.
+     * Sau khi demo ổn, nên đổi sang BCrypt.
+     */
     @Bean
     @SuppressWarnings("deprecation")
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
     }
 
-    private static final List<String> ALLOWED_ORIGINS = List.of(
-            "http://localhost:5173",
-            "http://localhost:3000",
-            "https://aistudyfe.onrender.com"
-    );
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(ALLOWED_ORIGINS);
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "https://aistudyfe.onrender.com"
+        ));
+
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Content-Disposition"));
         config.setAllowCredentials(true);
