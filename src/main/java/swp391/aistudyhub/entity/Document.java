@@ -43,17 +43,14 @@ public class Document {
     @Column(name = "file_type", length = 50)
     private FileType fileType;
 
-    @Column(name = "file_size", nullable = false)
-    private Long fileSize = 0L;
-
-    @Column(name = "preview_url", columnDefinition = "TEXT")
+    @Column(name = "preview_url", columnDefinition = "text")
     private String previewUrl;
 
-    @Column(name = "download_url", columnDefinition = "TEXT")
+    @Column(name = "download_url", columnDefinition = "text")
     private String downloadUrl;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "file_size")
+    private Long fileSize;
 
     @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
     private boolean isPublic = false;
@@ -81,16 +78,6 @@ public class Document {
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> documentVersions = new ArrayList<>();
 
-    /**
-     * Giữ thêm 2 method này để tương thích với code cũ đang gọi:
-     * document.isPublic()
-     * document.setPublic(...)
-     */
-    public boolean isPublic() {
-        return Boolean.TRUE.equals(isPublic);
-    }
-
-    public void setPublic(boolean isPublic) {
-        this.isPublic = isPublic;
-    }
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
 }

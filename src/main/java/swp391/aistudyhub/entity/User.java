@@ -11,6 +11,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Nationalized;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -39,13 +40,13 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Size(max = 20)
     @NotNull
     @ColumnDefault("'CUSTOMER'")
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
-    private String role;
+    private UserRole role;
 
-    @Size(max = 50)
+    @NotNull
     @ColumnDefault("'ACTIVE'")
     @Enumerated(EnumType.STRING)
     @Column(name = "account_status", length = 50)
@@ -66,4 +67,7 @@ public class User {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private ModeratorProfile moderatorProfile;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private AdminProfile adminProfile;
 }
