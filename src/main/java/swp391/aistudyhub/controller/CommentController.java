@@ -32,4 +32,11 @@ public class CommentController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/document/{documentId}")
+    @Operation(summary = "Xem bình luận của tài liệu (chỉ hiện khi tài liệu đã được duyệt public)")
+    public ResponseEntity<List<CommentResponseDTO>> getCommentsByDocument(
+            @PathVariable("documentId") UUID documentId) {
+        return ResponseEntity.ok(commentService.getCommentsByDocument(documentId));
+    }
 }

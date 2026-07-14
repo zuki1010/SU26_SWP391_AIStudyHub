@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface CommentService {
 
     CommentResponseDTO createComment(CommentRequestDTO requestDTO);
+
+    List<CommentResponseDTO> getCommentsByDocument(UUID documentId);
 }

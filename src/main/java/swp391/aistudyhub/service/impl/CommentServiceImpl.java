@@ -71,6 +71,18 @@ public class CommentServiceImpl implements CommentService {
         return toResponseDTO(commentRepository.save(comment));
     }
 
+    @Override
+    public List<CommentResponseDTO> getCommentsByDocument(UUID documentId) {
+        // Tài liệu chưa được duyệt public -> không hiện gì hết
+        if (!isDocumentPublic(documentId)) {
+            return Collections.emptyList();
+        }
+        return commentRepository.findByDocumentIdOrderByCreatedAtDesc(documentId)
+                .stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
     private CommentResponseDTO toResponseDTO(Comment comment) {
         CommentResponseDTO dto = new CommentResponseDTO();
         dto.setCommentId(comment.getCommentId());
