@@ -9,7 +9,6 @@ import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import swp391.aistudyhub.enums.FileType;
-import swp391.aistudyhub.enums.SubjectCode;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -55,6 +54,11 @@ public class Document {
     @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
     private boolean isPublic = false;
 
+    /**
+     * DEFAULT: tài liệu private bình thường
+     * PENDING: đang chờ Admin/Moderator duyệt public
+     * SUCCESS: đã được duyệt public
+     */
     @Column(name = "status", nullable = false, length = 50)
     private String status = "DEFAULT";
 

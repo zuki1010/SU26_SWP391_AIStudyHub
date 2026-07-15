@@ -32,7 +32,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsServiceImpl userDetailsService;
 
-    private static final String[] PUBLIC_PATHS = {
+    private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/register",
             "/api/auth/login",
             "/api/auth/forgot-password",
@@ -41,9 +41,26 @@ public class SecurityConfig {
             "/api/auth/logout",
             "/v3/api-docs/**",
             "/swagger-ui/**",
-            "/swagger-ui.html",
-            "/api/chat/**"
+            "/swagger-ui.html"
+    };
 
+    private static final String[] CUSTOMER_OR_ADMIN = {
+            "CUSTOMER",
+            "ROLE_CUSTOMER",
+            "ADMIN",
+            "ROLE_ADMIN"
+    };
+
+    private static final String[] STAFF = {
+            "MODERATOR",
+            "ROLE_MODERATOR",
+            "ADMIN",
+            "ROLE_ADMIN"
+    };
+
+    private static final String[] ADMIN_ONLY = {
+            "ADMIN",
+            "ROLE_ADMIN"
     };
 
     @Bean
@@ -54,18 +71,29 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(PUBLIC_PATHS).permitAll()
 
-                        .requestMatchers("/api/v1/documents/public").permitAll()
-                        .requestMatchers("/api/v1/documents/*/review").hasAnyRole("MODERATOR", "ADMIN")
+                        // Public APIs
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/public").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/documents/public/").permitAll()
 
-                        .requestMatchers("/api/v1/documents").authenticated()
-                        .requestMatchers("/api/v1/documents/**").authenticated()
+                        // Staff review public-document requests. Must stay before /api/v1/documents/**.
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/documents/*/review").hasAnyAuthority(STAFF)
 
-                        .requestMatchers("/api/v1/storage").authenticated()
-                        .requestMatchers("/api/v1/storage/**").authenticated()
+                        // Documents: CUSTOMER and ADMIN can use upload/manage/share APIs.
+                        .requestMatchers("/api/v1/documents").hasAnyAuthority(CUSTOMER_OR_ADMIN)
+                        .requestMatchers("/api/v1/documents/**").hasAnyAuthority(CUSTOMER_OR_ADMIN)
 
-                        .requestMatchers("/api/admin/**").authenticated()
+                        // Storage is used by document upload and dashboard.
+                        .requestMatchers("/api/v1/storage").hasAnyAuthority(CUSTOMER_OR_ADMIN)
+                        .requestMatchers("/api/v1/storage/**").hasAnyAuthority(CUSTOMER_OR_ADMIN)
+
+                        // Chat is available for regular users and admins who test the system.
+                        .requestMatchers("/api/chat/**").hasAnyAuthority(CUSTOMER_OR_ADMIN)
+
+                        // Admin dashboard APIs.
+                        .requestMatchers("/api/admin/**").hasAnyAuthority(ADMIN_ONLY)
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
@@ -86,23 +114,26 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * Demo mode: old project data is stored as plain text.
+     * Change to BCryptPasswordEncoder after the team migrates existing passwords.
+     */
     @Bean
     @SuppressWarnings("deprecation")
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
     }
 
-    private static final List<String> ALLOWED_ORIGINS = List.of(
-            "http://localhost:5173",
-            "http://localhost:3000",
-            "https://aistudyfe.onrender.com"
-    );
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(ALLOWED_ORIGINS);
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "https://aistudyfe.onrender.com"
+        ));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Content-Disposition"));
@@ -110,7 +141,6 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return source;
     }
 }

@@ -14,9 +14,12 @@ import java.util.UUID;
 @Getter
 @Setter
 @Entity
-@Table(name = "document_shares", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"document_id", "shared_with_user_id"})
-})
+@Table(
+        name = "document_shares",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"document_id", "shared_with_user_id"})
+        }
+)
 public class DocumentShare {
 
     @Id

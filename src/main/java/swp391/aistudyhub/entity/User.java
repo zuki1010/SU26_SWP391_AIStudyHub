@@ -9,7 +9,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.Nationalized;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
 
@@ -23,6 +22,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "users")
 public class User {
+
     @Id
     @Column(name = "user_id", updatable = false, nullable = false)
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -44,30 +44,30 @@ public class User {
     @ColumnDefault("'CUSTOMER'")
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
-    private UserRole role;
+    private UserRole role = UserRole.CUSTOMER;
 
     @NotNull
     @ColumnDefault("'ACTIVE'")
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_status", length = 50)
-    private AccountStatus accountStatus;
+    @Column(name = "account_status", nullable = false, length = 50)
+    private AccountStatus accountStatus = AccountStatus.ACTIVE;
 
     @CreationTimestamp
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private CloudStorage cloudStorage;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private CustomerProfile customerProfile;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private ModeratorProfile moderatorProfile;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private AdminProfile adminProfile;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Document> documents = new ArrayList<>();
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private ModeratorProfile moderatorProfile;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private AdminProfile adminProfile;
 }

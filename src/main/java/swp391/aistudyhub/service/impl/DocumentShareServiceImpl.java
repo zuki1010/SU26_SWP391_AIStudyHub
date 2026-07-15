@@ -31,56 +31,34 @@ public class DocumentShareServiceImpl implements DocumentShareService {
     @Override
     @Transactional
     public void shareDocumentToUser(UUID documentId, UUID targetUserId, String permissionType) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN (Thay thế ownerId truyền vào)
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User currentUser = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
-
+        User currentUser = getCurrentUser();
         UUID ownerId = currentUser.getId();
 
-        // 1. Kiểm tra tài liệu tồn tại
         Document doc = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu."));
 
-        // 2. Bảo mật: Chỉ chủ sở hữu đích thực của tài liệu mới được quyền đem đi chia sẻ
         if (doc.getUser() == null || !Objects.equals(doc.getUser().getId(), ownerId)) {
             throw new RuntimeException("Bạn không có quyền chia sẻ tài liệu này!");
         }
 
-        // 3. Không cho phép tự chia sẻ cho chính mình
         if (Objects.equals(ownerId, targetUserId)) {
             throw new RuntimeException("Bạn không thể tự chia sẻ tài liệu cho chính bản thân.");
         }
 
-        // 4. Kiểm tra User được nhận share có tồn tại trong hệ thống không
         User targetUser = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng được chia sẻ trên hệ thống."));
 
-        // 5. Kiểm tra xem tài liệu này đã từng được share cho User này chưa (tránh trùng lặp gây lỗi UniqueConstraint)
-        boolean alreadyShared = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, targetUserId);
+        boolean alreadyShared =
+                documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, targetUserId);
+
         if (alreadyShared) {
             throw new RuntimeException("Tài liệu này đã được chia sẻ cho người dùng này từ trước.");
         }
 
-        // 6. Tiến hành lưu bản ghi share mới kèm kiểm tra Whitelist quyền
         DocumentShare share = new DocumentShare();
         share.setDocument(doc);
         share.setSharedWithUser(targetUser);
-
-        // Chuẩn hóa và ép chặt 3 bộ từ khóa quyền hợp lệ
-        if (permissionType != null && !permissionType.trim().isEmpty()) {
-            String pType = permissionType.trim().toLowerCase();
-
-            if (!pType.equals("view") && !pType.equals("download") && !pType.equals("edit")) {
-                throw new RuntimeException("Loại quyền không hợp lệ! Chỉ chấp nhận: view, download, edit");
-            }
-            share.setPermissionType(pType);
-        } else {
-            share.setPermissionType("view");
-        }
+        share.setPermissionType(normalizePermission(permissionType));
 
         documentShareRepository.save(share);
     }
@@ -88,40 +66,49 @@ public class DocumentShareServiceImpl implements DocumentShareService {
     @Override
     @Transactional
     public void updateSharePermission(UUID documentId, UUID targetUserId, String newPermissionType) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN (Thay thế ownerId truyền vào)
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User currentUser = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
-
+        User currentUser = getCurrentUser();
         UUID ownerId = currentUser.getId();
 
-        // 1. Kiểm tra tài liệu tồn tại
         Document doc = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu."));
 
-        // 2. Bảo mật: Chỉ chủ sở hữu mới được sửa quyền của người khác
-        if (doc.getUser() == null || !doc.getUser().getId().equals(ownerId)) {
+        if (doc.getUser() == null || !Objects.equals(doc.getUser().getId(), ownerId)) {
             throw new RuntimeException("Bạn không phải chủ sở hữu để thay đổi quyền tài liệu này!");
         }
 
-        // 3. Tìm bản ghi share hiện tại từ Repository của bạn
         DocumentShare share = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, targetUserId)
                 .orElseThrow(() -> new RuntimeException("Tài liệu này chưa từng được chia sẻ cho người dùng này."));
 
-        // 4. Chuẩn hóa quyền mới (chỉ chấp nhận: view, download, edit)
-        if (newPermissionType == null || newPermissionType.trim().isEmpty()) {
-            throw new RuntimeException("Quyền mới không được để trống!");
-        }
-        String permission = newPermissionType.trim().toLowerCase();
-        if (!permission.equals("view") && !permission.equals("download") && !permission.equals("edit")) {
-            throw new RuntimeException("Quyền không hợp lệ! Chỉ chấp nhận: view, download, edit.");
+        share.setPermissionType(normalizePermission(newPermissionType));
+
+        documentShareRepository.save(share);
+    }
+
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || "anonymousUser".equals(String.valueOf(authentication.getPrincipal()))) {
+            throw new RuntimeException("You are not login yet!");
         }
 
-        // 5. Cập nhật và lưu lại
-        share.setPermissionType(permission);
-        documentShareRepository.save(share);
+        return userRepository.findByEmailIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+    }
+
+    private String normalizePermission(String permissionType) {
+        String permission =
+                permissionType != null && !permissionType.trim().isEmpty()
+                        ? permissionType.trim().toLowerCase()
+                        : "view";
+
+        if (!permission.equals("view")
+                && !permission.equals("download")
+                && !permission.equals("edit")) {
+            throw new RuntimeException("Loại quyền không hợp lệ! Chỉ chấp nhận: view, download, edit.");
+        }
+
+        return permission;
     }
 }

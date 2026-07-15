@@ -11,8 +11,24 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.jwt")
 public class JwtProperties {
 
+    /**
+     * Secret phải >= 32 ký tự.
+     * Nên đặt trong application.properties hoặc biến môi trường khi deploy.
+     */
     private String secret = "ChangeMeInApplicationLocalPropertiesMustBeAtLeast256BitsLongForHS256!!";
-    private long accessExpirationMs = 604_800_000;
-    private long refreshExpirationMs = 604_800_000;
-    private long resetExpirationMs = 3_600_000;
+
+    /**
+     * 7 ngày cho demo.
+     */
+    private long accessExpirationMs = 604_800_000L;
+
+    /**
+     * 7 ngày cho demo.
+     */
+    private long refreshExpirationMs = 604_800_000L;
+
+    /**
+     * 1 giờ.
+     */
+    private long resetExpirationMs = 3_600_000L;
 }

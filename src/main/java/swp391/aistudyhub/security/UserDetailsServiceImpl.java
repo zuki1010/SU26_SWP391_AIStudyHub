@@ -5,6 +5,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.repository.UserRepository;
 
 @Service
@@ -15,8 +16,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmailIgnoreCase(email)
-                .map(CustomUserDetails::new)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + normalizedEmail));
+
+        return new CustomUserDetails(user);
     }
 }

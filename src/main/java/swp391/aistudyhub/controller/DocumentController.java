@@ -2,10 +2,14 @@ package swp391.aistudyhub.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
@@ -16,23 +20,18 @@ import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.service.CloudStorageService;
 import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.service.DocumentShareService;
 
-
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/documents")
-@CrossOrigin(origins = "*")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-
-public class    DocumentController {
+public class DocumentController {
 
     @Autowired
     private DocumentService documentService;
@@ -44,47 +43,80 @@ public class    DocumentController {
     private CloudStorageService cloudStorageService;
 
     @Autowired
-    private DocumentShareService documentShareService; // 🌟 Tiêm service share vào đây
+    private DocumentShareService documentShareService;
+
+    @GetMapping("/public")
+    @Operation(summary = "Lấy danh sách tài liệu cộng đồng đã được public")
+    public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
+        return ResponseEntity.ok(documentService.getPublicDocuments());
+    }
+
+    @GetMapping("/all")
+    @Operation(summary = "Lấy tài liệu của người dùng hiện tại")
+    public ResponseEntity<?> getAllMyDocuments() {
+        return ResponseEntity.ok(documentService.getAllDocumentsByUser());
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Tìm kiếm tài liệu có thể truy cập theo tên file hoặc danh mục")
+    public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
+            @RequestParam(value = "name", required = false) String searchText
+    ) {
+        return ResponseEntity.ok(documentService.searchDocumentsByFilter(searchText));
+    }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Tải tài liệu từ máy tính lên hệ thống")
-    @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<?> createDocument(
-        @RequestPart("file") MultipartFile file,
-        @RequestParam("description") String description,
-        @RequestParam(value = "textContent", required = false) String textContent,
-        @RequestParam("categories") List<String> categoryNames
-) {
-    try {
-        if (description == null || description.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
-        }
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("description") String description,
+            @RequestParam(value = "textContent", required = false) String textContent,
+            @RequestParam(value = "categories", required = false) List<String> categoryNames
+    ) {
+        try {
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest().body("Vui lòng chọn file để upload!");
+            }
+
+            if (description == null || description.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
+            }
+
+            String originalName = file.getOriginalFilename();
+
+            if (originalName == null || !originalName.contains(".")) {
+                return ResponseEntity.badRequest().body("File không có định dạng hợp lệ!");
+            }
+
+            String extension = originalName
+                    .substring(originalName.lastIndexOf(".") + 1)
+                    .toLowerCase(Locale.ROOT)
+                    .trim();
+
+            FileType fileType;
+
+            try {
+                fileType = FileType.valueOf(extension);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body("Định dạng file không được hỗ trợ: " + extension);
+            }
 
             String fileUrl = cloudStorageService.uploadFile(file);
 
             DocumentRequestDTO requestDTO = new DocumentRequestDTO();
-
-            requestDTO.setDocumentName(file.getOriginalFilename());
+            requestDTO.setDocumentName(originalName);
             requestDTO.setFileSize(file.getSize());
-
-            String originalName = file.getOriginalFilename();
-            String fileType = (originalName != null && originalName.contains("."))
-                    ? originalName.substring(originalName.lastIndexOf(".") + 1)
-                    : "unknown";
-            requestDTO.setFileType(FileType.valueOf(fileType));
-
+            requestDTO.setFileType(fileType);
             requestDTO.setDescription(description.trim());
-
             requestDTO.setTextContent(
                     textContent != null && !textContent.trim().isEmpty()
                             ? textContent.trim()
                             : description.trim()
             );
-
-        requestDTO.setPreviewUrl(fileUrl);
-        requestDTO.setDownloadUrl(fileUrl);
-        requestDTO.setCategoryNames(categoryNames);
+            requestDTO.setPreviewUrl(fileUrl);
+            requestDTO.setDownloadUrl(fileUrl);
+            requestDTO.setCategoryNames(categoryNames);
 
             DocumentResponseDTO response = documentService.createDocument(requestDTO);
 
@@ -99,53 +131,37 @@ public class    DocumentController {
         }
     }
 
-    // ĐA SỬA: Bỏ /{id} dư thừa trên URL vì bạn đã nhận diện user qua @RequestHeader
-    @GetMapping("/all")
-    public ResponseEntity<?> getAllMyDocuments() {
-        return ResponseEntity.ok(documentService.getAllDocumentsByUser());
-    }
-
-    @GetMapping("/public")
-    @PreAuthorize("permitAll()")
-    public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
-        return ResponseEntity.ok(documentService.getPublicDocuments());
-    }
-
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> getDocumentById(
-
-            @PathVariable("id") UUID documentId) {
+    @Operation(summary = "Xem chi tiết tài liệu")
+    public ResponseEntity<?> getDocumentById(@PathVariable("id") UUID documentId) {
         try {
-            DocumentResponseDTO response = documentService.getDocumentDetail(documentId);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(documentService.getDocumentDetail(documentId));
         } catch (Exception e) {
-            return ResponseEntity.status(403).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         }
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Đổi tên tài liệu")
     public ResponseEntity<?> updateDocumentName(
-
             @PathVariable("id") UUID documentId,
-            @RequestParam("newName") String newName) {
+            @RequestParam("newName") String newName
+    ) {
         try {
-            DocumentResponseDTO response = documentService.updateDocumentName(documentId, newName);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(documentService.updateDocumentName(documentId, newName));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteDocument(
-
-            @PathVariable("id") UUID documentId) {
+    @Operation(summary = "Xóa tài liệu")
+    public ResponseEntity<?> deleteDocument(@PathVariable("id") UUID documentId) {
         try {
             documentService.deleteDocument(documentId);
 
             return ResponseEntity.ok(
-                    java.util.Map.of(
+                    Map.of(
                             "success", true,
                             "message", "Xóa thành công tài liệu và giải phóng bộ nhớ!"
                     )
@@ -154,7 +170,7 @@ public class    DocumentController {
             e.printStackTrace();
 
             return ResponseEntity.badRequest().body(
-                    java.util.Map.of(
+                    Map.of(
                             "success", false,
                             "message", e.getMessage()
                     )
@@ -163,15 +179,12 @@ public class    DocumentController {
     }
 
     @GetMapping("/{id}/download")
-    public ResponseEntity<?> downloadDocument(
-
-            @PathVariable("id") UUID documentId) {
+    @Operation(summary = "Tải file tài liệu")
+    public ResponseEntity<?> downloadDocument(@PathVariable("id") UUID documentId) {
         try {
             Resource fileResource = documentService.downloadDocumentFile(documentId);
-
-            // ĐA TỐI ƯU: Lấy thông tin chi tiết để gán đúng tên file gốc và định dạng khi tải về
             DocumentResponseDTO detail = documentService.getDocumentDetail(documentId);
-            String fileName = detail.getDocumentName() + "." + detail.getFileType();
+            String fileName = buildFileName(detail);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -183,31 +196,17 @@ public class    DocumentController {
     }
 
     @GetMapping("/{id}/preview-file")
-    public ResponseEntity<?> previewDocumentFile(
-
-            @PathVariable("id") UUID documentId) {
+    @Operation(summary = "Xem trước file tài liệu")
+    public ResponseEntity<?> previewDocumentFile(@PathVariable("id") UUID documentId) {
         try {
             Resource fileResource = documentService.getFileResourceForPreview(documentId);
             DocumentResponseDTO detail = documentService.getDocumentDetail(documentId);
 
+            MediaType mediaType = resolveMediaType(detail.getFileType());
+            String fullFileName = buildFileName(detail);
 
-
-            MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-            if (detail.getFileType() == FileType.pdf) {
-                mediaType = MediaType.APPLICATION_PDF;
-            } else if (detail.getFileType() == FileType.png) {
-                mediaType = MediaType.IMAGE_PNG;
-            } else if (detail.getFileType() == FileType.jpg || detail.getFileType() == FileType.jpeg) {
-                mediaType = MediaType.IMAGE_JPEG;
-            }
-
-            String fullFileName = detail.getDocumentName();
-            if (!fullFileName.toLowerCase().endsWith("." + detail.getFileType())) {
-                fullFileName = fullFileName + "." + detail.getFileType();
-            }
-
-            org.springframework.http.ContentDisposition contentDisposition = org.springframework.http.ContentDisposition.builder("inline")
-                    .filename(fullFileName, java.nio.charset.StandardCharsets.UTF_8)
+            ContentDisposition contentDisposition = ContentDisposition.builder("inline")
+                    .filename(fullFileName, StandardCharsets.UTF_8)
                     .build();
 
             return ResponseEntity.ok()
@@ -219,72 +218,81 @@ public class    DocumentController {
         }
     }
 
-
-    @GetMapping("/search")
-    @Operation(summary = "Tìm kiếm tài liệu linh hoạt theo Tên file, Tên danh mục hoặc Lọc theo ID danh mục")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
-            @RequestParam(value = "name", required = false) String searchText
-    ) {
-        List<DocumentResponseDTO> results = documentService.searchDocumentsByFilter(searchText);
-        return ResponseEntity.ok(results);
-    }
-
     @PutMapping("/{documentId}/toggle-public")
+    @Operation(summary = "Gửi yêu cầu public hoặc chuyển tài liệu về private")
     public ResponseEntity<?> toggleDocumentPublic(
-
             @PathVariable("documentId") UUID documentId,
-            @RequestBody DocumentTogglePublicRequestDTO requestDTO) {
+            @RequestBody DocumentTogglePublicRequestDTO requestDTO
+    ) {
         try {
             DocumentResponseDTO response = documentService.toggleDocumentPublicStatus(
-
                     documentId,
-                    requestDTO.getIsPublic()
+                    Boolean.TRUE.equals(requestDTO.getIsPublic())
             );
+
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lỗi hệ thống: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi hệ thống: " + e.getMessage());
         }
+    }
+
+    @PutMapping("/{documentId}/public-status")
+    @Operation(summary = "Alias của toggle-public để tương thích FE")
+    public ResponseEntity<DocumentResponseDTO> togglePublicStatus(
+            @PathVariable UUID documentId,
+            @RequestParam boolean isPublic
+    ) {
+        return ResponseEntity.ok(documentService.toggleDocumentPublicStatus(documentId, isPublic));
+    }
+
+    @PutMapping("/{documentId}/review")
+    @Operation(summary = "Admin/Moderator duyệt yêu cầu public tài liệu: ACCEPT hoặc DENY")
+    public ResponseEntity<DocumentResponseDTO> reviewDocument(
+            @PathVariable UUID documentId,
+            @RequestParam String decision
+    ) {
+        return ResponseEntity.ok(documentService.approvePublicRequest(documentId, decision));
     }
 
     @PostMapping("/{id}/share")
     @Operation(summary = "Chia sẻ quyền truy cập tài liệu cho người dùng khác")
     public ResponseEntity<?> shareDocument(
-
             @PathVariable("id") UUID documentId,
             @RequestParam("targetUserId") UUID targetUserId,
-            @RequestParam(value = "permissionType", required = false, defaultValue = "view") String permissionType) {
+            @RequestParam(value = "permissionType", required = false, defaultValue = "view") String permissionType
+    ) {
         try {
             documentShareService.shareDocumentToUser(documentId, targetUserId, permissionType);
 
             return ResponseEntity.ok(
-                    java.util.Map.of(
+                    Map.of(
                             "success", true,
                             "message", "Chia sẻ tài liệu thành công!"
                     )
             );
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(
-                    java.util.Map.of("success", false, "message", e.getMessage())
+                    Map.of("success", false, "message", e.getMessage())
             );
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                    java.util.Map.of("success", false, "message", "Lỗi hệ thống: " + e.getMessage())
+                    Map.of("success", false, "message", "Lỗi hệ thống: " + e.getMessage())
             );
         }
     }
 
     @PutMapping("/{id}/share")
-    @Operation(summary = "Thay đổi quyền truy cập tài liệu của người được share (view, download, edit)")
+    @Operation(summary = "Thay đổi quyền truy cập tài liệu của người được share")
     public ResponseEntity<?> updateSharePermission(
-
             @PathVariable("id") UUID documentId,
             @RequestParam("targetUserId") UUID targetUserId,
-            @RequestParam("permissionType") String permissionType) {
+            @RequestParam("permissionType") String permissionType
+    ) {
         try {
-            documentShareService.updateSharePermission( documentId, targetUserId, permissionType);
+            documentShareService.updateSharePermission(documentId, targetUserId, permissionType);
 
             return ResponseEntity.ok(
                     Map.of(
@@ -303,27 +311,36 @@ public class    DocumentController {
         }
     }
 
-    // =========================================================================
-    // 1. API DÀNH CHO USER (CUSTOMER): Gửi yêu cầu duyệt Public bài hoặc rút về Private
-    // =========================================================================
-    @PutMapping("/{documentId}/public-status")
-    @Operation(summary = "Customer gửi yêu cầu Public tài liệu (chuyển sang PENDING) hoặc chủ động rút về Private")
-    @PreAuthorize("hasRole('CUSTOMER')") // Nên thêm để phân quyền chặt chẽ từ Gate
-    public ResponseEntity<DocumentResponseDTO> togglePublicStatus(
-            @PathVariable UUID documentId,
-            @RequestParam boolean isPublic) {
-        return ResponseEntity.ok(documentService.toggleDocumentPublicStatus(documentId, isPublic));
+    private MediaType resolveMediaType(FileType fileType) {
+        if (fileType == null) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        return switch (fileType) {
+            case pdf -> MediaType.APPLICATION_PDF;
+            case png -> MediaType.IMAGE_PNG;
+            case jpg, jpeg -> MediaType.IMAGE_JPEG;
+            default -> MediaType.APPLICATION_OCTET_STREAM;
+        };
     }
 
-    // =========================================================================
-    // 2. API DÀNH RIÊNG CHO MODERATOR VÀ ADMIN: Thực hiện Phê duyệt (ACCEPT / DENY)
-    // =========================================================================
-    @PutMapping("/{documentId}/review")
-    @Operation(summary = "Admin/Moderator phê duyệt yêu cầu công khai tài liệu (ACCEPT hoặc DENY)")
-    @PreAuthorize("hasAnyRole('MODERATOR', 'ADMIN')") // Chặn quyền Staff ngay từ Controller
-    public ResponseEntity<DocumentResponseDTO> reviewDocument(
-            @PathVariable UUID documentId,
-            @RequestParam String decision) {
-        return ResponseEntity.ok(documentService.approvePublicRequest(documentId, decision));
+    private String buildFileName(DocumentResponseDTO detail) {
+        String fileName = detail.getDocumentName();
+
+        if (fileName == null || fileName.isBlank()) {
+            fileName = detail.getDocumentId().toString();
+        }
+
+        if (detail.getFileType() == null) {
+            return fileName;
+        }
+
+        String extension = "." + detail.getFileType().name().toLowerCase(Locale.ROOT);
+
+        if (!fileName.toLowerCase(Locale.ROOT).endsWith(extension)) {
+            fileName += extension;
+        }
+
+        return fileName;
     }
 }

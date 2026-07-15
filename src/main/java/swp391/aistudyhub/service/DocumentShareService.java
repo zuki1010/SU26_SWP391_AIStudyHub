@@ -1,10 +1,10 @@
 package swp391.aistudyhub.service;
 
-import java.util.UUID; // 🌟 Đảm bảo import đúng dòng này
+import java.util.UUID;
 
 public interface DocumentShareService {
-    // Ép hẳn package java.util.UUID vào tham số để tránh import nhầm
-    void shareDocumentToUser( java.util.UUID documentId, java.util.UUID targetUserId, String permissionType);
 
-    void updateSharePermission( UUID documentId, UUID targetUserId, String newPermissionType);
+    void shareDocumentToUser(UUID documentId, UUID targetUserId, String permissionType);
+
+    void updateSharePermission(UUID documentId, UUID targetUserId, String newPermissionType);
 }

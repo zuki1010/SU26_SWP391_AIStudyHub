@@ -1,0 +1,21 @@
+package swp391.aistudyhub.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import swp391.aistudyhub.entity.DocumentCategory;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface DocumentCategoryRepository extends JpaRepository<DocumentCategory, UUID> {
+
+    List<DocumentCategory> findByDocument_Id(UUID documentId);
+
+    List<DocumentCategory> findByUser_Id(UUID userId);
+
+    Optional<DocumentCategory> findByCategoryNameIgnoreCaseAndUser_Id(String categoryName, UUID userId);
+
+    Optional<DocumentCategory> findByCategoryNameIgnoreCaseAndUserIsNull(String categoryName);
+}

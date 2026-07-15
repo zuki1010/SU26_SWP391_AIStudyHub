@@ -5,9 +5,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -15,34 +16,36 @@ import java.util.UUID;
 @Entity
 @Table(name = "document_categories")
 public class DocumentCategory {
+
     @Id
-    @Column(name = "category_id", nullable = false)
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "category_id", updatable = false, nullable = false)
     private UUID id;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "document_id", nullable = false)
+    @JoinColumn(name = "document_id")
     private Document document;
 
-    @Size(max = 256)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @Size(max = 255)
     @NotNull
-    @Column(name = "category_name", nullable = false, length = 256)
+    @Column(name = "category_name", nullable = false)
     private String categoryName;
 
-    @Size(max = 100)
-    @Column(name = "category_type", length = 100)
+    @Size(max = 50)
+    @NotNull
+    @Column(name = "category_type", nullable = false, length = 50)
     private String categoryType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    private DocumentCategory parent;
+    @Column(name = "parent_id")
+    private UUID parentId;
 
     @NotNull
-    @CreationTimestamp
-    @Column(name = "created_at",updatable = false, nullable = false)
-    private OffsetDateTime createdAt;
-
-
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
 }

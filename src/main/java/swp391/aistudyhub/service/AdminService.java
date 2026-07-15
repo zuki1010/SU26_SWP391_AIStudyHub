@@ -1,29 +1,32 @@
 package swp391.aistudyhub.service;
 
 import org.springframework.data.domain.Page;
-import swp391.aistudyhub.dto.projection.ChatRequestResponse;
-import swp391.aistudyhub.dto.projection.DocumentResponse;
-import swp391.aistudyhub.dto.projection.StorageUsageResponse;
-import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.response.AdminChatResponseDTO;
+import swp391.aistudyhub.dto.response.AdminDocumentResponseDTO;
+import swp391.aistudyhub.dto.response.AdminStorageResponseDTO;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
-import swp391.aistudyhub.entity.Document;
-import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface AdminService {
-    Page<UserAccountResponse> getAllCustomer(String key, int page, int size);
 
-    UserAccountResponse updateUserStatus(UUID id, AccountStatus status);
+    Page<UserAccountResponseDTO> getAllCustomer(String key, int page, int size);
 
-    Page<DocumentResponse> getAllDocument(int page, int size);
+    UserAccountResponseDTO updateUserStatus(UUID id, AccountStatus status);
 
-    UserAccountResponse updateUserRole(UUID id, UserRole role);
+    UserAccountResponseDTO updateUserRole(UUID id, UserRole role);
 
-    Page<ChatRequestResponse> getAllChat(int page, int size);
+    Page<AdminDocumentResponseDTO> getAllDocument(
+            String key,
+            String status,
+            Boolean isPublic,
+            int page,
+            int size
+    );
 
-    Page<StorageUsageResponse> getAllStorage(int page, int size);
+    Page<AdminChatResponseDTO> getAllChat(int page, int size);
+
+    Page<AdminStorageResponseDTO> getAllStorage(int page, int size);
 }
