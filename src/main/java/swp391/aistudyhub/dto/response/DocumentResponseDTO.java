@@ -18,12 +18,6 @@ public class DocumentResponseDTO {
     private String downloadUrl;
     private Instant createdAt;
     private String description;
-    private String textContent;
     private Boolean isPublic;
-
-    /**
-     * Trạng thái public/review của tài liệu.
-     * Ví dụ: PRIVATE, PENDING, PUBLIC, DENIED.
-     */
     private StatusPublicDoc status;
 }

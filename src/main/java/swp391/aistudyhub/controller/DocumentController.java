@@ -72,7 +72,7 @@ public class DocumentController {
     public ResponseEntity<?> createDocument(
             @RequestPart("file") MultipartFile file,
             @RequestParam("description") String description,
-            @RequestParam(value = "textContent", required = false) String textContent,
+//            @RequestParam(value = "textContent", required = false) String textContent,
             @RequestParam(value = "categories", required = false) List<String> categoryNames
     ) {
         try {
@@ -112,11 +112,6 @@ public class DocumentController {
             requestDTO.setFileType(fileType);
             requestDTO.setStatus(StatusPublicDoc.DEFAULT);
             requestDTO.setDescription(description.trim());
-            requestDTO.setTextContent(
-                    textContent != null && !textContent.trim().isEmpty()
-                            ? textContent.trim()
-                            : description.trim()
-            );
             requestDTO.setPreviewUrl(fileUrl);
             requestDTO.setDownloadUrl(fileUrl);
             requestDTO.setCategoryNames(categoryNames);

@@ -655,7 +655,6 @@ public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
         dto.setDownloadUrl(document.getDownloadUrl());
         dto.setCreatedAt(document.getCreatedAt());
         dto.setDescription(document.getDescription());
-        dto.setTextContent(document.getDescription());
         dto.setIsPublic(document.isPublic());
         dto.setStatus(document.getStatus());
 
