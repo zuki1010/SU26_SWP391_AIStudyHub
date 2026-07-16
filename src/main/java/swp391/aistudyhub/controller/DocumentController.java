@@ -19,6 +19,7 @@ import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.RequestPublicDoc;
 import swp391.aistudyhub.enums.StatusPublicDoc;
+import swp391.aistudyhub.enums.SubjectCode;
 import swp391.aistudyhub.service.CloudStorageService;
 import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
@@ -72,8 +73,7 @@ public class DocumentController {
     public ResponseEntity<?> createDocument(
             @RequestPart("file") MultipartFile file,
             @RequestParam("description") String description,
-//            @RequestParam(value = "textContent", required = false) String textContent,
-            @RequestParam(value = "categories", required = false) List<String> categoryNames
+            @RequestParam(value = "subjectCode") SubjectCode subjectCode
     ) {
         try {
             if (file == null || file.isEmpty()) {
@@ -114,7 +114,8 @@ public class DocumentController {
             requestDTO.setDescription(description.trim());
             requestDTO.setPreviewUrl(fileUrl);
             requestDTO.setDownloadUrl(fileUrl);
-            requestDTO.setCategoryNames(categoryNames);
+            requestDTO.setSubjectCode(subjectCode);
+//            requestDTO.setCategoryNames(categoryNames);
 
             DocumentResponseDTO response = documentService.createDocument(requestDTO);
 

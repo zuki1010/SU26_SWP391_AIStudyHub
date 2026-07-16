@@ -99,13 +99,22 @@ public class DocumentServiceImpl implements DocumentService {
 
         Document savedDoc = documentRepository.saveAndFlush(doc);
 
-        handleDocumentCategories(savedDoc, userId, requestDTO.getCategoryNames());
+        UUID finalCategoryId = handleDocumentCategories(savedDoc, userId, requestDTO.getSubjectCode());
+
+        // 3. CẬP NHẬT TRỰC TIẾP VÀO THỰC THỂ ĐỂ HẾT BỊ NULL
+        if (finalCategoryId != null) {
+            savedDoc.setCategoryId(finalCategoryId); // Gán ID danh mục vào thực thể
+
+            // Gọi thêm hàm liên kết bổ trợ (nếu hàm updateDocumentCategory cũ của bạn cần chạy sql liên kết)
+            updateDocumentCategory(savedDoc, finalCategoryId);
+
+            // Ép Hibernate lưu đè giá trị category_id mới xuống bảng documents
+            savedDoc = documentRepository.saveAndFlush(savedDoc);
+        }
 
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.save(storage);
-
         storageUploadService.logSuccess(storage, requestDTO.getDocumentName(), actualFileSize);
-
         return mapToResponseDTO(savedDoc);
     }
 
@@ -390,48 +399,44 @@ public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
                 .orElseThrow(() -> new RuntimeException("This user is not found!"));
     }
 
-    private void handleDocumentCategories(
+    private UUID handleDocumentCategories(
             Document savedDoc,
             UUID userId,
-            List<String> categoryNames
+            SubjectCode subjectCode
     ) {
-        if (categoryNames == null || categoryNames.isEmpty()) {
-            return;
+        // 🌟 Kiểm tra bắt buộc: Nếu không chọn môn học, chặn lại và báo lỗi ngay
+        if (subjectCode == null) {
+            throw new RuntimeException("Vui lòng chọn một môn học hợp lệ từ danh sách hệ thống!");
         }
 
-        String selectedSubject = categoryNames.get(0);
+        // Lấy tên môn học chuẩn và học kỳ tương ứng trực tiếp từ Enum
+        String selectedSubject = subjectCode.name(); // Ví dụ: "PRN211"
+        Semester semester = subjectCode.getSemester(); // Ví dụ: SUMMER
 
-        if (selectedSubject == null || selectedSubject.trim().isEmpty()) {
-            return;
+        if (semester == null) {
+            throw new RuntimeException("Môn học được chọn không thuộc bất kỳ học kỳ nào hiện tại!");
         }
 
-        selectedSubject = selectedSubject.trim();
-
-        try {
-            SubjectCode subject = SubjectCode.valueOf(selectedSubject.toUpperCase());
-            selectedSubject = subject.name();
-
-            Semester semester = subject.getSemester();
-
-            UUID semesterCategoryId = findOrCreateSemesterCategory(savedDoc.getId(), semester);
-            UUID subjectCategoryId = findOrCreateSubjectCategory(
-                    savedDoc.getId(),
-                    selectedSubject,
-                    semesterCategoryId
-            );
-
-            updateDocumentCategory(savedDoc, subjectCategoryId);
-        } catch (IllegalArgumentException e) {
-            UUID customCategoryId = findOrCreateCustomCategory(
-                    savedDoc.getId(),
-                    userId,
-                    selectedSubject
-            );
-
-            updateDocumentCategory(savedDoc, customCategoryId);
+        // 1. Tìm hoặc tự sinh danh mục Tầng KỲ HỌC (SEMESTER) dưới bảng document_categories
+        UUID semesterCategoryId = findOrCreateSemesterCategory(savedDoc.getId(), semester);
+        if (semesterCategoryId == null) {
+            throw new RuntimeException("Lỗi hệ thống: Không thể khởi tạo danh mục học kỳ cho " + semester.name());
         }
+        // 2. Tìm hoặc tự sinh danh mục Tầng MÔN HỌC (SUBJECT) dựa vào parent_id là Kỳ học
+        UUID subjectCategoryId = findOrCreateSubjectCategory(
+                savedDoc.getId(),
+                selectedSubject,
+                semesterCategoryId
+        );
 
+        // 3. Chạy hàm liên kết phụ (nếu có logic chạy SQL native liên quan đến bảng trung gian)
+        updateDocumentCategory(savedDoc, subjectCategoryId);
+
+        // Đẩy toàn bộ dữ liệu xuống DB ngay lập tức
         entityManager.flush();
+
+        // TRẢ VỀ ID CỦA MÔN HỌC ĐỂ SERVICE GÁN VÀO DOCUMENT
+        return subjectCategoryId;
     }
 
     private UUID findOrCreateSemesterCategory(UUID documentId, Semester semester) {
@@ -657,7 +662,27 @@ public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
         dto.setDescription(document.getDescription());
         dto.setIsPublic(document.isPublic());
         dto.setStatus(document.getStatus());
+        if (document.getCategoryId() != null) {
+            try {
+                String sqlGetName = "SELECT category_name FROM document_categories WHERE category_id = ? LIMIT 1";
+                String categoryName = (String) entityManager.createNativeQuery(sqlGetName)
+                        .setParameter(1, document.getCategoryId())
+                        .getSingleResult();
 
+                if (categoryName != null) {
+                    // Ép kiểu chuỗi chữ thành Enum trả về cho FE
+                    dto.setSubjectCode(SubjectCode.valueOf(categoryName.toUpperCase().trim()));
+                } else {
+                    throw new RuntimeException("Không tìm thấy tên danh mục tương ứng với tài liệu này!");
+                }
+            } catch (Exception e) {
+                // 🌟 Thay vì nuốt lỗi set null, ta ném ngoại lệ chặn đứng transaction!
+                throw new RuntimeException("Dữ liệu danh mục môn học bị lỗi hoặc không khớp với hệ thống: " + e.getMessage());
+            }
+        } else {
+            // Cột category_id bắt buộc không được null theo nghiệp vụ mới của bạn
+            throw new RuntimeException("Tài liệu hợp lệ bắt buộc phải có thông tin môn học đính kèm!");
+        }
         return dto;
     }
 }

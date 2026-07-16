@@ -11,6 +11,7 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.StatusPublicDoc;
+import swp391.aistudyhub.enums.SubjectCode;
 
 import java.time.Instant;
 import java.util.ArrayList;

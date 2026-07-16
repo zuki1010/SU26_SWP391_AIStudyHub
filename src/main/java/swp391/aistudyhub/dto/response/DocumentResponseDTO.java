@@ -3,6 +3,7 @@ package swp391.aistudyhub.dto.response;
 import lombok.Data;
 import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.StatusPublicDoc;
+import swp391.aistudyhub.enums.SubjectCode;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -20,4 +21,5 @@ public class DocumentResponseDTO {
     private String description;
     private Boolean isPublic;
     private StatusPublicDoc status;
+    private SubjectCode subjectCode;
 }
