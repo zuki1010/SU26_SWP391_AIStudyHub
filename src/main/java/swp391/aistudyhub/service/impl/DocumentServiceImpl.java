@@ -51,6 +51,9 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private DocumentShareRepository documentShareRepository;
 
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
+
 
     @Override
     @Transactional
@@ -70,6 +73,15 @@ public class DocumentServiceImpl implements DocumentService {
 
         long actualFileSize = requestDTO.getFileSize() != null ? requestDTO.getFileSize() : 0L;
 
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("This config is not found!"));
+
+        if(actualFileSize > systemConfig.getMaxFileSizeMb()) {
+            throw new RuntimeException("Maximum file is 20MB");
+        }
+        if(!requestDTO.getFileType().equals(systemConfig.getAllowedFileTypes())){
+            throw new RuntimeException("This file type is not allow to upload");
+        }
         long updatedUsedQuota = storage.getUsedQuota() + actualFileSize;
         if (updatedUsedQuota > storage.getTotalQuota()) {
             storageUploadService.logFailure(storage, requestDTO.getDocumentName(), actualFileSize, "FAILED_QUOTA_FULL");

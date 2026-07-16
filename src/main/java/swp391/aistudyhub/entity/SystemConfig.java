@@ -22,10 +22,10 @@ public class SystemConfig {
     private Integer maxDailyChatTokens;
 
     @Column(name = "total_storage_quota_gb", nullable = false)
-    private Integer totalStorageQuotaGb;
+    private Long totalStorageQuotaGb;
 
     @Column(name = "max_file_size_mb", nullable = false)
-    private Integer maxFileSizeMb;
+    private Long maxFileSizeMb;
 
     @Column(name = "allowed_file_types", nullable = false)
     private String allowedFileTypes;
