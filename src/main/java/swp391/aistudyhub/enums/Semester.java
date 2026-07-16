@@ -9,8 +9,8 @@ public enum Semester {
     SEMESTER_6("Học kỳ 6"),
     SEMESTER_7("Học kỳ 7"),
     SEMESTER_8("Học kỳ 8"),
-    SEMESTER_9("Học kỳ 9");
-
+    SEMESTER_9("Học kỳ 9"),
+    OTHERS("Học kỳ khác");
     private final String displayName;
 
     Semester(String displayName) {

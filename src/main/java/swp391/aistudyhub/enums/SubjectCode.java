@@ -18,7 +18,8 @@ public enum SubjectCode {
     MAS291(Semester.SEMESTER_4),
     SWR302(Semester.SEMESTER_5),
     SWT301(Semester.SEMESTER_5),
-    PRN212(Semester.SEMESTER_5);
+    PRN212(Semester.SEMESTER_5),
+    OTHER(Semester.OTHERS);
     private final Semester semester;
 
     SubjectCode(Semester semester) {
