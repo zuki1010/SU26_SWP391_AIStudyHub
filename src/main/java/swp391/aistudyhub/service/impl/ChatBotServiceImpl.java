@@ -13,10 +13,7 @@ import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
 import swp391.aistudyhub.dto.response.ChatMessageDTO;
 import swp391.aistudyhub.dto.response.UpdateSessionDocsDTO;
-import swp391.aistudyhub.entity.ChatMessage;
-import swp391.aistudyhub.entity.ChatSession;
-import swp391.aistudyhub.entity.Document;
-import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.entity.*;
 import swp391.aistudyhub.enums.SenderType;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.ChatBotService;
@@ -49,6 +46,9 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Autowired
     private DocumentChunkService documentChunkService;
+
+    @Autowired
+    private CustomerProfileRepository customerProfileRepository;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -115,6 +115,27 @@ public class ChatBotServiceImpl implements ChatBotService {
         ChatSession session = chatSessionRepository.findById(dto.getSessionId())
                 .orElseThrow(() -> new RuntimeException("This Chat Session is not found"));
 
+        User user = session.getUser();
+
+        if ("CUSTOMER".equals(user.getRole().name())) {
+
+            int maxDailyTokens = 20000;
+
+            CustomerProfile profile = customerProfileRepository.findByUser_Id(user.getId())
+                    .orElseThrow(() -> new RuntimeException("Customer Profile not found"));
+
+            Instant today = Instant.now();
+            if (profile.getLast_chat_date() == null || !profile.getLast_chat_date().equals(today)) {
+                profile.setTokens_used_today(0);
+                profile.setLast_chat_date(today);
+                customerProfileRepository.save(profile);
+            }
+
+            if (profile.getTokens_used_today() >= maxDailyTokens) {
+                throw new RuntimeException("Bạn đã dùng hết giới hạn token chat của ngày hôm nay!");
+            }
+        }
+
         List<ChatMessage> history = chatMessageRepository.findTop10ByChatSessionOrderBySentAtDesc(session);
         Collections.reverse(history);
 
@@ -137,7 +158,11 @@ public class ChatBotServiceImpl implements ChatBotService {
                     + documentContext;
         }
 
-        String aiResponse = geminiClient.callGemini(systemPrompt, history, dto.getMessageContent());
+        GeminiClient.GeminiResult geminiResult = geminiClient.callGemini(systemPrompt, history, dto.getMessageContent());
+
+        String aiResponse = geminiResult.getTextResponse();
+
+        int tokensSpentForThisTurn = geminiResult.getTotalTokens();
 
         ChatMessage userMsg = new ChatMessage();
         userMsg.setChatSession(session);
@@ -152,6 +177,12 @@ public class ChatBotServiceImpl implements ChatBotService {
         aiMsg.setMessageContent(aiResponse);
         aiMsg.setSentAt(Instant.now());
         chatMessageRepository.save(aiMsg);
+
+        if ("CUSTOMER".equals(user.getRole().name())) {
+            CustomerProfile profile = customerProfileRepository.findByUser_Id(user.getId()).get();
+            profile.setTokens_used_today(profile.getTokens_used_today() + tokensSpentForThisTurn);
+            customerProfileRepository.save(profile);
+        }
 
         return aiResponse;
     }
