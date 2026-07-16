@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
@@ -39,4 +40,10 @@ public class CustomerProfile {
     @Size(max = 255)
     @Column(name = "school_name")
     private String schoolName;
+
+    @Column(name = "tokens_used_today")
+    private int tokens_used_today;
+
+    @Column(name = "last_chat_date")
+    private LocalDate last_chat_date;
 }

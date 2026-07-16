@@ -39,14 +39,34 @@ public interface DocumentRepository extends JpaRepository<Document, UUID>, JpaSp
             "OR d.id IN (SELECT ds.document.id FROM DocumentShare ds WHERE ds.sharedWithUser.id = :userId)")
     List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 
-    // 🌟 HÀM TÌM KIẾM THÔNG MINH CHO TÀI LIỆU PUBLIC (Gõ mã môn hoặc tên file)
-    // 🌟 HÀM SEARCH ĐỈNH CAO: Tìm tài liệu PRIVATE của tôi + tài liệu PUBLIC của toàn trường
-    @Query("SELECT d FROM Document d " +
-            "WHERE (d.user.id = :userId OR d.isPublic = true) " + // Điều kiện bảo mật quyết định ở đây
-            "AND (:searchText IS NULL OR :searchText = '' " +
+//    // 🌟 HÀM TÌM KIẾM HOÀN HẢO: Ép kiểu tường minh giúp PostgreSQL nhận diện tham số $2, cam kết 200 OK!
+//    @Query("SELECT d FROM Document d WHERE " +
+//            "(d.user.id = :userId OR d.isPublic = true) " +
+//            "AND (CAST(:searchText AS string) IS NULL OR :searchText = '' " +
+//            "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
+//            "    OR d.id IN (" +
+//            "        SELECT dc.document.id FROM DocumentCategory dc " +
+//            "        WHERE LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))" +
+//            "    )" +
+//            ")")
+//    List<Document> searchSmartAccessibleDocuments(
+//            @Param("userId") java.util.UUID userId,
+//            @Param("searchText") String searchText);
+
+    @Query("SELECT d FROM Document d WHERE " +
+            "(" +
+            "   d.user.id = :userId " +             // 1. Tài liệu do chính mình sở hữu
+            "   OR d.isPublic = true " +           // 2. Tài liệu công khai (Public)
+            "   OR d.id IN (SELECT ds.document.id FROM DocumentShare ds WHERE ds.sharedWithUser.id = :userId)" + // 🔥 3. CHÍNH LÀ ĐÂY: Tài liệu người khác share private cho mình
+            ") " +
+            "AND (CAST(:searchText AS string) IS NULL OR :searchText = '' " +
             "    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%')) " +
-            "    OR LOWER(CAST(d.categoryId AS string)) LIKE LOWER(CONCAT('%', :searchText, '%')))")
+            "    OR d.id IN (" +
+            "        SELECT dc.document.id FROM DocumentCategory dc " +
+            "        WHERE LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))" +
+            "    )" +
+            ")")
     List<Document> searchSmartAccessibleDocuments(
-            @Param("userId") UUID userId,
+            @Param("userId") java.util.UUID userId,
             @Param("searchText") String searchText);
 }
