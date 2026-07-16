@@ -2,6 +2,7 @@ package swp391.aistudyhub.dto.request;
 
 import lombok.Data;
 import swp391.aistudyhub.enums.FileType;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.util.List;
 
@@ -23,4 +24,6 @@ public class DocumentRequestDTO {
     private String description;
 
     private List<String> categoryNames;
+
+    private StatusPublicDoc status;
 }

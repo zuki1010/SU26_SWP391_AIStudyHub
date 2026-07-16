@@ -2,6 +2,7 @@ package swp391.aistudyhub.dto.response;
 
 import lombok.Data;
 import swp391.aistudyhub.enums.FileType;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -24,5 +25,5 @@ public class DocumentResponseDTO {
      * Trạng thái public/review của tài liệu.
      * Ví dụ: PRIVATE, PENDING, PUBLIC, DENIED.
      */
-    private String status;
+    private StatusPublicDoc status;
 }

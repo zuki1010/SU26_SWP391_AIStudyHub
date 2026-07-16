@@ -15,7 +15,9 @@ import swp391.aistudyhub.entity.CloudStorage;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.DocumentShare;
 import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.enums.RequestPublicDoc;
 import swp391.aistudyhub.enums.Semester;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.SubjectCode;
 import swp391.aistudyhub.repository.CloudStorageRepository;
 import swp391.aistudyhub.repository.DocumentChunkRepository;
@@ -90,6 +92,7 @@ public class DocumentServiceImpl implements DocumentService {
         doc.setFileType(requestDTO.getFileType());
         doc.setPreviewUrl(requestDTO.getPreviewUrl());
         doc.setDownloadUrl(requestDTO.getDownloadUrl());
+        doc.setStatus(requestDTO.getStatus());
         doc.setFileSize(actualFileSize);
         doc.setDescription(requestDTO.getDescription());
         doc.setCategoryId(null);
@@ -294,13 +297,13 @@ public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
              * Chuyển sang PENDING để Admin/Moderator duyệt.
              */
             document.setPublic(false);
-            document.setStatus("PENDING");
+            document.setStatus(StatusPublicDoc.PENDING);
         } else {
             /*
              * Khi user rút về private, cho về private ngay.
              */
             document.setPublic(false);
-            document.setStatus("DEFAULT");
+            document.setStatus(StatusPublicDoc.DEFAULT);
             document.setApprovedBy(null);
         }
 
@@ -311,7 +314,7 @@ public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
 
     @Override
     @Transactional
-    public DocumentResponseDTO approvePublicRequest(UUID documentId, String decision) {
+    public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDoc decision) {
         Authentication authentication = getAuthentication();
 
         boolean isStaff = authentication.getAuthorities().stream()
@@ -332,16 +335,16 @@ public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu phê duyệt."));
 
-        if (!"PENDING".equalsIgnoreCase(document.getStatus())) {
+        if (!"PENDING".equalsIgnoreCase(document.getStatus().name())) {
             throw new RuntimeException("Tài liệu này hiện không có yêu cầu phê duyệt nào cần xử lý hoặc đã được duyệt trước đó!");
         }
 
-        if ("ACCEPT".equalsIgnoreCase(decision)) {
+        if ("ACCEPT".equalsIgnoreCase( decision.name())) {
             document.setPublic(true);
-            document.setStatus("SUCCESS");
-        } else if ("DENY".equalsIgnoreCase(decision)) {
+            document.setStatus(StatusPublicDoc.SUCCESS);
+        } else if ("DENY".equalsIgnoreCase(decision.name())) {
             document.setPublic(false);
-            document.setStatus("DEFAULT");
+            document.setStatus(StatusPublicDoc.DEFAULT);
         } else {
             throw new RuntimeException("Quyết định phê duyệt không hợp lệ! Chỉ chấp nhận 'ACCEPT' hoặc 'DENY'.");
         }

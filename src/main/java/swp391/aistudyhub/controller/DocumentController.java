@@ -17,6 +17,8 @@ import swp391.aistudyhub.dto.request.DocumentTogglePublicRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.enums.FileType;
+import swp391.aistudyhub.enums.RequestPublicDoc;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.service.CloudStorageService;
 import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
@@ -108,6 +110,7 @@ public class DocumentController {
             requestDTO.setDocumentName(originalName);
             requestDTO.setFileSize(file.getSize());
             requestDTO.setFileType(fileType);
+            requestDTO.setStatus(StatusPublicDoc.DEFAULT);
             requestDTO.setDescription(description.trim());
             requestDTO.setTextContent(
                     textContent != null && !textContent.trim().isEmpty()
@@ -252,7 +255,7 @@ public class DocumentController {
     @Operation(summary = "Admin/Moderator duyệt yêu cầu public tài liệu: ACCEPT hoặc DENY")
     public ResponseEntity<DocumentResponseDTO> reviewDocument(
             @PathVariable UUID documentId,
-            @RequestParam String decision
+            @RequestParam RequestPublicDoc decision
     ) {
         return ResponseEntity.ok(documentService.approvePublicRequest(documentId, decision));
     }

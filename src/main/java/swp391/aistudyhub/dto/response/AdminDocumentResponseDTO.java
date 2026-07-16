@@ -3,6 +3,7 @@ package swp391.aistudyhub.dto.response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -26,7 +27,7 @@ public class AdminDocumentResponseDTO {
 
     private Boolean isPublic;
 
-    private String status;
+    private StatusPublicDoc status;
 
     private Instant createdAt;
 
