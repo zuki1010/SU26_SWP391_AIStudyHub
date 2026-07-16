@@ -20,8 +20,21 @@ public class GeminiClient {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    public static class GeminiResult {
+        private final String textResponse;
+        private final int totalTokens;
+
+        public GeminiResult(String textResponse, int totalTokens) {
+            this.textResponse = textResponse;
+            this.totalTokens = totalTokens;
+        }
+
+        public String getTextResponse() { return textResponse; }
+        public int getTotalTokens() { return totalTokens; }
+    }
+
     @SuppressWarnings("unchecked")
-    public String callGemini(String systemPrompt, List<ChatMessage> history, String userMessageContent) {
+    public GeminiResult callGemini(String systemPrompt, List<ChatMessage> history, String userMessageContent) {
         String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
 
         HttpHeaders headers = new HttpHeaders();
@@ -69,6 +82,8 @@ public class GeminiClient {
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> responseBody = response.getBody();
+
+                String aiText = "Không nhận được phản hồi hợp lệ từ AI";
                 List<Map<String, Object>> candidates = (List<Map<String, Object>>) responseBody.get("candidates");
 
                 if (candidates != null && !candidates.isEmpty()) {
@@ -78,16 +93,24 @@ public class GeminiClient {
                     if (contentMap != null) {
                         List<Map<String, Object>> parts = (List<Map<String, Object>>) contentMap.get("parts");
                         if (parts != null && !parts.isEmpty()) {
-                            return (String) parts.get(0).get("text");
+                            aiText = (String) parts.get(0).get("text");
                         }
                     }
                 }
+
+                int totalTokens = 0;
+                Map<String, Object> usageMetadata = (Map<String, Object>) responseBody.get("usageMetadata");
+                if (usageMetadata != null && usageMetadata.get("totalTokenCount") != null) {
+                    totalTokens = (Integer) usageMetadata.get("totalTokenCount");
+                }
+
+                return new GeminiResult(aiText, totalTokens);
             }
         } catch (Exception e) {
             System.err.println(">>> GEMINI API ERROR: " + e.getMessage());
-            return "Lỗi kết nối API Gemini: " + e.getMessage();
+            return new GeminiResult("Lỗi kết nối API Gemini: " + e.getMessage(), 0);
         }
 
-        return "Không nhận được phản hồi hợp lệ từ AI";
+        return new GeminiResult("Không nhận được phản hồi hợp lệ từ AI", 0);
     }
 }
