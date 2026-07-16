@@ -19,9 +19,7 @@ import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.StorageUploadService;
 
 import java.io.InputStream;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -79,7 +77,9 @@ public class DocumentServiceImpl implements DocumentService {
         if(actualFileSize > systemConfig.getMaxFileSizeMb()) {
             throw new RuntimeException("Maximum file is 20MB");
         }
-        if(!requestDTO.getFileType().equals(systemConfig.getAllowedFileTypes())){
+        String allowedFileType = systemConfig.getAllowedFileTypes();
+        List<String> allowedExtension = Arrays.asList(allowedFileType.split(","));
+        if(!allowedExtension.contains(requestDTO.getFileType())) {
             throw new RuntimeException("This file type is not allow to upload");
         }
         long updatedUsedQuota = storage.getUsedQuota() + actualFileSize;
