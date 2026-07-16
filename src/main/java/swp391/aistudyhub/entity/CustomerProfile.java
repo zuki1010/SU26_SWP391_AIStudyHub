@@ -8,7 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
@@ -45,5 +45,5 @@ public class CustomerProfile {
     private int tokens_used_today;
 
     @Column(name = "last_chat_date")
-    private Instant last_chat_date;
+    private LocalDate last_chat_date;
 }

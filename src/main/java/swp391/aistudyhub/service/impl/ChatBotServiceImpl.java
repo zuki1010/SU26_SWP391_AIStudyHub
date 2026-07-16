@@ -109,7 +109,6 @@ public class ChatBotServiceImpl implements ChatBotService {
         chatSessionRepository.save(session);
     }
 
-    @Override
     @Transactional
     public String chatWithGemini(ChatRequestSessionDTO dto) {
         ChatSession session = chatSessionRepository.findById(dto.getSessionId())
@@ -117,18 +116,21 @@ public class ChatBotServiceImpl implements ChatBotService {
 
         User user = session.getUser();
 
-        if ("CUSTOMER".equals(user.getRole().name())) {
+        CustomerProfile profile = null;
+        boolean isCustomer = "CUSTOMER".equals(user.getRole().name());
 
-            int maxDailyTokens = 20000;
+        if (isCustomer) {
+            int maxDailyTokens = 5000;
 
-            CustomerProfile profile = customerProfileRepository.findByUser_Id(user.getId())
+            profile = customerProfileRepository.findByUser_Id(user.getId())
                     .orElseThrow(() -> new RuntimeException("Customer Profile not found"));
 
-            Instant today = Instant.now();
+            java.time.LocalDate today = java.time.LocalDate.now();
+
             if (profile.getLast_chat_date() == null || !profile.getLast_chat_date().equals(today)) {
                 profile.setTokens_used_today(0);
                 profile.setLast_chat_date(today);
-                customerProfileRepository.save(profile);
+                profile = customerProfileRepository.save(profile);
             }
 
             if (profile.getTokens_used_today() >= maxDailyTokens) {
@@ -144,24 +146,18 @@ public class ChatBotServiceImpl implements ChatBotService {
 
         if (attachedDocs != null && !attachedDocs.isEmpty()) {
             List<UUID> docIds = attachedDocs.stream().map(Document::getId).toList();
-
             String embeddingResult = documentChunkService.getVectorStringForQuery(dto.getMessageContent());
-
             List<String> relevantChunks = documentChunkRepository.findRelevantChunks(docIds, embeddingResult, 5);
-
             documentContext = String.join("\n\n", relevantChunks);
         }
 
         String systemPrompt = "Bạn là trợ lý học tập. ";
         if (!documentContext.isEmpty()) {
-            systemPrompt += "Answer Questions base on documents:\n"
-                    + documentContext;
+            systemPrompt += "Answer Questions base on documents:\n" + documentContext;
         }
 
         GeminiClient.GeminiResult geminiResult = geminiClient.callGemini(systemPrompt, history, dto.getMessageContent());
-
         String aiResponse = geminiResult.getTextResponse();
-
         int tokensSpentForThisTurn = geminiResult.getTotalTokens();
 
         ChatMessage userMsg = new ChatMessage();
@@ -178,8 +174,7 @@ public class ChatBotServiceImpl implements ChatBotService {
         aiMsg.setSentAt(Instant.now());
         chatMessageRepository.save(aiMsg);
 
-        if ("CUSTOMER".equals(user.getRole().name())) {
-            CustomerProfile profile = customerProfileRepository.findByUser_Id(user.getId()).get();
+        if (isCustomer && profile != null) {
             profile.setTokens_used_today(profile.getTokens_used_today() + tokensSpentForThisTurn);
             customerProfileRepository.save(profile);
         }
