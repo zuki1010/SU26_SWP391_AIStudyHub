@@ -4,9 +4,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,9 +25,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
     List<Document> findByIsPublicTrueOrderByCreatedAtDesc();
 
-    @Query("SELECT COALESCE(SUM(d.fileSize), 0) FROM Document d WHERE d.user.id = :userId")
-    long sumFileSizeByUserId(UUID userId);
+    @Query("""
+            SELECT COALESCE(SUM(d.fileSize), 0)
+            FROM Document d
+            WHERE d.user.id = :userId
+            """)
+    long sumFileSizeByUserId(@Param("userId") UUID userId);
 
+    /**
+     * Danh sách document user có thể truy cập:
+     * - tài liệu user sở hữu
+     * - tài liệu public
+     * - tài liệu được share cho user
+     */
     @Query("""
             SELECT d
             FROM Document d
@@ -36,35 +48,55 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
                     FROM DocumentShare ds
                     WHERE ds.sharedWithUser.id = :userId
                )
+            ORDER BY d.createdAt DESC
             """)
-    List<Document> findAccessibleDocuments(UUID userId);
+    List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 
+    /**
+     * Search document user có thể truy cập.
+     *
+     * Lưu ý:
+     * Không dùng :searchText IS NULL để tránh lỗi PostgreSQL:
+     * could not determine data type of parameter.
+     *
+     * Service phải truyền "" nếu không search.
+     */
     @Query("""
-        SELECT d
-        FROM Document d
-        WHERE
-        (
-            d.user.id = :userId
-            OR d.isPublic = true
-            OR d.id IN (
-                SELECT ds.document.id
-                FROM DocumentShare ds
-                WHERE ds.sharedWithUser.id = :userId
+            SELECT d
+            FROM Document d
+            WHERE
+            (
+                d.user.id = :userId
+                OR d.isPublic = true
+                OR d.id IN (
+                    SELECT ds.document.id
+                    FROM DocumentShare ds
+                    WHERE ds.sharedWithUser.id = :userId
+                )
             )
-        )
-        AND
-        (
-            :searchText = ''
-            OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%'))
-            OR d.id IN (
-                SELECT dc.document.id
-                FROM DocumentCategory dc
-                WHERE LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))
+            AND
+            (
+                :searchText = ''
+                OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                OR LOWER(d.description) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                OR d.id IN (
+                    SELECT dc.document.id
+                    FROM DocumentCategory dc
+                    WHERE LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                )
             )
-        )
-        """)
-List<Document> searchSmartAccessibleDocuments(UUID userId, String searchText);
+            ORDER BY d.createdAt DESC
+            """)
+    List<Document> searchSmartAccessibleDocuments(
+            @Param("userId") UUID userId,
+            @Param("searchText") String searchText
+    );
 
+    /**
+     * Admin search/filter documents.
+     *
+     * status là enum StatusPublicDoc, không xử lý bằng UPPER(d.status).
+     */
     @Query("""
             SELECT d
             FROM Document d
@@ -79,8 +111,7 @@ List<Document> searchSmartAccessibleDocuments(UUID userId, String searchText);
             AND
             (
                 :status IS NULL
-                OR :status = ''
-                OR UPPER(d.status) = UPPER(:status)
+                OR d.status = :status
             )
             AND
             (
@@ -89,9 +120,9 @@ List<Document> searchSmartAccessibleDocuments(UUID userId, String searchText);
             )
             """)
     Page<Document> searchAdminDocuments(
-            String key,
-            String status,
-            Boolean isPublic,
+            @Param("key") String key,
+            @Param("status") StatusPublicDoc status,
+            @Param("isPublic") Boolean isPublic,
             Pageable pageable
     );
 }

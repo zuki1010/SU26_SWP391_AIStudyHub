@@ -5,8 +5,6 @@ import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.SubjectCode;
 
-import java.util.List;
-
 @Data
 public class DocumentRequestDTO {
 
@@ -24,9 +22,7 @@ public class DocumentRequestDTO {
 
     private String description;
 
-    private List<String> categoryNames;
+    private SubjectCode subjectCode;
 
     private StatusPublicDoc status;
-
-    private SubjectCode subjectCode;
 }

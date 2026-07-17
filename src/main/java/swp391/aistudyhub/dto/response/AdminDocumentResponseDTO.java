@@ -33,6 +33,8 @@ public class AdminDocumentResponseDTO {
 
     private String description;
 
+    private UUID categoryId;
+
     private UUID userId;
 
     private String userEmail;

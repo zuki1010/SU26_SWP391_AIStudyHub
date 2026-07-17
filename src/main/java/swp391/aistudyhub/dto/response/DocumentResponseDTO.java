@@ -12,14 +12,26 @@ import java.util.UUID;
 public class DocumentResponseDTO {
 
     private UUID documentId;
+
     private String documentName;
+
     private FileType fileType;
+
     private Long fileSize;
+
     private String previewUrl;
+
     private String downloadUrl;
+
     private Instant createdAt;
+
     private String description;
+
+    private String textContent;
+
     private Boolean isPublic;
+
     private StatusPublicDoc status;
+
     private SubjectCode subjectCode;
 }

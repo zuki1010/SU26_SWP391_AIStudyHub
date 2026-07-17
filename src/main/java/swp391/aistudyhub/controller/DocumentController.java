@@ -26,7 +26,6 @@ import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.DocumentShareService;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -50,7 +49,7 @@ public class DocumentController {
 
     @GetMapping("/public")
     @Operation(summary = "Lấy danh sách tài liệu cộng đồng đã được public")
-    public ResponseEntity<List<DocumentResponseDTO>> getPublicDocuments() {
+    public ResponseEntity<?> getPublicDocuments() {
         return ResponseEntity.ok(documentService.getPublicDocuments());
     }
 
@@ -62,7 +61,7 @@ public class DocumentController {
 
     @GetMapping("/search")
     @Operation(summary = "Tìm kiếm tài liệu có thể truy cập theo tên file hoặc danh mục")
-    public ResponseEntity<List<DocumentResponseDTO>> searchDocuments(
+    public ResponseEntity<?> searchDocuments(
             @RequestParam(value = "name", required = false) String searchText
     ) {
         return ResponseEntity.ok(documentService.searchDocumentsByFilter(searchText));
@@ -73,7 +72,7 @@ public class DocumentController {
     public ResponseEntity<?> createDocument(
             @RequestPart("file") MultipartFile file,
             @RequestParam("description") String description,
-            @RequestParam(value = "subjectCode") SubjectCode subjectCode
+            @RequestParam("subjectCode") SubjectCode subjectCode
     ) {
         try {
             if (file == null || file.isEmpty()) {
@@ -83,6 +82,10 @@ public class DocumentController {
             if (description == null || description.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
+            }
+
+            if (subjectCode == null) {
+                return ResponseEntity.badRequest().body("Vui lòng chọn môn học hợp lệ!");
             }
 
             String originalName = file.getOriginalFilename();
@@ -112,10 +115,10 @@ public class DocumentController {
             requestDTO.setFileType(fileType);
             requestDTO.setStatus(StatusPublicDoc.DEFAULT);
             requestDTO.setDescription(description.trim());
+            requestDTO.setTextContent(description.trim());
             requestDTO.setPreviewUrl(fileUrl);
             requestDTO.setDownloadUrl(fileUrl);
             requestDTO.setSubjectCode(subjectCode);
-//            requestDTO.setCategoryNames(categoryNames);
 
             DocumentResponseDTO response = documentService.createDocument(requestDTO);
 
@@ -238,22 +241,17 @@ public class DocumentController {
         }
     }
 
-    @PutMapping("/{documentId}/public-status")
-    @Operation(summary = "Alias của toggle-public để tương thích FE")
-    public ResponseEntity<DocumentResponseDTO> togglePublicStatus(
-            @PathVariable UUID documentId,
-            @RequestParam boolean isPublic
-    ) {
-        return ResponseEntity.ok(documentService.toggleDocumentPublicStatus(documentId, isPublic));
-    }
-
     @PutMapping("/{documentId}/review")
     @Operation(summary = "Admin/Moderator duyệt yêu cầu public tài liệu: ACCEPT hoặc DENY")
-    public ResponseEntity<DocumentResponseDTO> reviewDocument(
+    public ResponseEntity<?> reviewDocument(
             @PathVariable UUID documentId,
             @RequestParam RequestPublicDoc decision
     ) {
-        return ResponseEntity.ok(documentService.approvePublicRequest(documentId, decision));
+        try {
+            return ResponseEntity.ok(documentService.approvePublicRequest(documentId, decision));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PostMapping("/{id}/share")

@@ -20,14 +20,8 @@ public class UserAccountResponseDTO {
 
     private String fullName;
 
-    /**
-     * Field chuẩn cho FE mới.
-     */
     private AccountStatus accountStatus;
 
-    /**
-     * Field alias để tương thích FE cũ đang dùng "status".
-     */
     private AccountStatus status;
 
     private Instant createdAt;

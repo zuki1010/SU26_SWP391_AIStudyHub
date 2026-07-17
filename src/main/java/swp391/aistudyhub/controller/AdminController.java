@@ -17,7 +17,6 @@ import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.service.AdminService;
 
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -30,7 +29,7 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    @GetMapping({"/account", "/accounts", "/users"})
+    @GetMapping("/users")
     @Operation(summary = "Lấy danh sách tài khoản người dùng")
     public ResponseEntity<Page<UserAccountResponseDTO>> getAllUsers(
             @RequestParam(required = false) String key,
@@ -40,7 +39,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllCustomer(key, page, size));
     }
 
-    @PutMapping("/account/status/{id}")
+    @PutMapping("/users/{id}/status")
     @Operation(summary = "Cập nhật trạng thái tài khoản")
     public ResponseEntity<UserAccountResponseDTO> updateUserStatus(
             @PathVariable("id") UUID userId,
@@ -49,7 +48,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.updateUserStatus(userId, status));
     }
 
-    @PutMapping("/account/role/{id}")
+    @PutMapping("/users/{id}/role")
     @Operation(summary = "Cập nhật role tài khoản")
     public ResponseEntity<UserAccountResponseDTO> updateUserRole(
             @PathVariable("id") UUID userId,
@@ -58,7 +57,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.updateUserRole(userId, role));
     }
 
-    @GetMapping({"/document", "/documents"})
+    @GetMapping("/documents")
     @Operation(summary = "Lấy danh sách tài liệu toàn hệ thống")
     public ResponseEntity<Page<AdminDocumentResponseDTO>> getAllDocuments(
             @RequestParam(required = false) String key,
@@ -72,8 +71,8 @@ public class AdminController {
         );
     }
 
-    @GetMapping({"/chat", "/chats"})
-    @Operation(summary = "Lấy danh sách câu hỏi chat của người dùng")
+    @GetMapping("/chats")
+    @Operation(summary = "Lấy danh sách tin nhắn chat của người dùng")
     public ResponseEntity<Page<AdminChatResponseDTO>> getAllChat(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
@@ -81,56 +80,12 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllChat(page, size));
     }
 
-    @GetMapping({"/storage", "/storages"})
+    @GetMapping("/storages")
     @Operation(summary = "Lấy danh sách dung lượng cloud storage của người dùng")
     public ResponseEntity<Page<AdminStorageResponseDTO>> getAllStorageUsage(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(adminService.getAllStorage(page, size));
-    }
-
-    @PutMapping("/config-storage")
-    @Operation(summary = "Placeholder cấu hình tổng dung lượng storage")
-    public ResponseEntity<?> configureTotalStorageQuota() {
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "Chức năng cấu hình storage quota chưa được triển khai."
-                )
-        );
-    }
-
-    @PutMapping("/config-aitoken")
-    @Operation(summary = "Placeholder cấu hình AI token")
-    public ResponseEntity<?> configureChatToken() {
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "Chức năng cấu hình AI token chưa được triển khai."
-                )
-        );
-    }
-
-    @PutMapping("/config-file-size")
-    @Operation(summary = "Placeholder cấu hình max file size")
-    public ResponseEntity<?> configureMaxFileSize() {
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "Chức năng cấu hình max file size chưa được triển khai."
-                )
-        );
-    }
-
-    @PutMapping("/config-file-type")
-    @Operation(summary = "Placeholder cấu hình available file type")
-    public ResponseEntity<?> configureAvailableFileType() {
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "Chức năng cấu hình file type chưa được triển khai."
-                )
-        );
     }
 }

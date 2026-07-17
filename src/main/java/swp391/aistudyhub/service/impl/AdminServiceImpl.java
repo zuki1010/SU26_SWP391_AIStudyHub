@@ -17,6 +17,7 @@ import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.SenderType;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.ChatMessageRepository;
 import swp391.aistudyhub.repository.CloudStorageRepository;
@@ -58,12 +59,12 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public UserAccountResponseDTO updateUserStatus(UUID id, AccountStatus status) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("This user does not exist!"));
-
         if (status == null) {
             throw new RuntimeException("Trạng thái tài khoản không hợp lệ!");
         }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("This user does not exist!"));
 
         user.setAccountStatus(status);
 
@@ -75,12 +76,12 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public UserAccountResponseDTO updateUserRole(UUID id, UserRole role) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("This user does not exist!"));
-
         if (role == null) {
             throw new RuntimeException("Role không hợp lệ!");
         }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("This user does not exist!"));
 
         user.setRole(role);
 
@@ -104,17 +105,16 @@ public class AdminServiceImpl implements AdminService {
                 Sort.by("createdAt").descending()
         );
 
-        String cleanKey = key != null && !key.trim().isEmpty()
-                ? key.trim()
-                : null;
+        String cleanKey =
+                key != null && !key.trim().isEmpty()
+                        ? key.trim()
+                        : null;
 
-        String cleanStatus = status != null && !status.trim().isEmpty()
-                ? status.trim().toUpperCase()
-                : null;
+        StatusPublicDoc statusEnum = parseStatus(status);
 
         Page<Document> documents = documentRepository.searchAdminDocuments(
                 cleanKey,
-                cleanStatus,
+                statusEnum,
                 isPublic,
                 pageable
         );
@@ -148,6 +148,18 @@ public class AdminServiceImpl implements AdminService {
                 .map(this::mapAdminStorage);
     }
 
+    private StatusPublicDoc parseStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            return StatusPublicDoc.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Trạng thái tài liệu không hợp lệ: " + status);
+        }
+    }
+
     private UserAccountResponseDTO mapUserAccount(User user) {
         UserAccountResponseDTO dto = new UserAccountResponseDTO();
 
@@ -175,6 +187,7 @@ public class AdminServiceImpl implements AdminService {
         dto.setStatus(document.getStatus());
         dto.setCreatedAt(document.getCreatedAt());
         dto.setDescription(document.getDescription());
+        dto.setCategoryId(document.getCategoryId());
 
         if (document.getUser() != null) {
             dto.setUserId(document.getUser().getId());
