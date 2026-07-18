@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
@@ -65,20 +66,9 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllStorage(page, size));
     }
 
-    @PutMapping("/config-storage")
-    public ResponseEntity<?> configureTotalStorageQuota() {
-        return ResponseEntity.ok(null);
-    }
-    @PutMapping("/config-aitoken")
-    public ResponseEntity<?> configureChatToken() {
-        return ResponseEntity.ok(null);
-    }
-    @PutMapping("/config-file-size")
-    public ResponseEntity<?> configureMaxFileSize() {
-        return ResponseEntity.ok(null);
-    }
-    @PutMapping("/config-file-type")
-    public ResponseEntity<?> configureAvailableFileType() {
+    @PutMapping("/config")
+    public ResponseEntity<?> updateConfig(@RequestBody SystemConfigDTO dto) {
+
         return ResponseEntity.ok(null);
     }
 }
