@@ -68,7 +68,7 @@ public class AdminController {
 
     @PutMapping("/config")
     public ResponseEntity<?> updateConfig(@RequestBody SystemConfigDTO dto) {
-
-        return ResponseEntity.ok(null);
+        adminService.systemConfig(dto);
+        return ResponseEntity.ok("Save Successfully!");
     }
 }

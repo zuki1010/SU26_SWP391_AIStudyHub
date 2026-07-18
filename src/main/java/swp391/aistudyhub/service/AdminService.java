@@ -5,6 +5,7 @@ import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
@@ -26,4 +27,6 @@ public interface AdminService {
     Page<ChatRequestResponse> getAllChat(int page, int size);
 
     Page<StorageUsageResponse> getAllStorage(int page, int size);
+
+    void systemConfig(SystemConfigDTO dto);
 }
