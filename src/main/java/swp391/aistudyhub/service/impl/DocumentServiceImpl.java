@@ -214,8 +214,8 @@ public class DocumentServiceImpl implements DocumentService {
         long actualFileSize = document.getFileSize() != null ? document.getFileSize() : 0L;
 
         /*
-         * Nếu Supabase key thiếu/sai thì chỉ bỏ qua xóa file vật lý.
-         * Không để chức năng xóa document trong DB bị chết vì key cloud.
+         * Xóa file vật lý qua Supabase Storage REST API.
+         * Tự động catch lỗi nếu sai Token/Key để đảm bảo DB vẫn được dọn sạch.
          */
         deletePhysicalFileFromSupabase(document, userId, documentId);
 
@@ -292,10 +292,6 @@ public class DocumentServiceImpl implements DocumentService {
     public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
         User user = getCurrentUser();
 
-        /*
-         * Không truyền null xuống PostgreSQL.
-         * Repository đang dùng :searchText = '' thay vì :searchText IS NULL.
-         */
         String cleanSearchText = searchText != null ? searchText.trim() : "";
 
         return documentRepository.searchSmartAccessibleDocuments(
@@ -531,28 +527,39 @@ public class DocumentServiceImpl implements DocumentService {
                 downloadUrl = document.getPreviewUrl();
             }
 
-            String fileKey = resolveSupabaseFileKey(downloadUrl, document, userId, documentId);
+            String fileKey = resolveSupabaseFileKey(downloadUrl);
             String serviceKey = normalizeSupabaseServiceKey(supabaseServiceRoleKey);
 
-            if (serviceKey == null || serviceKey.isBlank() || serviceKey.split("\\.").length != 3) {
-                System.out.println("==> Cảnh báo: supabase.service-role-key không hợp lệ, bỏ qua xóa file vật lý. FileKey=" + fileKey);
+            if (fileKey == null || fileKey.isBlank()) {
+                System.out.println("==> Cảnh báo: Không thể giải mã File Key từ url. FileUrl=" + downloadUrl);
                 return;
+            }
+
+            // Bỏ kiểm tra dấu chấm (.) để chấp nhận cả chuỗi token thế hệ mới sb_secret_...
+            if (serviceKey == null || serviceKey.isBlank()) {
+                System.out.println("==> Cảnh báo: supabase.service-role-key trống, bỏ qua xóa file vật lý. FileKey=" + fileKey);
+                return;
+            }
+
+            // Chuẩn hóa loại bỏ dấu gạch chéo dư thừa ở đầu key
+            if (fileKey.startsWith("/")) {
+                fileKey = fileKey.substring(1);
             }
 
             String baseUrl = supabaseUrl.endsWith("/")
                     ? supabaseUrl.substring(0, supabaseUrl.length() - 1)
                     : supabaseUrl;
 
-            String deleteUrl =
-                    baseUrl + "/storage/v1/object/" + bucketName + "/" + fileKey;
+            // ĐỔI ENDPOINT: Ghép trực tiếp bucket và fileKey vào URL theo chuẩn REST API đơn lẻ của Supabase
+            String deleteUrl = baseUrl + "/storage/v1/object/" + bucketName + "/" + fileKey;
 
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.set("Authorization", "Bearer " + serviceKey);
-            headers.set("apikey", serviceKey);
+            headers.set("apikey", serviceKey); // Gửi kèm api key song song để tránh lỗi phân quyền RLS
 
-            org.springframework.http.HttpEntity<String> entity =
-                    new org.springframework.http.HttpEntity<>(headers);
+            org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
 
+            // Sử dụng HTTP Method DELETE trực tiếp lên URL của file
             restTemplate.exchange(
                     deleteUrl,
                     org.springframework.http.HttpMethod.DELETE,
@@ -560,7 +567,7 @@ public class DocumentServiceImpl implements DocumentService {
                     String.class
             );
 
-            System.out.println("==> Đã xóa file vật lý thành công trên Supabase Bucket: " + fileKey);
+            System.out.println("==> Đã gửi lệnh REST API xóa file vật lý thành công trên Supabase Bucket: " + fileKey);
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             String errorResponse = e.getResponseBodyAsString();
 
@@ -569,7 +576,7 @@ public class DocumentServiceImpl implements DocumentService {
                     || e.getStatusCode().value() == 404
                     || errorResponse.contains("not_found")
                     || errorResponse.contains("Invalid Compact JWS")) {
-                System.out.println("==> Cảnh báo: Không xóa được file vật lý trên Supabase, tiếp tục xóa Database.");
+                System.out.println("==> Cảnh báo: Không xóa được file vật lý trên Supabase, tiếp tục dọn Database.");
                 System.out.println("==> Supabase status: " + e.getStatusCode());
                 System.out.println("==> Supabase response: " + errorResponse);
                 return;
@@ -587,9 +594,8 @@ public class DocumentServiceImpl implements DocumentService {
             if (message.contains("401")
                     || message.contains("403")
                     || message.contains("404")
-                    || message.contains("not_found")
-                    || message.contains("Invalid Compact JWS")) {
-                System.out.println("==> Cảnh báo: Không xóa được file vật lý trên Supabase, tiếp tục xóa Database.");
+                    || message.contains("not_found")) {
+                System.out.println("==> Cảnh báo: Gặp lỗi xác thực/đường dẫn từ Supabase, tiếp tục dọn Database.");
                 System.out.println("==> Lý do: " + message);
                 return;
             }
@@ -598,27 +604,19 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
-    private String resolveSupabaseFileKey(
-            String fileUrl,
-            Document document,
-            UUID userId,
-            UUID documentId
-    ) {
-        if (fileUrl != null && !fileUrl.trim().isEmpty()) {
-            String marker = "/" + bucketName + "/";
-
-            int markerIndex = fileUrl.indexOf(marker);
-
-            if (markerIndex >= 0) {
-                return fileUrl.substring(markerIndex + marker.length());
-            }
+    private String resolveSupabaseFileKey(String fileUrl) {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            return null;
         }
-
-        String extension = document.getFileType() != null
-                ? document.getFileType().name().trim().toLowerCase()
-                : "file";
-
-        return userId + "/" + documentId + "." + extension;
+        // Ví dụ: .../storage/v1/object/public/your-bucket-name/userId/filename.pdf
+        // Hoặc: .../storage/v1/object/public/your-bucket-name/filename.pdf
+        String target = "/" + bucketName + "/";
+        int index = fileUrl.indexOf(target);
+        if (index != -1) {
+            // Cắt toàn bộ chuỗi đứng sau tên bucket để làm File Key chuẩn xác trên Supabase
+            return fileUrl.substring(index + target.length());
+        }
+        return null;
     }
 
     private String normalizeSupabaseServiceKey(String rawKey) {
@@ -683,10 +681,6 @@ public class DocumentServiceImpl implements DocumentService {
 
     private SubjectCode resolveSubjectCodeFromDocument(Document document) {
         if (document.getCategoryId() == null) {
-            /*
-             * Không throw lỗi để tránh tài liệu cũ làm sập API list/search/public.
-             * FE có thể hiển thị "Chưa phân loại".
-             */
             return null;
         }
 
