@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public interface UserAccountResponse {
-    UUID getUserId();
+    UUID getId();
 
     String getEmail();
 
