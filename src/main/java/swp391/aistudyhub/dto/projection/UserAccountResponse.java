@@ -7,8 +7,6 @@ import java.time.Instant;
 import java.util.UUID;
 
 public interface UserAccountResponse {
-    UUID getUserId();
-
     String getEmail();
 
     AccountStatus getAccountStatus();
