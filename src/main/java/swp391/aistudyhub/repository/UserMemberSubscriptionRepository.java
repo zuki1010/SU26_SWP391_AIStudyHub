@@ -8,5 +8,5 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserMemberSubscriptionRepository extends JpaRepository<UserMemberSubscription, UUID> {
-    Optional<UserMemberSubscription> findAllByUser(User user);
+    Optional<UserMemberSubscription> findByUser(User user);
 }

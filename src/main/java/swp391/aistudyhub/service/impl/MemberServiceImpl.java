@@ -35,7 +35,7 @@ public class MemberServiceImpl implements MemberService {
         SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
                 .orElseThrow(() -> new RuntimeException("This subscription is not available"));
 
-        UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findAllByUser(user)
+        UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("This user don't have any member subscription"));
 
     }
