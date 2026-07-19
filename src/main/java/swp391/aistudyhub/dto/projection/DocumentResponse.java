@@ -17,11 +17,11 @@ public interface DocumentResponse {
 
     Instant getCreatedAt();
 
-    @Value("#{target.user?.customerProfile != null ? target.user.customerProfile.fullName : target.user?.moderatorProfile?.fullName}")
-    String getUserFullName();
+    Boolean getIsPublic();
 
-    @Value("#{target.user?.email}")
+    // Tự động map từ "AS userEmail"
     String getUserEmail();
 
-    boolean getDocumentIsPublic();
+    // Tự động map từ "AS userFullName"
+    String getUserFullName();
 }
