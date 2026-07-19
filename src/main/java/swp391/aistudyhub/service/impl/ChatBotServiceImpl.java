@@ -26,8 +26,6 @@ import java.util.stream.Collectors;
 @Service
 public class ChatBotServiceImpl implements ChatBotService {
 
-    private static final int MAX_DAILY_CHAT_TOKENS = 10000;
-
     @Autowired
     private GeminiClient geminiClient;
 
@@ -51,6 +49,9 @@ public class ChatBotServiceImpl implements ChatBotService {
 
     @Autowired
     private CustomerProfileRepository customerProfileRepository;
+
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -123,6 +124,9 @@ public class ChatBotServiceImpl implements ChatBotService {
         boolean isCustomer = "CUSTOMER".equals(user.getRole().name());
 
         if (isCustomer) {
+            SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                    .orElseThrow(() -> new RuntimeException("This config is not available"));
+            int maxDailyTokens = systemConfig.getMaxDailyChatTokens();
 
             profile = customerProfileRepository.findByUser_Id(user.getId())
                     .orElseThrow(() -> new RuntimeException("Customer Profile not found"));
@@ -135,7 +139,7 @@ public class ChatBotServiceImpl implements ChatBotService {
                 profile = customerProfileRepository.save(profile);
             }
 
-            if (profile.getTokens_used_today() >= MAX_DAILY_CHAT_TOKENS) {
+            if (profile.getTokens_used_today() >= maxDailyTokens) {
                 throw new RuntimeException("Bạn đã dùng hết giới hạn token chat của ngày hôm nay!");
             }
         }

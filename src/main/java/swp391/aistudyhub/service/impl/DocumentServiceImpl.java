@@ -19,9 +19,7 @@ import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.StorageUploadService;
 
 import java.io.InputStream;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,6 +49,9 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private DocumentShareRepository documentShareRepository;
 
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
+
 
     @Override
     @Transactional
@@ -69,6 +70,13 @@ public class DocumentServiceImpl implements DocumentService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình không gian lưu trữ của người dùng này."));
 
         long actualFileSize = requestDTO.getFileSize() != null ? requestDTO.getFileSize() : 0L;
+
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("This config is not found!"));
+
+        if(actualFileSize > systemConfig.getMaxFileSizeMb()) {
+            throw new RuntimeException("Maximum file is 20MB");
+        }
 
         long updatedUsedQuota = storage.getUsedQuota() + actualFileSize;
         if (updatedUsedQuota > storage.getTotalQuota()) {

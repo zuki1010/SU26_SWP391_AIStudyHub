@@ -4,8 +4,11 @@ import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
 
 import java.time.Instant;
+import java.util.UUID;
 
 public interface UserAccountResponse {
+    UUID getId();
+
     String getEmail();
 
     AccountStatus getAccountStatus();
