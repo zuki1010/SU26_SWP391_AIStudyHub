@@ -7,11 +7,11 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.StatusPublicDoc;
-import swp391.aistudyhub.enums.SubjectCode;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -87,6 +87,18 @@ public class Document {
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> documentVersions = new ArrayList<>();
 
+    /**
+     * Giữ thêm 2 method này để tương thích với code cũ đang gọi:
+     * document.isPublic()
+     * document.setPublic(...)
+     */
+    public boolean isPublic() {
+        return Boolean.TRUE.equals(isPublic);
+    }
+
+    public void setPublic(boolean isPublic) {
+        this.isPublic = isPublic;
+    }
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 }

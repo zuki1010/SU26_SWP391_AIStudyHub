@@ -27,21 +27,22 @@ public class CustomUserDetails implements UserDetails {
         this.email = user.getEmail();
         this.passwordHash = user.getPasswordHash();
         this.role = user.getRole();
-        this.accountStatus = user.getAccountStatus();
+        this.accountStatus = user.getAccountStatus() != null ? user.getAccountStatus() : null;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        List<GrantedAuthority> authorities = new ArrayList<>();
-
-        if (role == null) {
-            return authorities;
-        }
-
-        authorities.add(new SimpleGrantedAuthority(role.name()));
-        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
-
-        return authorities;
+//        List<GrantedAuthority> authorities = new ArrayList<>();
+//
+//        if (role == null) {
+//            return authorities;
+//        }
+//
+//        authorities.add(new SimpleGrantedAuthority(role.name()));
+//        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+//
+//        return authorities;
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override

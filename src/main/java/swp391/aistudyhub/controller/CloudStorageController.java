@@ -10,8 +10,11 @@ import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.response.CloudStorageUsageResponseDTO;
 import swp391.aistudyhub.service.CloudStorageService;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/storage")
+@CrossOrigin(origins = "*")
 @Tag(name = "Cloud Storage Management", description = "Các API quản lý dung lượng bộ nhớ đám mây")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
 public class CloudStorageController {
