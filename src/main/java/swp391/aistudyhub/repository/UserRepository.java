@@ -1,14 +1,16 @@
 package swp391.aistudyhub.repository;
 
-import jakarta.websocket.server.PathParam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.UserRole;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -25,12 +27,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             Pageable pageable
     );
 
-    @Modifying
-    @Query("UPDATE User u SET u.accountStatus = :status WHERE u.id = :id")
-    @Transactional
-    int updateUserStatus(@PathParam("id") UUID id,@PathParam(("status")) AccountStatus status);
-
     Optional<User> findUserById(UUID id);
+
     @Query("""
             SELECT u
             FROM User u
@@ -43,5 +41,36 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 OR LOWER(mp.fullName) LIKE LOWER(CONCAT('%', :key, '%'))
                 OR LOWER(ap.fullName) LIKE LOWER(CONCAT('%', :key, '%'))
             """)
-    Page<User> searchUsers(String key, Pageable pageable);
+    Page<User> searchUsers(@Param("key") String key, Pageable pageable);
+
+    @Query("""
+            SELECT u
+            FROM User u
+            LEFT JOIN u.customerProfile cp
+            WHERE LOWER(u.email) LIKE LOWER(CONCAT('%', :key, '%'))
+               OR LOWER(cp.fullName) LIKE LOWER(CONCAT('%', :key, '%'))
+            """)
+    Page<UserAccountResponse> searchCustomers(@Param("key") String key, Pageable pageable);
+
+    @Query("SELECT u FROM User u")
+    Page<UserAccountResponse> findBy(Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    UserAccountResponse findProjectedById(@Param("id") UUID id);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.accountStatus = :status WHERE u.id = :id")
+    int updateUserStatus(
+            @Param("id") UUID id,
+            @Param("status") AccountStatus status
+    );
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.role = :role WHERE u.id = :id")
+    int updateUserRole(
+            @Param("id") UUID id,
+            @Param("role") UserRole role
+    );
 }
