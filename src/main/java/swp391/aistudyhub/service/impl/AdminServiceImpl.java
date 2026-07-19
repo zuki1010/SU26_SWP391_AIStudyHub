@@ -64,16 +64,11 @@ public class AdminServiceImpl implements AdminService {
         return userRepository.findProjectedById(id);
     }
 
-   @Override
-public Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status) {
-    Pageable pageable = PageRequest.of(page, size);
-
-    if (status == null) {
-        return documentRepository.findAllAdminDocuments(pageable);
+    @Override
+    public Page<DocumentResponse> getAllDocument(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return documentRepository.findBy(pageable);
     }
-
-    return documentRepository.findAdminDocumentsByStatus(status, pageable);
-}
 
     @Override
     public UserAccountResponse updateUserRole(UUID id, UserRole role) {
