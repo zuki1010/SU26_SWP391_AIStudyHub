@@ -15,7 +15,7 @@ src/main/resources/application-prod.properties
 src/main/resources/application-local.yml
 src/main/resources/application-local.properties
 src/main/resources/application-staging.yml
-src/main/resources/application.properties
+
 
 # Keystore, certificate (nếu dùng HTTPS tự ký)
 *.jks
