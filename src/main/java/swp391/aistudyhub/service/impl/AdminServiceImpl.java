@@ -21,6 +21,7 @@ import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.AdminService;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.util.List;
 import java.util.UUID;
@@ -65,10 +66,15 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public Page<DocumentResponse> getAllDocument(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return documentRepository.findBy(pageable);
+public Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status) {
+    Pageable pageable = PageRequest.of(page, size);
+
+    if (status == null) {
+        return documentRepository.findAllAdminDocuments(pageable);
     }
+
+    return documentRepository.findAdminDocumentsByStatus(status, pageable);
+}
 
     @Override
     public UserAccountResponse updateUserRole(UUID id, UserRole role) {

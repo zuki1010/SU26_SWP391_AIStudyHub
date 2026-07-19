@@ -6,21 +6,19 @@ import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
-import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
-import swp391.aistudyhub.entity.Document;
-import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.UserRole;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface AdminService {
+
     Page<UserAccountResponse> getAllCustomer(String key, int page, int size);
 
     UserAccountResponse updateUserStatus(UUID id, AccountStatus status);
 
-    Page<DocumentResponse> getAllDocument(int page, int size);
+    Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status);
 
     UserAccountResponse updateUserRole(UUID id, UserRole role);
 
