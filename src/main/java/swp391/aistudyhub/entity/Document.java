@@ -6,10 +6,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import swp391.aistudyhub.enums.FileType;
-import swp391.aistudyhub.enums.SubjectCode;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -55,6 +57,20 @@ public class Document {
     @Column(name = "is_public", nullable = false, columnDefinition = "boolean default false")
     private boolean isPublic = false;
 
+    /**
+     * DEFAULT: tài liệu private bình thường
+     * PENDING: đang chờ Admin/Moderator duyệt public
+     * SUCCESS: đã được duyệt public
+     */
+    @Enumerated(EnumType.STRING)
+    @ColumnDefault("'DEFAULT'")
+    @Column(name = "status", nullable = false, length = 50)
+    private StatusPublicDoc status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;
+
     @Column(name = "category_id")
     private UUID categoryId;
 
@@ -71,6 +87,18 @@ public class Document {
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentVersion> documentVersions = new ArrayList<>();
 
+    /**
+     * Giữ thêm 2 method này để tương thích với code cũ đang gọi:
+     * document.isPublic()
+     * document.setPublic(...)
+     */
+    public boolean isPublic() {
+        return Boolean.TRUE.equals(isPublic);
+    }
+
+    public void setPublic(boolean isPublic) {
+        this.isPublic = isPublic;
+    }
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 }

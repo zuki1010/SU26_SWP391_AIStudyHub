@@ -6,12 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.ChatRequestSessionDTO;
 import swp391.aistudyhub.dto.request.StartSessionDTO;
 import swp391.aistudyhub.dto.response.ChatMessageDTO;
 import swp391.aistudyhub.dto.response.UpdateSessionDocsDTO;
 import swp391.aistudyhub.service.ChatBotService;
-import swp391.aistudyhub.service.DocumentService;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,7 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/chat")
 @Tag(name = "AI ChatBot", description = "Create session, chat")
-@SecurityRequirement(name = "bearerAuth")
+@SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
 @PreAuthorize("hasRole('CUSTOMER')")
 public class ChatBotController {
 
@@ -54,6 +54,7 @@ public class ChatBotController {
             return ResponseEntity.internalServerError().body("Chat Process Error: " + e.getMessage());
         }
     }
+
     @GetMapping("/session/{sessionId}/history")
     public ResponseEntity<List<ChatMessageDTO>> getChatHistory(
             @PathVariable UUID sessionId,

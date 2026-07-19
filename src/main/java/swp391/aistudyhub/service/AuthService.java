@@ -1,7 +1,13 @@
 package swp391.aistudyhub.service;
 
 import jakarta.servlet.http.HttpServletRequest;
-import swp391.aistudyhub.dto.request.*;
+import swp391.aistudyhub.dto.request.ChangePasswordRequest;
+import swp391.aistudyhub.dto.request.ForgotPasswordRequest;
+import swp391.aistudyhub.dto.request.LoginRequest;
+import swp391.aistudyhub.dto.request.RefreshTokenRequest;
+import swp391.aistudyhub.dto.request.RegisterRequest;
+import swp391.aistudyhub.dto.request.ResetPasswordRequest;
+import swp391.aistudyhub.dto.request.UpdateProfileRequest;
 import swp391.aistudyhub.dto.response.AuthResponse;
 import swp391.aistudyhub.dto.response.UserProfileResponse;
 import swp391.aistudyhub.security.CustomUserDetails;

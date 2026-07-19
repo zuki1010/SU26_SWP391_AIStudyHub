@@ -29,11 +29,11 @@ public class UserSession {
     private User user;
 
     @NotNull
-    @Column(name = "refresh_token", nullable = false, columnDefinition = "text")
+    @Column(name = "refresh_token", nullable = false, columnDefinition = "TEXT")
     private String refreshToken;
 
     @Size(max = 255)
-    @Column(name = "device_info", columnDefinition = "text")
+    @Column(name = "device_info", columnDefinition = "TEXT")
     private String deviceInfo;
 
     @Size(max = 45)

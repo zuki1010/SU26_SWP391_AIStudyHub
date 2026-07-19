@@ -1,23 +1,30 @@
 package swp391.aistudyhub.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.SystemConfigDTO;
+import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
+import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.service.AdminService;
 import swp391.aistudyhub.service.UserService;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin("*")
 @Tag(name = "Admin Dashboard", description = "View User Account, View Document List")
+@SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
@@ -62,20 +69,9 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllStorage(page, size));
     }
 
-    @PutMapping("/config-storage")
-    public ResponseEntity<?> configureTotalStorageQuota() {
-        return ResponseEntity.ok(null);
-    }
-    @PutMapping("/config-aitoken")
-    public ResponseEntity<?> configureChatToken() {
-        return ResponseEntity.ok(null);
-    }
-    @PutMapping("/config-file-size")
-    public ResponseEntity<?> configureMaxFileSize() {
-        return ResponseEntity.ok(null);
-    }
-    @PutMapping("/config-file-type")
-    public ResponseEntity<?> configureAvailableFileType() {
-        return ResponseEntity.ok(null);
+    @PutMapping("/config")
+    public ResponseEntity<?> updateConfig(@RequestBody SystemConfigDTO dto) {
+        adminService.systemConfig(dto);
+        return ResponseEntity.ok("Save Successfully!");
     }
 }

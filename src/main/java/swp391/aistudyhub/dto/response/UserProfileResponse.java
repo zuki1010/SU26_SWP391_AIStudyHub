@@ -16,10 +16,13 @@ public class UserProfileResponse {
     private final String role;
     private final AccountStatus accountStatus;
     private final Instant createdAt;
+
     private final String fullName;
     private final String studentCode;
     private final String schoolName;
+
     private final String department;
     private final String assignedSubject;
+
     private final Integer accessLevel;
 }

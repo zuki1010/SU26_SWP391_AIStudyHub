@@ -26,11 +26,11 @@ public class JwtService {
     private final JwtProperties jwtProperties;
 
     public String generateAccessToken(UUID userId, String email, String role) {
-        return buildToken(userId, email, role, TYPE_ACCESS, jwtProperties.getAccessExpirationMs());
+        return buildToken(userId, email, normalizeRole(role), TYPE_ACCESS, jwtProperties.getAccessExpirationMs());
     }
 
     public String generateRefreshToken(UUID userId, String email, String role) {
-        return buildToken(userId, email, role, TYPE_REFRESH, jwtProperties.getRefreshExpirationMs());
+        return buildToken(userId, email, normalizeRole(role), TYPE_REFRESH, jwtProperties.getRefreshExpirationMs());
     }
 
     public String generateResetToken(UUID userId, String email) {
@@ -58,6 +58,10 @@ public class JwtService {
         return extractSubject(token);
     }
 
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
     public boolean isTokenValid(String token) {
         try {
             extractAllClaims(token);
@@ -67,7 +71,13 @@ public class JwtService {
         }
     }
 
-    private String buildToken(UUID userId, String email, String role, String type, long expirationMs) {
+    private String buildToken(
+            UUID userId,
+            String email,
+            String role,
+            String type,
+            long expirationMs
+    ) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
@@ -110,7 +120,27 @@ public class JwtService {
     }
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8);
+        String secret = jwtProperties.getSecret();
+
+        if (secret == null || secret.length() < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 characters.");
+        }
+
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+
+        String cleanRole = role.trim().toUpperCase();
+
+        if (cleanRole.startsWith("ROLE_")) {
+            cleanRole = cleanRole.substring(5);
+        }
+
+        return cleanRole;
     }
 }

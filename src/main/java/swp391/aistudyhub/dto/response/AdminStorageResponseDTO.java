@@ -9,9 +9,17 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CloudStorageUsageResponseDTO {
+public class AdminStorageResponseDTO {
+
+    private UUID storageId;
 
     private UUID userId;
+
+    private String userEmail;
+
+    private String userFullName;
+
+    private String userRole;
 
     private Long usedQuota;
 

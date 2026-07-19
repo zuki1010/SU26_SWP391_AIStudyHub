@@ -1,7 +1,8 @@
 package swp391.aistudyhub.service.impl;
 
-import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.security.core.Authentication;
@@ -12,7 +13,9 @@ import org.springframework.web.client.RestTemplate;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.*;
+import swp391.aistudyhub.enums.RequestPublicDoc;
 import swp391.aistudyhub.enums.Semester;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.SubjectCode;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.DocumentService;
@@ -22,7 +25,6 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
@@ -40,7 +42,7 @@ public class DocumentServiceImpl implements DocumentService {
     private DocumentChunkRepository documentChunkRepository;
 
     @Autowired
-    private jakarta.persistence.EntityManager entityManager;
+    private EntityManager entityManager;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -51,410 +53,255 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private DocumentShareRepository documentShareRepository;
 
+    @Value("${supabase.url:https://ybgeblpkptrsefpafthb.supabase.co}")
+    private String supabaseUrl;
+
+    @Value("${supabase.bucket-name:documents}")
+    private String bucketName;
+
+    @Value("${supabase.service-role-key:}")
+    private String supabaseServiceRoleKey;
+
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
 
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(DocumentRequestDTO requestDTO) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
-
+        User user = getCurrentUser();
         UUID userId = user.getId();
+
+        if (requestDTO.getSubjectCode() == null) {
+            throw new RuntimeException("Vui lòng chọn môn học hợp lệ!");
+        }
 
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình không gian lưu trữ của người dùng này."));
 
         long actualFileSize = requestDTO.getFileSize() != null ? requestDTO.getFileSize() : 0L;
+        long usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
+        long totalQuota = storage.getTotalQuota() != null ? storage.getTotalQuota() : 0L;
+        long updatedUsedQuota = usedQuota + actualFileSize;
 
-        long updatedUsedQuota = storage.getUsedQuota() + actualFileSize;
-        if (updatedUsedQuota > storage.getTotalQuota()) {
-            storageUploadService.logFailure(storage, requestDTO.getDocumentName(), actualFileSize, "FAILED_QUOTA_FULL");
+        if (updatedUsedQuota > totalQuota) {
+            storageUploadService.logFailure(
+                    storage,
+                    requestDTO.getDocumentName(),
+                    actualFileSize,
+                    "FAILED_QUOTA_FULL"
+            );
+
             throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
         }
 
-        Document doc = new Document();
-        doc.setUser(user);
-        doc.setDocumentName(requestDTO.getDocumentName());
-        doc.setFileType(requestDTO.getFileType());
-        doc.setPreviewUrl(requestDTO.getPreviewUrl());
-        doc.setDownloadUrl(requestDTO.getDownloadUrl());
-        doc.setFileSize(actualFileSize);
-        doc.setDescription(requestDTO.getDescription());
-        doc.setCategoryId(null); // 🌟 Giữ null ở bảng documents theo ý bạn để né xích khóa ngoại chéo
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("This config is not available"));
 
-        Document savedDoc = documentRepository.saveAndFlush(doc);
-
-        // 2. XỬ LÝ LƯU DANH MỤC (ĐẢM BẢO NHIỀU DOCUMENT DÙNG CHUNG 1 CATEGORY ĐÃ CÓ)
-        // 2. XỬ LÝ LƯU DANH MỤC THEO CẤU TRÚC CÂY (HỌC KỲ -> MÔN HỌC)
-        if (requestDTO.getCategoryNames() != null && !requestDTO.getCategoryNames().isEmpty()) {
-            String selectedSubject = requestDTO.getCategoryNames().get(0).trim();
-
-            try {
-                // Kiểm tra môn học hợp lệ theo bộ Enum hệ thống
-                SubjectCode subject = SubjectCode.valueOf(selectedSubject.toUpperCase());
-                selectedSubject = subject.name();
-                Semester semester = subject.getSemester(); // 🌟 Tự động lấy ra Học kỳ tương ứng (Ví dụ: SEMESTER_2)
-
-                // ==========================================
-                // BƯỚC 2A: XỬ LÝ HỌC KỲ (DANH MỤC CHA)
-                // ==========================================
-                String sqlCheckSemester = "SELECT category_id FROM document_categories WHERE UPPER(category_name) = ? AND user_id IS NULL LIMIT 1";
-                List<?> existingSemesterIds = entityManager.createNativeQuery(sqlCheckSemester)
-                        .setParameter(1, semester.name().toUpperCase())
-                        .getResultList();
-
-                java.util.UUID semesterCategoryId;
-
-                if (!existingSemesterIds.isEmpty()) {
-                    semesterCategoryId = (java.util.UUID) existingSemesterIds.get(0);
-                } else {
-                    // Nếu DB chưa từng có Học kỳ này -> Tạo mới danh mục Học kỳ cha
-                    semesterCategoryId = java.util.UUID.randomUUID();
-                    String sqlInsertSemester = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at, parent_id, user_id) " +
-                            "VALUES (?, ?, ?, ?, ?, NULL, NULL)";
-                    entityManager.createNativeQuery(sqlInsertSemester)
-                            .setParameter(1, semesterCategoryId)
-                            .setParameter(2, savedDoc.getId()) // Gán tạm document đầu tiên kích hoạt kì học này
-                            .setParameter(3, semester.name())  // Lưu tên kì: SEMESTER_2
-                            .setParameter(4, "SEMESTER")       // Type danh mục là Học kỳ
-                            .setParameter(5, java.time.OffsetDateTime.now())
-                            .executeUpdate();
-                }
-
-                // ==========================================
-                // BƯỚC 2B: XỬ LÝ MÔN HỌC (DANH MỤC CON)
-                // ==========================================
-                String sqlCheckSubject = "SELECT category_id FROM document_categories WHERE UPPER(category_name) = ? AND parent_id = ? AND user_id IS NULL LIMIT 1";
-                List<?> existingSubjectIds = entityManager.createNativeQuery(sqlCheckSubject)
-                        .setParameter(1, selectedSubject.toUpperCase())
-                        .setParameter(2, semesterCategoryId) // Tìm môn học nằm ĐÚNG trong học kỳ đó
-                        .getResultList();
-
-                java.util.UUID targetCategoryId;
-
-                if (!existingSubjectIds.isEmpty()) {
-                    // Nếu đã có môn học này trong học kỳ đó rồi -> Lấy luôn ID cũ xài chung
-                    targetCategoryId = (java.util.UUID) existingSubjectIds.get(0);
-                } else {
-                    // Nếu chưa có môn học này -> Tạo mới danh mục Môn học con
-                    targetCategoryId = java.util.UUID.randomUUID();
-                    String sqlInsertSubject = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at, parent_id, user_id) " +
-                            "VALUES (?, ?, ?, ?, ?, ?, NULL)";
-                    entityManager.createNativeQuery(sqlInsertSubject)
-                            .setParameter(1, targetCategoryId)
-                            .setParameter(2, savedDoc.getId())
-                            .setParameter(3, selectedSubject)   // Tên môn: CSD202
-                            .setParameter(4, "SUBJECT")         // Type danh mục là Môn học
-                            .setParameter(5, java.time.OffsetDateTime.now())
-                            .setParameter(6, semesterCategoryId) // 🌟 GẮN PARENT_ID VỀ ID CỦA HỌC KỲ CHA!
-                            .executeUpdate();
-                }
-
-                // Cập nhật ngược lại khóa ngoại category_id cho bảng documents
-                String sqlUpdateDoc = "UPDATE documents SET category_id = ? WHERE document_id = ?";
-                entityManager.createNativeQuery(sqlUpdateDoc)
-                        .setParameter(1, targetCategoryId)
-                        .setParameter(2, savedDoc.getId())
-                        .executeUpdate();
-
-                savedDoc.setCategoryId(targetCategoryId); // Đồng bộ bộ nhớ RAM
-
-            } catch (IllegalArgumentException e) {
-                // ==========================================
-                // BƯỚC 2C: XỬ LÝ MÔN TỰ NHẬP Ở MỤC "KHÁC" (Giữ nguyên logic cũ)
-                // ==========================================
-                String customSubjectName = selectedSubject;
-
-                String sqlCheckCustom = "SELECT category_id FROM document_categories WHERE UPPER(category_name) = ? AND user_id = ? LIMIT 1";
-                List<?> existingCustomIds = entityManager.createNativeQuery(sqlCheckCustom)
-                        .setParameter(1, customSubjectName.toUpperCase())
-                        .setParameter(2, userId)
-                        .getResultList();
-
-                java.util.UUID targetCustomId;
-
-                if (!existingCustomIds.isEmpty()) {
-                    targetCustomId = (java.util.UUID) existingCustomIds.get(0);
-                } else {
-                    targetCustomId = java.util.UUID.randomUUID();
-                    String sqlInsertCustom = "INSERT INTO document_categories (category_id, document_id, category_name, category_type, created_at, parent_id, user_id) " +
-                            "VALUES (?, ?, ?, ?, ?, NULL, ?)";
-                    entityManager.createNativeQuery(sqlInsertCustom)
-                            .setParameter(1, targetCustomId)
-                            .setParameter(2, savedDoc.getId())
-                            .setParameter(3, customSubjectName)
-                            .setParameter(4, "CUSTOM_SUBJECT")
-                            .setParameter(5, java.time.OffsetDateTime.now())
-                            .setParameter(6, userId)
-                            .executeUpdate();
-                }
-
-                String sqlUpdateDocCustom = "UPDATE documents SET category_id = ? WHERE document_id = ?";
-                entityManager.createNativeQuery(sqlUpdateDocCustom)
-                        .setParameter(1, targetCustomId)
-                        .setParameter(2, savedDoc.getId())
-                        .executeUpdate();
-
-                savedDoc.setCategoryId(targetCustomId);
-            }
-
-            entityManager.flush();
+        Document document = new Document();
+        document.setUser(user);
+        document.setDocumentName(requestDTO.getDocumentName());
+        document.setFileType(requestDTO.getFileType());
+        document.setPreviewUrl(requestDTO.getPreviewUrl());
+        document.setDownloadUrl(requestDTO.getDownloadUrl());
+        if(requestDTO.getFileSize() > systemConfig.getMaxFileSizeMb()) {
+            throw new IllegalArgumentException("Maximum size is" + systemConfig.getMaxFileSizeMb());
+        } else {
+            document.setFileSize(requestDTO.getFileSize());
         }
+        document.setDescription(requestDTO.getDescription());
+        document.setStatus(
+                requestDTO.getStatus() != null
+                        ? requestDTO.getStatus()
+                        : StatusPublicDoc.DEFAULT
+        );
+        document.setPublic(false);
+        document.setCategoryId(null);
+
+        Document savedDocument = documentRepository.saveAndFlush(document);
+
+        UUID subjectCategoryId = handleDocumentCategories(
+                savedDocument,
+                requestDTO.getSubjectCode()
+        );
+
+        savedDocument.setCategoryId(subjectCategoryId);
+        updateDocumentCategory(savedDocument, subjectCategoryId);
+
+        savedDocument = documentRepository.saveAndFlush(savedDocument);
 
         storage.setUsedQuota(updatedUsedQuota);
-        cloudStorageRepository.save(storage);
+        cloudStorageRepository.saveAndFlush(storage);
 
         storageUploadService.logSuccess(storage, requestDTO.getDocumentName(), actualFileSize);
-        return mapToResponseDTO(savedDoc);
+
+        return mapToResponseDTO(savedDocument);
     }
 
-    @Transactional(readOnly = true)
     @Override
+    @Transactional(readOnly = true)
     public List<DocumentResponseDTO> getAllDocumentsByUser() {
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+        User user = getCurrentUser();
 
-        List<Document> documents = documentRepository.findByUser(user);
-
-        return documents.stream()
-                .map(doc -> {
-                    DocumentResponseDTO dto = new DocumentResponseDTO();
-                    dto.setDocumentId(doc.getId());
-                    dto.setDocumentName(doc.getDocumentName());
-                    dto.setFileType(doc.getFileType());
-                    dto.setPreviewUrl(doc.getPreviewUrl());
-                    dto.setDownloadUrl(doc.getDownloadUrl());
-                    dto.setCreatedAt(doc.getCreatedAt());
-                    dto.setDescription(doc.getDescription());
-                    dto.setIsPublic(doc.isPublic());
-                    return dto;
-                })
-                .collect(Collectors.toList());
+        return documentRepository.findByUser(user)
+                .stream()
+                .map(this::mapToResponseDTO)
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public DocumentResponseDTO getDocumentDetail(UUID documentId) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
-
+        User user = getCurrentUser();
         UUID userId = user.getId();
 
-        Document doc = documentRepository.findById(documentId)
+        Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        boolean isOwner = doc.getUser() != null && Objects.equals(doc.getUser().getId(), userId);
-        boolean isPublic = doc.isPublic();
-        boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
+        boolean isOwner = document.getUser() != null
+                && Objects.equals(document.getUser().getId(), userId);
+
+        boolean isPublic = document.isPublic();
+
+        boolean isSharedWithMe =
+                documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
 
         if (!isOwner && !isPublic && !isSharedWithMe) {
             throw new RuntimeException("Bạn không có quyền xem tài liệu này");
         }
 
-        return mapToResponseDTO(doc);
+        return mapToResponseDTO(document);
     }
 
     @Override
     @Transactional
     public DocumentResponseDTO updateDocumentName(UUID documentId, String newName) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
-
+        User user = getCurrentUser();
         UUID userId = user.getId();
 
-        Document doc = documentRepository.findById(documentId)
+        Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        boolean isOwner = doc.getUser() != null && Objects.equals(doc.getUser().getId(), userId);
+        boolean isOwner = document.getUser() != null
+                && Objects.equals(document.getUser().getId(), userId);
 
-        java.util.Optional<DocumentShare> shareOpt = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
-        boolean hasEditPermission = shareOpt.isPresent() && "edit".equalsIgnoreCase(shareOpt.get().getPermissionType());
+        java.util.Optional<DocumentShare> shareOpt =
+                documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
+
+        boolean hasEditPermission = shareOpt.isPresent()
+                && "edit".equalsIgnoreCase(shareOpt.get().getPermissionType());
 
         if (!isOwner && !hasEditPermission) {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa tài liệu này!");
         }
 
-        doc.setDocumentName(newName);
-        Document updatedDoc = documentRepository.save(doc);
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new RuntimeException("Tên tài liệu không được để trống!");
+        }
 
-        return mapToResponseDTO(updatedDoc);
+        document.setDocumentName(newName.trim());
+
+        Document updatedDocument = documentRepository.saveAndFlush(document);
+
+        return mapToResponseDTO(updatedDocument);
     }
 
     @Override
     @Transactional
     public void deleteDocument(UUID documentId) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
-
+        User user = getCurrentUser();
         UUID userId = user.getId();
 
         Document document = documentRepository.findByIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền xóa"));
 
-        long actualFileSize = (document.getFileSize() != null) ? document.getFileSize() : 0L;
+        long actualFileSize = document.getFileSize() != null ? document.getFileSize() : 0L;
 
-        try {
-            String downloadUrl = document.getDownloadUrl();
-            if (downloadUrl == null || downloadUrl.trim().isEmpty()) {
-                downloadUrl = document.getPreviewUrl();
-            }
-
-            String fileKey = "";
-            if (downloadUrl != null && downloadUrl.contains("/documents/")) {
-                fileKey = downloadUrl.substring(downloadUrl.indexOf("/documents/") + 11);
-            } else {
-                String extension = document.getFileType().name().trim().toLowerCase();
-                fileKey = userId.toString() + "/" + documentId.toString() + "." + extension;
-            }
-
-            String supabaseUrl = "https://ybgeblpkptrsefpafthb.supabase.co/storage/v1/object/documents/" + fileKey;
-
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-            String supabaseToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliZ2VibHBrcHRyc2VmcGFmdGhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDYwNDM0MSwiZXhwIjoyMDk2MTgwMzQxfQ.T0MpOxyT3aFSdVMy-o4j22D8OxO9hXzRLzDjkbputUI";
-
-            headers.set("Authorization", "Bearer " + supabaseToken);
-            headers.set("apiKey", supabaseToken);
-
-            org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
-
-            restTemplate.exchange(supabaseUrl, org.springframework.http.HttpMethod.DELETE, entity, String.class);
-            System.out.println("==> Đã xóa file vật lý thành công trên Supabase Bucket: " + fileKey);
-
-        } catch (org.springframework.web.client.HttpStatusCodeException e) {
-            String errorResponse = e.getResponseBodyAsString();
-            if (e.getStatusCode().value() == 404 || errorResponse.contains("not_found")) {
-                System.out.println("==> Cảnh báo: File không tìm thấy trên Cloud (404), tiến hành dọn dẹp tiếp Database.");
-            } else {
-                throw new RuntimeException("Không thể xóa file vật lý trên Supabase Bucket. Mã lỗi: " + e.getStatusCode() + " - Chi tiết: " + errorResponse);
-            }
-        } catch (Exception e) {
-            String msg = e.getMessage() != null ? e.getMessage() : "";
-            if (msg.contains("404") || msg.contains("not_found")) {
-                System.out.println("==> Cảnh báo: Phát hiện mã lỗi 404, tiếp tục dọn dẹp Database.");
-            } else {
-                throw new RuntimeException("Lỗi kết nối mạng đến Supabase: " + e.getMessage());
-            }
-        }
+        /*
+         * Xóa file vật lý qua Supabase Storage REST API.
+         * Tự động catch lỗi nếu sai Token/Key để đảm bảo DB vẫn được dọn sạch.
+         */
+        deletePhysicalFileFromSupabase(document, userId, documentId);
 
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
 
-        long newUsedQuota = Math.max(0, storage.getUsedQuota() - actualFileSize);
+        long usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
+        long newUsedQuota = Math.max(0, usedQuota - actualFileSize);
+
         storage.setUsedQuota(newUsedQuota);
-
         cloudStorageRepository.saveAndFlush(storage);
-
-        entityManager.flush();
-        entityManager.clear();
 
         documentChunkRepository.deleteByDocument_Id(documentId);
         documentRepository.delete(document);
+        documentRepository.flush();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Resource downloadDocumentFile(UUID documentId) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
-
+        User user = getCurrentUser();
         UUID userId = user.getId();
 
-        Document doc = documentRepository.findById(documentId)
+        Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
-        boolean isPublic = doc.isPublic();
+        boolean isOwner = document.getUser() != null
+                && Objects.equals(document.getUser().getId(), userId);
 
-        java.util.Optional<DocumentShare> shareOpt = documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
+        boolean isPublic = document.isPublic();
 
-        boolean hasDownloadPermission = false;
-        if (shareOpt.isPresent()) {
-            String permission = shareOpt.get().getPermissionType();
-            if ("download".equalsIgnoreCase(permission) || "edit".equalsIgnoreCase(permission)) {
-                hasDownloadPermission = true;
-            }
-        }
+        java.util.Optional<DocumentShare> shareOpt =
+                documentShareRepository.findByDocument_IdAndSharedWithUser_Id(documentId, userId);
+
+        boolean hasDownloadPermission = shareOpt.isPresent()
+                && (
+                "download".equalsIgnoreCase(shareOpt.get().getPermissionType())
+                        || "edit".equalsIgnoreCase(shareOpt.get().getPermissionType())
+        );
 
         if (!isOwner && !isPublic && !hasDownloadPermission) {
             throw new RuntimeException("Tài liệu này chỉ cho phép xem trực tuyến, bạn không có quyền tải xuống!");
         }
 
-        return fetchFileResourceFromCloud(doc);
+        return fetchFileResourceFromCloud(document);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Resource getFileResourceForPreview(UUID documentId) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
-
+        User user = getCurrentUser();
         UUID userId = user.getId();
 
-        Document doc = documentRepository.findById(documentId)
+        Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
 
-        boolean isOwner = doc.getUser() != null && java.util.Objects.equals(doc.getUser().getId(), userId);
-        boolean isPublic = doc.isPublic();
-        boolean isSharedWithMe = documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
+        boolean isOwner = document.getUser() != null
+                && Objects.equals(document.getUser().getId(), userId);
+
+        boolean isPublic = document.isPublic();
+
+        boolean isSharedWithMe =
+                documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
 
         if (!isOwner && !isPublic && !isSharedWithMe) {
             throw new RuntimeException("Bạn không có quyền xem trước tài liệu này!");
         }
 
-        return fetchFileResourceFromCloud(doc);
+        return fetchFileResourceFromCloud(document);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<DocumentResponseDTO> searchDocumentsByFilter(String searchText) {
-        // 1. LẤY USER NGẦM TỪ TOKEN
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not logged in yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+        User user = getCurrentUser();
 
-        // 2. Chuẩn hóa chuỗi tìm kiếm
-        String cleanSearchText = (searchText != null && !searchText.trim().isEmpty()) ? searchText.trim() : null;
+        String cleanSearchText = searchText != null ? searchText.trim() : "";
 
-        // 3. Thực thi gọi Repo thông minh
-        List<Document> documents = documentRepository.searchSmartAccessibleDocuments(user.getId(), cleanSearchText);
-
-        return documents.stream()
+        return documentRepository.searchSmartAccessibleDocuments(
+                        user.getId(),
+                        cleanSearchText
+                )
+                .stream()
                 .map(this::mapToResponseDTO)
                 .toList();
     }
@@ -462,25 +309,75 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public DocumentResponseDTO toggleDocumentPublicStatus(UUID documentId, boolean isPublic) {
-        // 🌟 LẤY USER NGẦM TỪ TOKEN
-        Authentication au = SecurityContextHolder.getContext().getAuthentication();
-        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
-            throw new RuntimeException("You are not login yet!");
-        }
-        User user = userRepository.findByEmailIgnoreCase(au.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+        User user = getCurrentUser();
 
         Document document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu."));
 
-        if (!document.getUser().getId().equals(user.getId())) {
+        if (document.getUser() == null || !document.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa trạng thái của tài liệu này!");
         }
 
-        document.setPublic(isPublic);
-        Document updatedDoc = documentRepository.saveAndFlush(document);
+        if (isPublic) {
+            document.setPublic(false);
+            document.setStatus(StatusPublicDoc.PENDING);
+        } else {
+            document.setPublic(false);
+            document.setStatus(StatusPublicDoc.DEFAULT);
+            document.setApprovedBy(null);
+        }
 
-        return mapToResponseDTO(updatedDoc);
+        Document updatedDocument = documentRepository.saveAndFlush(document);
+
+        return mapToResponseDTO(updatedDocument);
+    }
+
+    @Override
+    @Transactional
+    public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDoc decision) {
+        if (decision == null) {
+            throw new RuntimeException("Quyết định phê duyệt không hợp lệ!");
+        }
+
+        Authentication authentication = getAuthentication();
+
+        boolean isStaff = authentication.getAuthorities().stream()
+                .anyMatch(authority ->
+                        authority.getAuthority().equals("ROLE_MODERATOR")
+                                || authority.getAuthority().equals("MODERATOR")
+                                || authority.getAuthority().equals("ROLE_ADMIN")
+                                || authority.getAuthority().equals("ADMIN")
+                );
+
+        if (!isStaff) {
+            throw new RuntimeException("Bạn không có quyền thực hiện thao tác duyệt này!");
+        }
+
+        User reviewer = userRepository.findByEmailIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người duyệt trên hệ thống!"));
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu phê duyệt."));
+
+        if (document.getStatus() != StatusPublicDoc.PENDING) {
+            throw new RuntimeException("Tài liệu này hiện không có yêu cầu phê duyệt nào cần xử lý hoặc đã được duyệt trước đó!");
+        }
+
+        if (decision == RequestPublicDoc.ACCEPT) {
+            document.setPublic(true);
+            document.setStatus(StatusPublicDoc.SUCCESS);
+        } else if (decision == RequestPublicDoc.DENY) {
+            document.setPublic(false);
+            document.setStatus(StatusPublicDoc.DEFAULT);
+        } else {
+            throw new RuntimeException("Quyết định phê duyệt không hợp lệ! Chỉ chấp nhận ACCEPT hoặc DENY.");
+        }
+
+        document.setApprovedBy(reviewer);
+
+        Document updatedDocument = documentRepository.saveAndFlush(document);
+
+        return mapToResponseDTO(updatedDocument);
     }
 
     @Override
@@ -492,23 +389,270 @@ public class DocumentServiceImpl implements DocumentService {
                 .toList();
     }
 
-    public List<Document> getMyDocuments() {
+    private Authentication getAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("Người dùng chưa được xác thực hệ thống");
-        }
-        String currentUserEmail = authentication.getName();
-        User user = userRepository.findByEmailIgnoreCase(currentUserEmail)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản: " + currentUserEmail));
 
-        return documentRepository.findByUserId(user.getId());
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || "anonymousUser".equals(String.valueOf(authentication.getPrincipal()))) {
+            throw new RuntimeException("You are not login yet!");
+        }
+
+        return authentication;
     }
 
-    private Resource fetchFileResourceFromCloud(Document doc) {
+    private User getCurrentUser() {
+        Authentication authentication = getAuthentication();
+
+        return userRepository.findByEmailIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+    }
+
+    private UUID handleDocumentCategories(
+            Document savedDocument,
+            SubjectCode subjectCode
+    ) {
+        if (subjectCode == null) {
+            throw new RuntimeException("Vui lòng chọn một môn học hợp lệ từ danh sách hệ thống!");
+        }
+
+        Semester semester = subjectCode.getSemester();
+
+        if (semester == null) {
+            throw new RuntimeException("Môn học được chọn không thuộc bất kỳ học kỳ nào hiện tại!");
+        }
+
+        UUID semesterCategoryId = findOrCreateSemesterCategory(
+                savedDocument.getId(),
+                semester
+        );
+
+        UUID subjectCategoryId = findOrCreateSubjectCategory(
+                savedDocument.getId(),
+                subjectCode.name(),
+                semesterCategoryId
+        );
+
+        entityManager.flush();
+
+        return subjectCategoryId;
+    }
+
+    private UUID findOrCreateSemesterCategory(UUID documentId, Semester semester) {
+        String sqlCheckSemester =
+                "SELECT category_id FROM document_categories " +
+                        "WHERE UPPER(category_name) = ? AND user_id IS NULL LIMIT 1";
+
+        List<?> existingSemesterIds = entityManager.createNativeQuery(sqlCheckSemester)
+                .setParameter(1, semester.name().toUpperCase())
+                .getResultList();
+
+        if (!existingSemesterIds.isEmpty()) {
+            return toUuid(existingSemesterIds.get(0));
+        }
+
+        UUID semesterCategoryId = UUID.randomUUID();
+
+        String sqlInsertSemester =
+                "INSERT INTO document_categories " +
+                        "(category_id, document_id, category_name, category_type, created_at, parent_id, user_id) " +
+                        "VALUES (?, ?, ?, ?, ?, NULL, NULL)";
+
+        entityManager.createNativeQuery(sqlInsertSemester)
+                .setParameter(1, semesterCategoryId)
+                .setParameter(2, documentId)
+                .setParameter(3, semester.name())
+                .setParameter(4, "SEMESTER")
+                .setParameter(5, java.time.OffsetDateTime.now())
+                .executeUpdate();
+
+        return semesterCategoryId;
+    }
+
+    private UUID findOrCreateSubjectCategory(
+            UUID documentId,
+            String subjectName,
+            UUID semesterCategoryId
+    ) {
+        String sqlCheckSubject =
+                "SELECT category_id FROM document_categories " +
+                        "WHERE UPPER(category_name) = ? AND parent_id = ? AND user_id IS NULL LIMIT 1";
+
+        List<?> existingSubjectIds = entityManager.createNativeQuery(sqlCheckSubject)
+                .setParameter(1, subjectName.toUpperCase())
+                .setParameter(2, semesterCategoryId)
+                .getResultList();
+
+        if (!existingSubjectIds.isEmpty()) {
+            return toUuid(existingSubjectIds.get(0));
+        }
+
+        UUID subjectCategoryId = UUID.randomUUID();
+
+        String sqlInsertSubject =
+                "INSERT INTO document_categories " +
+                        "(category_id, document_id, category_name, category_type, created_at, parent_id, user_id) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, NULL)";
+
+        entityManager.createNativeQuery(sqlInsertSubject)
+                .setParameter(1, subjectCategoryId)
+                .setParameter(2, documentId)
+                .setParameter(3, subjectName)
+                .setParameter(4, "SUBJECT")
+                .setParameter(5, java.time.OffsetDateTime.now())
+                .setParameter(6, semesterCategoryId)
+                .executeUpdate();
+
+        return subjectCategoryId;
+    }
+
+    private void updateDocumentCategory(Document savedDocument, UUID categoryId) {
+        String sqlUpdateDocument =
+                "UPDATE documents SET category_id = ? WHERE document_id = ?";
+
+        entityManager.createNativeQuery(sqlUpdateDocument)
+                .setParameter(1, categoryId)
+                .setParameter(2, savedDocument.getId())
+                .executeUpdate();
+
+        savedDocument.setCategoryId(categoryId);
+    }
+
+    private void deletePhysicalFileFromSupabase(
+            Document document,
+            UUID userId,
+            UUID documentId
+    ) {
         try {
-            String stringUrl = doc.getDownloadUrl();
-            java.net.URL url = java.net.URI.create(stringUrl).toURL();
-            try (java.io.InputStream inputStream = url.openStream()) {
+            String downloadUrl = document.getDownloadUrl();
+
+            if (downloadUrl == null || downloadUrl.trim().isEmpty()) {
+                downloadUrl = document.getPreviewUrl();
+            }
+
+            String fileKey = resolveSupabaseFileKey(downloadUrl);
+            String serviceKey = normalizeSupabaseServiceKey(supabaseServiceRoleKey);
+
+            if (fileKey == null || fileKey.isBlank()) {
+                System.out.println("==> Cảnh báo: Không thể giải mã File Key từ url. FileUrl=" + downloadUrl);
+                return;
+            }
+
+            // Bỏ kiểm tra dấu chấm (.) để chấp nhận cả chuỗi token thế hệ mới sb_secret_...
+            if (serviceKey == null || serviceKey.isBlank()) {
+                System.out.println("==> Cảnh báo: supabase.service-role-key trống, bỏ qua xóa file vật lý. FileKey=" + fileKey);
+                return;
+            }
+
+            // Chuẩn hóa loại bỏ dấu gạch chéo dư thừa ở đầu key
+            if (fileKey.startsWith("/")) {
+                fileKey = fileKey.substring(1);
+            }
+
+            String baseUrl = supabaseUrl.endsWith("/")
+                    ? supabaseUrl.substring(0, supabaseUrl.length() - 1)
+                    : supabaseUrl;
+
+            // ĐỔI ENDPOINT: Ghép trực tiếp bucket và fileKey vào URL theo chuẩn REST API đơn lẻ của Supabase
+            String deleteUrl = baseUrl + "/storage/v1/object/" + bucketName + "/" + fileKey;
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("Authorization", "Bearer " + serviceKey);
+            headers.set("apikey", serviceKey); // Gửi kèm api key song song để tránh lỗi phân quyền RLS
+
+            org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
+
+            // Sử dụng HTTP Method DELETE trực tiếp lên URL của file
+            restTemplate.exchange(
+                    deleteUrl,
+                    org.springframework.http.HttpMethod.DELETE,
+                    entity,
+                    String.class
+            );
+
+            System.out.println("==> Đã gửi lệnh REST API xóa file vật lý thành công trên Supabase Bucket: " + fileKey);
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            String errorResponse = e.getResponseBodyAsString();
+
+            if (e.getStatusCode().value() == 401
+                    || e.getStatusCode().value() == 403
+                    || e.getStatusCode().value() == 404
+                    || errorResponse.contains("not_found")
+                    || errorResponse.contains("Invalid Compact JWS")) {
+                System.out.println("==> Cảnh báo: Không xóa được file vật lý trên Supabase, tiếp tục dọn Database.");
+                System.out.println("==> Supabase status: " + e.getStatusCode());
+                System.out.println("==> Supabase response: " + errorResponse);
+                return;
+            }
+
+            throw new RuntimeException(
+                    "Không thể xóa file vật lý trên Supabase Bucket. Mã lỗi: "
+                            + e.getStatusCode()
+                            + " - Chi tiết: "
+                            + errorResponse
+            );
+        } catch (Exception e) {
+            String message = e.getMessage() != null ? e.getMessage() : "";
+
+            if (message.contains("401")
+                    || message.contains("403")
+                    || message.contains("404")
+                    || message.contains("not_found")) {
+                System.out.println("==> Cảnh báo: Gặp lỗi xác thực/đường dẫn từ Supabase, tiếp tục dọn Database.");
+                System.out.println("==> Lý do: " + message);
+                return;
+            }
+
+            throw new RuntimeException("Lỗi kết nối Supabase: " + e.getMessage());
+        }
+    }
+
+    private String resolveSupabaseFileKey(String fileUrl) {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            return null;
+        }
+        // Ví dụ: .../storage/v1/object/public/your-bucket-name/userId/filename.pdf
+        // Hoặc: .../storage/v1/object/public/your-bucket-name/filename.pdf
+        String target = "/" + bucketName + "/";
+        int index = fileUrl.indexOf(target);
+        if (index != -1) {
+            // Cắt toàn bộ chuỗi đứng sau tên bucket để làm File Key chuẩn xác trên Supabase
+            return fileUrl.substring(index + target.length());
+        }
+        return null;
+    }
+
+    private String normalizeSupabaseServiceKey(String rawKey) {
+        if (rawKey == null) {
+            return "";
+        }
+
+        String key = rawKey.trim();
+
+        if (key.startsWith("Bearer ")) {
+            key = key.substring(7).trim();
+        }
+
+        return key.replace("\"", "")
+                .replace("'", "")
+                .trim();
+    }
+
+    private Resource fetchFileResourceFromCloud(Document document) {
+        try {
+            String fileUrl = document.getDownloadUrl();
+
+            if (fileUrl == null || fileUrl.trim().isEmpty()) {
+                fileUrl = document.getPreviewUrl();
+            }
+
+            if (fileUrl == null || fileUrl.trim().isEmpty()) {
+                throw new RuntimeException("Tài liệu chưa có đường dẫn file.");
+            }
+
+            java.net.URL url = java.net.URI.create(fileUrl).toURL();
+
+            try (InputStream inputStream = url.openStream()) {
                 return new ByteArrayResource(inputStream.readAllBytes());
             }
         } catch (Exception e) {
@@ -518,15 +662,62 @@ public class DocumentServiceImpl implements DocumentService {
 
     private DocumentResponseDTO mapToResponseDTO(Document document) {
         DocumentResponseDTO dto = new DocumentResponseDTO();
+
         dto.setDocumentId(document.getId());
         dto.setDocumentName(document.getDocumentName());
         dto.setFileType(document.getFileType());
+        dto.setFileSize(document.getFileSize());
         dto.setPreviewUrl(document.getPreviewUrl());
         dto.setDownloadUrl(document.getDownloadUrl());
         dto.setCreatedAt(document.getCreatedAt());
         dto.setDescription(document.getDescription());
-        dto.setTextContent(document.getDescription());
         dto.setIsPublic(document.isPublic());
+        dto.setStatus(
+                document.getStatus() != null
+                        ? document.getStatus()
+                        : StatusPublicDoc.DEFAULT
+        );
+        dto.setSubjectCode(resolveSubjectCodeFromDocument(document));
+
         return dto;
+    }
+
+    private SubjectCode resolveSubjectCodeFromDocument(Document document) {
+        if (document.getCategoryId() == null) {
+            return null;
+        }
+
+        try {
+            String sqlGetCategoryName =
+                    "SELECT category_name FROM document_categories WHERE category_id = ? LIMIT 1";
+
+            Object result = entityManager.createNativeQuery(sqlGetCategoryName)
+                    .setParameter(1, document.getCategoryId())
+                    .getSingleResult();
+
+            if (result == null) {
+                return null;
+            }
+
+            String categoryName = String.valueOf(result).trim().toUpperCase();
+
+            if (categoryName.isEmpty()) {
+                return null;
+            }
+
+            return SubjectCode.valueOf(categoryName);
+        } catch (IllegalArgumentException e) {
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private UUID toUuid(Object value) {
+        if (value instanceof UUID uuid) {
+            return uuid;
+        }
+
+        return UUID.fromString(String.valueOf(value));
     }
 }
