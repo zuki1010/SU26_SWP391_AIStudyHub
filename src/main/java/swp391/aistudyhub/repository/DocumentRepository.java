@@ -44,11 +44,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
      * Không SELECT d trực tiếp để tránh lỗi enum FileType khi DB có dữ liệu sai như "khoa".
      */
     @Query("""
-            SELECT
+            SELECT 
                 d.documentName AS documentName,
                 d.fileSize AS fileSize,
                 d.createdAt AS createdAt,
-                d.user.id AS userId
+                d.isPublic AS isPublic,
+                d.user.email AS userEmail,
+                d.user.customerProfile.fullName AS userFullName
             FROM Document d
             """)
     Page<DocumentResponse> findBy(Pageable pageable);

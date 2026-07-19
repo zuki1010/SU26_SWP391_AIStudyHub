@@ -10,8 +10,10 @@ import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.entity.SystemConfig;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.SenderType;
@@ -37,6 +39,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Autowired
     private CloudStorageRepository cloudStorageRepository;
+
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
 
 
     @Override
@@ -92,5 +97,16 @@ public Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc
         Pageable pageable = PageRequest.of(page, size, Sort.by("usedQuota").descending());
         return cloudStorageRepository.findBy(pageable);
 
+    }
+
+    @Override
+    public void systemConfig(SystemConfigDTO dto) {
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("This config is not available"));
+        systemConfig.setMaxDailyChatTokens(dto.getMaxDailyChatTokens());
+        systemConfig.setTotalStorageQuotaGb(dto.getTotalStorageQuotaGb());
+        systemConfig.setMaxFileSizeMb(dto.getMaxFileSizeMb());
+        systemConfig.setAllowedFileTypes(dto.getAllowedFileTypes());
+        systemConfigRepository.save(systemConfig);
     }
 }

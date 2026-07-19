@@ -12,19 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
-import swp391.aistudyhub.entity.CloudStorage;
-import swp391.aistudyhub.entity.Document;
-import swp391.aistudyhub.entity.DocumentShare;
-import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.entity.*;
 import swp391.aistudyhub.enums.RequestPublicDoc;
 import swp391.aistudyhub.enums.Semester;
 import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.SubjectCode;
-import swp391.aistudyhub.repository.CloudStorageRepository;
-import swp391.aistudyhub.repository.DocumentChunkRepository;
-import swp391.aistudyhub.repository.DocumentRepository;
-import swp391.aistudyhub.repository.DocumentShareRepository;
-import swp391.aistudyhub.repository.UserRepository;
+import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.StorageUploadService;
 
@@ -69,6 +62,9 @@ public class DocumentServiceImpl implements DocumentService {
     @Value("${supabase.service-role-key:}")
     private String supabaseServiceRoleKey;
 
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
+
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(DocumentRequestDTO requestDTO) {
@@ -98,13 +94,20 @@ public class DocumentServiceImpl implements DocumentService {
             throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
         }
 
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("This config is not available"));
+
         Document document = new Document();
         document.setUser(user);
         document.setDocumentName(requestDTO.getDocumentName());
         document.setFileType(requestDTO.getFileType());
         document.setPreviewUrl(requestDTO.getPreviewUrl());
         document.setDownloadUrl(requestDTO.getDownloadUrl());
-        document.setFileSize(actualFileSize);
+        if(requestDTO.getFileSize() > systemConfig.getMaxFileSizeMb()) {
+            throw new IllegalArgumentException("Maximum size is" + systemConfig.getMaxFileSizeMb());
+        } else {
+            document.setFileSize(requestDTO.getFileSize());
+        }
         document.setDescription(requestDTO.getDescription());
         document.setStatus(
                 requestDTO.getStatus() != null

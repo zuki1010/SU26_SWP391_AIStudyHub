@@ -51,6 +51,9 @@ public class ChatBotServiceImpl implements ChatBotService {
     private CustomerProfileRepository customerProfileRepository;
 
     @Autowired
+    private SystemConfigRepository systemConfigRepository;
+
+    @Autowired
     private RestTemplate restTemplate;
 
     @Override
@@ -109,6 +112,7 @@ public class ChatBotServiceImpl implements ChatBotService {
         chatSessionRepository.save(session);
     }
 
+    @Override
     @Transactional
     public String chatWithGemini(ChatRequestSessionDTO dto) {
         ChatSession session = chatSessionRepository.findById(dto.getSessionId())
@@ -120,7 +124,9 @@ public class ChatBotServiceImpl implements ChatBotService {
         boolean isCustomer = "CUSTOMER".equals(user.getRole().name());
 
         if (isCustomer) {
-            int maxDailyTokens = 5000;
+            SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                    .orElseThrow(() -> new RuntimeException("This config is not available"));
+            int maxDailyTokens = systemConfig.getMaxDailyChatTokens();
 
             profile = customerProfileRepository.findByUser_Id(user.getId())
                     .orElseThrow(() -> new RuntimeException("Customer Profile not found"));

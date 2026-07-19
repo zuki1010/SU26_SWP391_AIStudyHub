@@ -1,23 +1,25 @@
 package swp391.aistudyhub.dto.projection;
 
-import swp391.aistudyhub.enums.StatusPublicDoc;
+import org.springframework.beans.factory.annotation.Value;
+import swp391.aistudyhub.enums.UserRole;
+import swp391.aistudyhub.repository.AdminProfileRepository;
+import swp391.aistudyhub.repository.CustomerProfileRepository;
+import swp391.aistudyhub.repository.ModeratorProfileRepository;
+import swp391.aistudyhub.repository.UserRepository;
 
 import java.time.Instant;
 import java.util.UUID;
 
 public interface DocumentResponse {
-
-    UUID getDocumentId();
-
     String getDocumentName();
 
     Long getFileSize();
 
     Instant getCreatedAt();
 
-    UUID getUserId();
-
-    StatusPublicDoc getStatus();
-
     Boolean getIsPublic();
+
+    String getUserEmail();
+
+    String getUserFullName();
 }
