@@ -32,7 +32,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Modifying
     @Query("UPDATE User u SET u.accountStatus = :status WHERE u.id = :id")
     @Transactional
-    int updateUserStatus(@PathParam("id") UUID id,@PathParam(("status")) AccountStatus status);
+    int updateUserStatus(@Param("id") UUID id,@Param(("status")) AccountStatus status);
 
     Optional<User> findUserById(UUID id);
 
@@ -43,5 +43,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Modifying
     @Query("UPDATE User u SET u.role = :role WHERE u.id = :id")
     @Transactional
-    int updateUserRole(@PathParam("id") UUID id,@PathParam(("role")) UserRole role);
+    int updateUserRole(@Param("id") UUID id,@Param(("role")) UserRole role);
 }

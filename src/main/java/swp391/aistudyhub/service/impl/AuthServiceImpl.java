@@ -2,6 +2,7 @@ package swp391.aistudyhub.service.impl;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -41,6 +42,9 @@ public class AuthServiceImpl implements AuthService {
     private final MailService mailService;
     private final CloudStorageRepository cloudStorageRepository;
 
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
+
     @Value("${app.frontend.reset-password-url:http://localhost:3000/reset-password}")
     private String resetPasswordUrl;
 
@@ -66,7 +70,9 @@ public class AuthServiceImpl implements AuthService {
 
         CloudStorage storage = new CloudStorage();
         storage.setUser(user);                  // Gắn tài khoản vừa tạo
-        storage.setTotalQuota(5368709120L);     // Cấp sẵn 5GB free
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                        .orElseThrow(() -> new RuntimeException("This config is not found!"));
+        storage.setTotalQuota(systemConfig.getTotalStorageQuotaGb());     // Cấp sẵn 5GB free
         storage.setUsedQuota(0L);               // Dung lượng đã dùng ban đầu bằng 0
         cloudStorageRepository.save(storage);
 
