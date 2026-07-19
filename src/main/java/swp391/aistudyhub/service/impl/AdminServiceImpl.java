@@ -15,6 +15,7 @@ import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.SenderType;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.AdminService;
@@ -58,11 +59,16 @@ public class AdminServiceImpl implements AdminService {
         return userRepository.findProjectedById(id);
     }
 
-    @Override
-    public Page<DocumentResponse> getAllDocument(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return documentRepository.findBy(pageable);
+   @Override
+public Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status) {
+    Pageable pageable = PageRequest.of(page, size);
+
+    if (status == null) {
+        return documentRepository.findAllAdminDocuments(pageable);
     }
+
+    return documentRepository.findAdminDocumentsByStatus(status, pageable);
+}
 
     @Override
     public UserAccountResponse updateUserRole(UUID id, UserRole role) {
