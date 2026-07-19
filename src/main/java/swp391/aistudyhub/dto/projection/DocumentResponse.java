@@ -22,4 +22,6 @@ public interface DocumentResponse {
 
     @Value("#{target.user?.email}")
     String getUserEmail();
+
+    boolean getDocumentIsPublic();
 }
