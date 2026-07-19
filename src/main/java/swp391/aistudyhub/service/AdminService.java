@@ -15,15 +15,15 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AdminService {
-    Page<UserAccountResponse> getAllCustomer(String key, int page, int size);
-
-    UserAccountResponse updateUserStatus(UUID id, AccountStatus status);
-
-    Page<DocumentResponse> getAllDocument(int page, int size);
-
-    UserAccountResponse updateUserRole(UUID id, UserRole role);
-
-    Page<ChatRequestResponse> getAllChat(int page, int size);
-
-    Page<StorageUsageResponse> getAllStorage(int page, int size);
+//    Page<UserAccountResponse> getAllCustomer(String key, int page, int size);
+//
+//    UserAccountResponse updateUserStatus(UUID id, AccountStatus status);
+//
+//    Page<DocumentResponse> getAllDocument(int page, int size);
+//
+//    UserAccountResponse updateUserRole(UUID id, UserRole role);
+//
+//    Page<ChatRequestResponse> getAllChat(int page, int size);
+//
+//    Page<StorageUsageResponse> getAllStorage(int page, int size);
 }
