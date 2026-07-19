@@ -17,9 +17,6 @@ public interface DocumentResponse {
 
     Instant getCreatedAt();
 
-    @Value("#{target.user?.id}")
-    UUID getUserId();
-
     @Value("#{target.user?.customerProfile != null ? target.user.customerProfile.fullName : target.user?.moderatorProfile?.fullName}")
     String getUserFullName();
 
