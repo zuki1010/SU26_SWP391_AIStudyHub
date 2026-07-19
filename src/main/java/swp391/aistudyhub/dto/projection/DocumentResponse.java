@@ -19,9 +19,7 @@ public interface DocumentResponse {
 
     Boolean getIsPublic();
 
-    // Tự động map từ "AS userEmail"
     String getUserEmail();
 
-    // Tự động map từ "AS userFullName"
     String getUserFullName();
 }
