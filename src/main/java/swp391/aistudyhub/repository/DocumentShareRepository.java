@@ -9,8 +9,8 @@ import java.util.UUID;
 
 @Repository
 public interface DocumentShareRepository extends JpaRepository<DocumentShare, UUID> {
-    // Khớp chính xác với cấu trúc DocumentShare (document.id và sharedWithUser.id)
-    boolean existsByDocument_IdAndSharedWithUser_Id(UUID documentId, UUID userId);
-    Optional<DocumentShare> findByDocument_IdAndSharedWithUser_Id(UUID documentId, UUID userId);
 
+    boolean existsByDocument_IdAndSharedWithUser_Id(UUID documentId, UUID userId);
+
+    Optional<DocumentShare> findByDocument_IdAndSharedWithUser_Id(UUID documentId, UUID userId);
 }

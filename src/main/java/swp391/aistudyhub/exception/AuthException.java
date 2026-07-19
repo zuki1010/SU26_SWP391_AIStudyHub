@@ -8,24 +8,28 @@ public class AuthException extends RuntimeException {
 
     private final HttpStatus status;
 
-    public AuthException(String message, HttpStatus status) {
+    public AuthException(HttpStatus status, String message) {
         super(message);
         this.status = status;
     }
 
     public static AuthException badRequest(String message) {
-        return new AuthException(message, HttpStatus.BAD_REQUEST);
+        return new AuthException(HttpStatus.BAD_REQUEST, message);
     }
 
     public static AuthException unauthorized(String message) {
-        return new AuthException(message, HttpStatus.UNAUTHORIZED);
+        return new AuthException(HttpStatus.UNAUTHORIZED, message);
+    }
+
+    public static AuthException forbidden(String message) {
+        return new AuthException(HttpStatus.FORBIDDEN, message);
     }
 
     public static AuthException notFound(String message) {
-        return new AuthException(message, HttpStatus.NOT_FOUND);
+        return new AuthException(HttpStatus.NOT_FOUND, message);
     }
 
     public static AuthException conflict(String message) {
-        return new AuthException(message, HttpStatus.CONFLICT);
+        return new AuthException(HttpStatus.CONFLICT, message);
     }
 }
