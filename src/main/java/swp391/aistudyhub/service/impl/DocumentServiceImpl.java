@@ -78,12 +78,6 @@ public class DocumentServiceImpl implements DocumentService {
             throw new RuntimeException("Maximum file is 20MB");
         }
 
-        String allowedFileType = systemConfig.getAllowedFileTypes();
-        List<String> allowedExtension = Arrays.asList(allowedFileType.split(","));
-        if(!allowedExtension.contains(requestDTO.getFileType())) {
-            throw new RuntimeException("This file type is not allow to upload");
-        }
-
         long updatedUsedQuota = storage.getUsedQuota() + actualFileSize;
         if (updatedUsedQuota > storage.getTotalQuota()) {
             storageUploadService.logFailure(storage, requestDTO.getDocumentName(), actualFileSize, "FAILED_QUOTA_FULL");
