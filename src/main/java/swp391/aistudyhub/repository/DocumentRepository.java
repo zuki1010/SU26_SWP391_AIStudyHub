@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.StatusPublicDoc;
@@ -32,12 +33,20 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             """)
     long sumFileSizeByUserId(@Param("userId") UUID userId);
 
-    /**
-     * Danh sách document user có thể truy cập:
-     * - tài liệu user sở hữu
-     * - tài liệu public
-     * - tài liệu được share cho user
+    /*
+     * Admin projection query.
+     * Không SELECT d trực tiếp để tránh lỗi enum FileType khi DB có dữ liệu sai như "khoa".
      */
+    @Query("""
+            SELECT
+                d.documentName AS documentName,
+                d.fileSize AS fileSize,
+                d.createdAt AS createdAt,
+                d.user.id AS userId
+            FROM Document d
+            """)
+    Page<DocumentResponse> findBy(Pageable pageable);
+
     @Query("""
             SELECT d
             FROM Document d
@@ -52,15 +61,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             """)
     List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 
-    /**
-     * Search document user có thể truy cập.
-     *
-     * Lưu ý:
-     * Không dùng :searchText IS NULL để tránh lỗi PostgreSQL:
-     * could not determine data type of parameter.
-     *
-     * Service phải truyền "" nếu không search.
-     */
     @Query("""
             SELECT d
             FROM Document d
@@ -92,11 +92,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             @Param("searchText") String searchText
     );
 
-    /**
-     * Admin search/filter documents.
-     *
-     * status là enum StatusPublicDoc, không xử lý bằng UPPER(d.status).
-     */
     @Query("""
             SELECT d
             FROM Document d
