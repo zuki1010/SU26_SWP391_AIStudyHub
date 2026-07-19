@@ -33,7 +33,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             """)
     long sumFileSizeByUserId(@Param("userId") UUID userId);
 
-    @Query("SELECT d FROM Document d")
+    /*
+     * Admin projection query.
+     * Không SELECT d trực tiếp để tránh lỗi enum FileType khi DB có dữ liệu sai như "khoa".
+     */
+    @Query("""
+            SELECT
+                d.documentName AS documentName,
+                d.fileSize AS fileSize,
+                d.createdAt AS createdAt,
+                d.user.id AS userId
+            FROM Document d
+            """)
     Page<DocumentResponse> findBy(Pageable pageable);
 
     @Query("""

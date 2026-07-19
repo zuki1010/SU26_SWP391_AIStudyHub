@@ -21,13 +21,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmailIgnoreCase(String email);
 
+    Optional<User> findUserById(UUID id);
+
     Page<User> findByEmailContainingIgnoreCaseOrCustomerProfileFullNameContainingIgnoreCase(
             String emailKeyword,
             String fullNameKeyword,
             Pageable pageable
     );
-
-    Optional<User> findUserById(UUID id);
 
     @Query("""
             SELECT u
@@ -44,18 +44,60 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Page<User> searchUsers(@Param("key") String key, Pageable pageable);
 
     @Query("""
-            SELECT u
+            SELECT
+                u.email AS email,
+                u.accountStatus AS accountStatus,
+                u.createdAt AS createdAt,
+                cp.fullName AS customerProfileFullName,
+                mp.fullName AS moderatorProfileFullName,
+                ap.fullName AS adminProfileFullName,
+                u.role AS role
             FROM User u
             LEFT JOIN u.customerProfile cp
-            WHERE LOWER(u.email) LIKE LOWER(CONCAT('%', :key, '%'))
-               OR LOWER(cp.fullName) LIKE LOWER(CONCAT('%', :key, '%'))
+            LEFT JOIN u.moderatorProfile mp
+            LEFT JOIN u.adminProfile ap
+            WHERE
+                LOWER(u.email) LIKE LOWER(CONCAT('%', :key, '%'))
+                OR LOWER(cp.fullName) LIKE LOWER(CONCAT('%', :key, '%'))
+                OR LOWER(mp.fullName) LIKE LOWER(CONCAT('%', :key, '%'))
+                OR LOWER(ap.fullName) LIKE LOWER(CONCAT('%', :key, '%'))
             """)
-    Page<UserAccountResponse> searchCustomers(@Param("key") String key, Pageable pageable);
+    Page<UserAccountResponse> searchCustomers(
+            @Param("key") String key,
+            Pageable pageable
+    );
 
-    @Query("SELECT u FROM User u")
+    @Query("""
+            SELECT
+                u.email AS email,
+                u.accountStatus AS accountStatus,
+                u.createdAt AS createdAt,
+                cp.fullName AS customerProfileFullName,
+                mp.fullName AS moderatorProfileFullName,
+                ap.fullName AS adminProfileFullName,
+                u.role AS role
+            FROM User u
+            LEFT JOIN u.customerProfile cp
+            LEFT JOIN u.moderatorProfile mp
+            LEFT JOIN u.adminProfile ap
+            """)
     Page<UserAccountResponse> findBy(Pageable pageable);
 
-    @Query("SELECT u FROM User u WHERE u.id = :id")
+    @Query("""
+            SELECT
+                u.email AS email,
+                u.accountStatus AS accountStatus,
+                u.createdAt AS createdAt,
+                cp.fullName AS customerProfileFullName,
+                mp.fullName AS moderatorProfileFullName,
+                ap.fullName AS adminProfileFullName,
+                u.role AS role
+            FROM User u
+            LEFT JOIN u.customerProfile cp
+            LEFT JOIN u.moderatorProfile mp
+            LEFT JOIN u.adminProfile ap
+            WHERE u.id = :id
+            """)
     UserAccountResponse findProjectedById(@Param("id") UUID id);
 
     @Modifying
