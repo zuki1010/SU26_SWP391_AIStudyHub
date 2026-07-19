@@ -34,13 +34,13 @@ public interface DocumentResponse {
         return userRepo.findById(getUserId()).map(user -> {
             UserRole role = user.getRole();
 
-            if ("CUSTOMER".equals(role)) {
+            if ("CUSTOMER".equals(role.name())) {
                 return customerRepo.findByUser_Id(user.getId())
                         .map(cp -> cp.getFullName()).orElse("Unknown Customer");
-            } else if ("MODERATOR".equals(role)) {
+            } else if ("MODERATOR".equals(role.name())) {
                 return moderatorRepo.findByUser_Id(user.getId())
                         .map(mp -> mp.getFullName()).orElse("Unknown Moderator");
-            } else if ("ADMIN".equals(role)) {
+            } else if ("ADMIN".equals(role.name())) {
                 return adminRepo.findByUser_Id(user.getId())
                         .map(ap -> ap.getFullName()).orElse("Unknown Admin");
             }
