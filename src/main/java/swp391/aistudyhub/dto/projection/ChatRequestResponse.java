@@ -6,4 +6,6 @@ public interface ChatRequestResponse {
     UUID getId();
 
     String getMessageContent();
+
+    UUID getUserId();
 }
