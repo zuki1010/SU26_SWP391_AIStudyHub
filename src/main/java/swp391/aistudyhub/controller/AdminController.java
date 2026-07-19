@@ -29,6 +29,7 @@ public class AdminController {
 
     private final AdminService adminService;
 
+
     @GetMapping("/users")
     @Operation(summary = "Lấy danh sách tài khoản người dùng")
     public ResponseEntity<Page<UserAccountResponseDTO>> getAllUsers(
@@ -88,4 +89,23 @@ public class AdminController {
     ) {
         return ResponseEntity.ok(adminService.getAllStorage(page, size));
     }
+
+
+    @PutMapping("/config-storage")
+    public ResponseEntity<?> configureTotalStorageQuota() {
+        return ResponseEntity.ok(null);
+    }
+    @PutMapping("/config-aitoken")
+    public ResponseEntity<?> configureChatToken() {
+        return ResponseEntity.ok(null);
+    }
+    @PutMapping("/config-file-size")
+    public ResponseEntity<?> configureMaxFileSize() {
+        return ResponseEntity.ok(null);
+    }
+    @PutMapping("/config-file-type")
+    public ResponseEntity<?> configureAvailableFileType() {
+        return ResponseEntity.ok(null);
+    }
 }
+
