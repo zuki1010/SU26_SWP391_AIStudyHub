@@ -22,4 +22,8 @@ public interface DocumentResponse {
     UUID getUserId();
 
     Boolean getIsPublic();
+
+    String getStatus();
+
+    String getUserName();
 }

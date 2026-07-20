@@ -74,7 +74,6 @@ public class AdminServiceImpl implements AdminService {
     public Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status) {
         Pageable pageable = PageRequest.of(page, size);
 
-
         return documentRepository.findAdminDocumentsByStatus(status, pageable);
     }
 

@@ -154,7 +154,8 @@ Page<DocumentResponse> findAllAdminDocuments(Pageable pageable);
             d.createdAt AS createdAt,
             d.user.id AS userId,
             d.status AS status,
-            d.isPublic AS isPublic
+            d.isPublic AS isPublic,
+            d.user.customerProfile.fullName AS userName
         FROM Document d
         WHERE d.status = :status
         ORDER BY d.createdAt DESC
