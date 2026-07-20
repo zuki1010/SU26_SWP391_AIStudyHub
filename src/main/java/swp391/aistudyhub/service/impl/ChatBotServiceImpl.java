@@ -1,6 +1,7 @@
 package swp391.aistudyhub.service.impl;
 
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +25,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ChatBotServiceImpl implements ChatBotService {
 
     @Autowired
@@ -54,7 +56,10 @@ public class ChatBotServiceImpl implements ChatBotService {
     private SystemConfigRepository systemConfigRepository;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private UserMemberSubscriptionRepository userMemberSubscriptionRepository;
+
+    @Autowired
+    private SubscriptionPlanRepository subscriptionPlanRepository;
 
     @Override
     public UUID createNewChatSession(StartSessionDTO dto) {
@@ -120,13 +125,25 @@ public class ChatBotServiceImpl implements ChatBotService {
 
         User user = session.getUser();
 
+        UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)
+                .orElse(null);
         CustomerProfile profile = null;
         boolean isCustomer = "CUSTOMER".equals(user.getRole().name());
+        boolean isModerator = "MODERATOR".equals(user.getRole().name());
 
-        if (isCustomer) {
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
+                .orElseThrow(() -> new RuntimeException("This subscription is not available"));
+
+        if (isCustomer || isModerator) {
             SystemConfig systemConfig = systemConfigRepository.findById(1L)
                     .orElseThrow(() -> new RuntimeException("This config is not available"));
-            int maxDailyTokens = systemConfig.getMaxDailyChatTokens();
+            int maxDailyTokens = 0;
+
+            if(userMemberSubscription == null) {
+                maxDailyTokens = systemConfig.getMaxDailyChatTokens();
+            } else {
+                maxDailyTokens = subscriptionPlan.getMaxDailyChatTokens();
+            }
 
             profile = customerProfileRepository.findByUser_Id(user.getId())
                     .orElseThrow(() -> new RuntimeException("Customer Profile not found"));

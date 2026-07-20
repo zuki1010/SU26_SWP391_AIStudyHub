@@ -20,7 +20,7 @@ import java.util.UUID;
 @RequestMapping("/api/chat")
 @Tag(name = "AI ChatBot", description = "Create session, chat")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-@PreAuthorize("hasRole('CUSTOMER')")
+@PreAuthorize("hasAnyRole('CUSTOMER', 'MODERATOR')")
 public class ChatBotController {
 
     @Autowired

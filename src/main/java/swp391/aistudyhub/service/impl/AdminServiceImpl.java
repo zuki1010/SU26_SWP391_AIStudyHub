@@ -10,9 +10,11 @@ import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.entity.SubscriptionPlan;
 import swp391.aistudyhub.entity.SystemConfig;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
@@ -21,8 +23,9 @@ import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.AdminService;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
-import java.util.List;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
@@ -42,6 +45,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Autowired
     private SystemConfigRepository systemConfigRepository;
+
+    @Autowired
+    private SubscriptionPlanRepository subscriptionPlanRepository;
 
 
     @Override
@@ -66,7 +72,8 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public Page<DocumentResponse> getAllDocument(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size);
+
         return documentRepository.findBy(pageable);
     }
 
@@ -103,5 +110,23 @@ public class AdminServiceImpl implements AdminService {
         systemConfig.setMaxFileSizeMb(dto.getMaxFileSizeMb());
         systemConfig.setAllowedFileTypes(dto.getAllowedFileTypes());
         systemConfigRepository.save(systemConfig);
+    }
+
+    @Override
+    public void memberConfig(MemberConfigDTO dto) {
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
+                .orElseThrow(() -> new RuntimeException("This subscription is not available"));
+        subscriptionPlan.setMaxDailyChatTokens(dto.getMaxDailyChatTokens());
+        subscriptionPlan.setMaxFileSizeMb(dto.getMaxFileSizeMb());
+        subscriptionPlan.setTotalStorageQuotaGb(dto.getTotalStorageQuotaGb());
+        subscriptionPlanRepository.save(subscriptionPlan);
+    }
+
+    @Override
+    public void updatePriceMember(BigDecimal price) {
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
+                .orElseThrow(()-> new RuntimeException("This subscription is not available"));
+        subscriptionPlan.setPrice(price);
+        subscriptionPlanRepository.save(subscriptionPlan);
     }
 }

@@ -9,15 +9,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
-import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
-import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.service.AdminService;
-import swp391.aistudyhub.service.UserService;
 
-import java.util.List;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @RestController
@@ -46,7 +44,7 @@ public class AdminController {
 
     @GetMapping("/document")
     public ResponseEntity<?> getAllDocument(@RequestParam(defaultValue = "0") int page,
-                                                     @RequestParam(defaultValue = "10") int size
+                                            @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok().body(adminService.getAllDocument(page, size));
     }
@@ -72,6 +70,18 @@ public class AdminController {
     @PutMapping("/config")
     public ResponseEntity<?> updateConfig(@RequestBody SystemConfigDTO dto) {
         adminService.systemConfig(dto);
+        return ResponseEntity.ok("Save Successfully!");
+    }
+
+    @PutMapping("/config-member")
+    public ResponseEntity<?> memberConfig(@RequestBody MemberConfigDTO dto) {
+        adminService.memberConfig(dto);
+        return ResponseEntity.ok("Save Successfully!");
+    }
+
+    @PutMapping("/config-member/price")
+    public ResponseEntity<?> updatePriceMember(@RequestBody BigDecimal price) {
+        adminService.updatePriceMember(price);
         return ResponseEntity.ok("Save Successfully!");
     }
 }
