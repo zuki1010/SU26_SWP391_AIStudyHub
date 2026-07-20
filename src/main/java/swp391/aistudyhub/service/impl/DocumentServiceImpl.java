@@ -133,7 +133,7 @@ public class DocumentServiceImpl implements DocumentService {
             maxFileSize = subscriptionPlan.getMaxFileSizeMb();
         }
         if (requestDTO.getFileSize() > maxFileSize) {
-            throw new IllegalArgumentException("Maximum size is" + maxFileSize);
+            throw new IllegalArgumentException("Maximum file size is " + maxFileSize);
         } else {
             document.setFileSize(requestDTO.getFileSize());
         }
