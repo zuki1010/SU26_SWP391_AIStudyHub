@@ -135,10 +135,7 @@ public class AdminServiceImpl implements AdminService {
     public void approvePublicDocument(ApprovePublicRequestDTO dto) {
         Document document = documentRepository.findById(dto.getDocumentId())
                 .orElseThrow(() -> new RuntimeException("This document is not found!"));
-        User user = userRepository.findById(dto.getUserId())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
         document.setPublic(true);
-        document.setApprovedBy(user);
 
         documentRepository.save(document);
     }

@@ -7,5 +7,4 @@ import java.util.UUID;
 @Data
 public class ApprovePublicRequestDTO {
     UUID documentId;
-    UUID userId;
 }
