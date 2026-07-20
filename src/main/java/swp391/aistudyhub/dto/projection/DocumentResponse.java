@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface DocumentResponse {
 
-    UUID getId();
+    UUID getDocumentId();
 
     String getDocumentName();
 

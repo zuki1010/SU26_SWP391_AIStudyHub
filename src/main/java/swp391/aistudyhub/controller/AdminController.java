@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.ApprovePublicRequestDTO;
 import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.enums.AccountStatus;
@@ -86,5 +87,12 @@ public class AdminController {
     public ResponseEntity<?> updatePriceMember(@RequestBody BigDecimal price) {
         adminService.updatePriceMember(price);
         return ResponseEntity.ok("Save Successfully!");
+    }
+
+    @PutMapping("/approve-public")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public ResponseEntity<?> approvePublicDocument(@RequestBody ApprovePublicRequestDTO dto) {
+        adminService.approvePublicDocument(dto);
+        return ResponseEntity.ok("Approve successfully!");
     }
 }

@@ -5,6 +5,7 @@ import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.ApprovePublicRequestDTO;
 import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.enums.AccountStatus;
@@ -33,4 +34,6 @@ public interface AdminService {
     void memberConfig(MemberConfigDTO dto);
 
     void updatePriceMember(BigDecimal price);
+
+    void approvePublicDocument(ApprovePublicRequestDTO dto);
 }

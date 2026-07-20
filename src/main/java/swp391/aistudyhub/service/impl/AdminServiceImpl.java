@@ -10,6 +10,7 @@ import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.ApprovePublicRequestDTO;
 import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
@@ -128,5 +129,17 @@ public class AdminServiceImpl implements AdminService {
                 .orElseThrow(()-> new RuntimeException("This subscription is not available"));
         subscriptionPlan.setPrice(price);
         subscriptionPlanRepository.save(subscriptionPlan);
+    }
+
+    @Override
+    public void approvePublicDocument(ApprovePublicRequestDTO dto) {
+        Document document = documentRepository.findById(dto.getDocumentId())
+                .orElseThrow(() -> new RuntimeException("This document is not found!"));
+        User user = userRepository.findById(dto.getUserId())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+        document.setPublic(true);
+        document.setApprovedBy(user);
+
+        documentRepository.save(document);
     }
 }
