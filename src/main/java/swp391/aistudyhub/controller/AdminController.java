@@ -12,6 +12,7 @@ import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.enums.AccountStatus;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.service.AdminService;
 
@@ -45,9 +46,10 @@ public class AdminController {
     @GetMapping("/document")
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<?> getAllDocument(@RequestParam(defaultValue = "0") int page,
-                                            @RequestParam(defaultValue = "10") int size
+                                            @RequestParam(defaultValue = "10") int size,
+                                            @RequestParam StatusPublicDoc status
     ) {
-        return ResponseEntity.ok().body(adminService.getAllDocument(page, size));
+        return ResponseEntity.ok().body(adminService.getAllDocument(page, size, status));
     }
 
     @PutMapping("/account/role/{id}")
