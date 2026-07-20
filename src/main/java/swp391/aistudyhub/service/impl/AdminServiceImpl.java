@@ -21,7 +21,6 @@ import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.AdminService;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
