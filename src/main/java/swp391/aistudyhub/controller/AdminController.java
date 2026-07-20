@@ -47,10 +47,9 @@ public class AdminController {
     @GetMapping("/document")
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<?> getAllDocument(@RequestParam(defaultValue = "0") int page,
-                                            @RequestParam(defaultValue = "10") int size,
-                                            @RequestParam StatusPublicDoc status
+                                            @RequestParam(defaultValue = "10") int size
     ) {
-        return ResponseEntity.ok().body(adminService.getAllDocument(page, size, status));
+        return ResponseEntity.ok().body(adminService.getAllDocument(page, size));
     }
 
     @PutMapping("/account/role/{id}")

@@ -25,5 +25,4 @@ public interface DocumentResponse {
 
     String getStatus();
 
-    String getUserName();
 }

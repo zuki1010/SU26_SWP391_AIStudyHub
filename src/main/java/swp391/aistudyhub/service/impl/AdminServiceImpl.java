@@ -72,10 +72,10 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status) {
+    public Page<DocumentResponse> getAllDocument(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
-        return documentRepository.findAdminDocumentsByStatus(status, pageable);
+        return documentRepository.findBy(pageable);
     }
 
     @Override

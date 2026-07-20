@@ -465,6 +465,27 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public long getTotalQuota() {
+        long total = 0;
+        User user = getCurrentUser();
+
+        UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)
+                .orElse(null);
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
+                .orElseThrow(() -> new RuntimeException("This subscription is not available"));
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("This config is not available"));
+
+        if(userMemberSubscription==null) {
+            total = systemConfig.getTotalStorageQuotaGb();
+        } else {
+            total = subscriptionPlan.getTotalStorageQuotaGb();
+        }
+
+        return total;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<DocumentResponseDTO> getPublicDocuments() {
         return documentRepository.findByIsPublicTrueOrderByCreatedAtDesc()

@@ -31,4 +31,6 @@ public interface DocumentService {
     List<DocumentResponseDTO> getPublicDocuments();
 
     DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDoc decision);
+
+    long getTotalQuota();
 }

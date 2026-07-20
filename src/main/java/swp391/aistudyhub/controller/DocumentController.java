@@ -340,4 +340,9 @@ public class DocumentController {
 
         return fileName;
     }
+
+    @GetMapping("/get-storage")
+    public ResponseEntity<?> getTotalQuota() {
+        return ResponseEntity.ok().body(documentService.getTotalQuota());
+    }
 }
