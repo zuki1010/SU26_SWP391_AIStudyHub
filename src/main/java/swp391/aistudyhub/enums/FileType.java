@@ -11,8 +11,9 @@ public enum FileType {
     zip("zip"),
     txt("txt"),
     jpeg("jpeg"),
-    doc("doc");
-
+    doc("doc"),
+    xlsx("xlsx"),
+    xls("xls");
     private final String extension;
 
     // Constructor
