@@ -1,6 +1,8 @@
 package swp391.aistudyhub.service.impl;
 
 import jakarta.persistence.EntityManager;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -13,15 +15,14 @@ import org.springframework.web.client.RestTemplate;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.*;
-import swp391.aistudyhub.enums.RequestPublicDoc;
-import swp391.aistudyhub.enums.Semester;
-import swp391.aistudyhub.enums.StatusPublicDoc;
-import swp391.aistudyhub.enums.SubjectCode;
+import swp391.aistudyhub.enums.*;
 import swp391.aistudyhub.repository.*;
+import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.StorageUploadService;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -40,6 +41,9 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private DocumentChunkRepository documentChunkRepository;
+
+    @Autowired
+    private DocumentChunkService documentChunkService;
 
     @Autowired
     private EntityManager entityManager;
@@ -134,7 +138,58 @@ public class DocumentServiceImpl implements DocumentService {
 
         storageUploadService.logSuccess(storage, requestDTO.getDocumentName(), actualFileSize);
 
+        try {
+            String fileUrl = savedDocument.getDownloadUrl() != null && !savedDocument.getDownloadUrl().isBlank()
+                    ? savedDocument.getDownloadUrl()
+                    : savedDocument.getPreviewUrl();
+
+            // Truyền savedDocument.getFileType()
+            String fullTextContent = extractTextFromUrl(fileUrl, savedDocument.getFileType());
+
+            if (fullTextContent != null && !fullTextContent.trim().isEmpty()) {
+                System.out.println("==> RAG LOG: Trích xuất thành công " + fullTextContent.length() + " ký tự chữ từ file.");
+
+                // SỬA ĐÂY: Dùng biến documentChunkService (chữ d thường) đã @Autowired
+                documentChunkService.chunkAndEmbedDocument(savedDocument, fullTextContent);
+            } else {
+                System.out.println("==> RAG WARNING: File rỗng hoặc không thể trích xuất chữ từ URL: " + fileUrl);
+            }
+        } catch (Exception e) {
+            System.err.println("==> RAG ERROR: Lỗi trong quá trình đọc file và băm Chunk: " + e.getMessage());
+        }
+
+
         return mapToResponseDTO(savedDocument);
+    }
+
+    private String extractTextFromUrl(String fileUrl, FileType fileType) {
+        if (fileUrl == null || fileUrl.isBlank()) return "";
+
+        // Chuyển kiểu Enum thành String để so sánh
+        String typeStr = fileType != null ? fileType.name().toLowerCase() : "";
+
+        try {
+            java.net.URL url = java.net.URI.create(fileUrl).toURL();
+
+            // 1. Trường hợp File Văn Bản Thường (.txt)
+            if ("txt".equalsIgnoreCase(typeStr) || fileUrl.toLowerCase().endsWith(".txt")) {
+                try (InputStream in = url.openStream()) {
+                    return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+
+            // 2. Trường hợp File PDF (.pdf)
+            if ("pdf".equalsIgnoreCase(typeStr) || fileUrl.toLowerCase().endsWith(".pdf")) {
+                try (InputStream in = url.openStream();
+                     PDDocument pdfDocument = PDDocument.load(in)) {
+                    PDFTextStripper stripper = new PDFTextStripper();
+                    return stripper.getText(pdfDocument);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("==> LỖI BÓC TÁCH CHỮ TỪ URL SUPABASE: " + e.getMessage());
+        }
+        return "";
     }
 
     @Override
