@@ -5,11 +5,13 @@ import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.UserRole;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public interface AdminService {
@@ -27,4 +29,8 @@ public interface AdminService {
     Page<StorageUsageResponse> getAllStorage(int page, int size);
 
     void systemConfig(SystemConfigDTO dto);
+
+    void memberConfig(MemberConfigDTO dto);
+
+    void updatePriceMember(BigDecimal price);
 }
