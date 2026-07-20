@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
@@ -34,6 +35,11 @@ public class AdminController {
                                                                 @RequestParam(defaultValue = "0") int page,
                                                                 @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok().body(adminService.getAllCustomer(key, page, size));
+    }
+
+    @GetMapping("/account/detail/{id}")
+    public ResponseEntity<?> getUserDetail(@PathVariable("id") UUID userId) {
+        return ResponseEntity.ok(null);
     }
 
     @PutMapping("/account/status/{id}")
