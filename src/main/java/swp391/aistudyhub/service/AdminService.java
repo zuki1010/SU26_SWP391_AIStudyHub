@@ -18,7 +18,7 @@ public interface AdminService {
 
     UserAccountResponse updateUserStatus(UUID id, AccountStatus status);
 
-    Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status);
+    Page<DocumentResponse> getAllDocument(int page, int size);
 
     UserAccountResponse updateUserRole(UUID id, UserRole role);
 
