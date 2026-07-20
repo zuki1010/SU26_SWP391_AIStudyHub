@@ -45,12 +45,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
      */
     @Query("""
             SELECT 
+                d.id as id,
                 d.documentName AS documentName,
                 d.fileSize AS fileSize,
                 d.createdAt AS createdAt,
                 d.isPublic AS isPublic,
                 d.user.email AS userEmail,
-                d.user.customerProfile.fullName AS userFullName
+                d.user.customerProfile.fullName AS userFullName,
+                d.user.id AS userId
             FROM Document d
             """)
     Page<DocumentResponse> findBy(Pageable pageable);

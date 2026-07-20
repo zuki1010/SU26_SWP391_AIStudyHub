@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface DocumentResponse {
 
-    UUID getDocumentId();
+    UUID getId();
 
     String getDocumentName();
 
@@ -15,9 +15,11 @@ public interface DocumentResponse {
 
     Instant getCreatedAt();
 
-    UUID getUserId();
+    String getUserEmail();
 
-    StatusPublicDoc getStatus();
+    String getUserFullName();
+
+    UUID getUserId();
 
     Boolean getIsPublic();
 }
