@@ -65,6 +65,13 @@ public class DocumentServiceImpl implements DocumentService {
     @Autowired
     private SystemConfigRepository systemConfigRepository;
 
+    @Autowired
+    private UserMemberSubscriptionRepository userMemberSubscriptionRepository;
+
+    @Autowired
+    private SubscriptionPlanRepository subscriptionPlanRepository;
+
+
     @Override
     @Transactional
     public DocumentResponseDTO createDocument(DocumentRequestDTO requestDTO) {
@@ -80,8 +87,24 @@ public class DocumentServiceImpl implements DocumentService {
 
         long actualFileSize = requestDTO.getFileSize() != null ? requestDTO.getFileSize() : 0L;
         long usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
-        long totalQuota = storage.getTotalQuota() != null ? storage.getTotalQuota() : 0L;
         long updatedUsedQuota = usedQuota + actualFileSize;
+
+        UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)
+                .orElse(null);
+
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("This config is not available"));
+
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
+                .orElseThrow(() -> new RuntimeException("This subscription is not available"));
+
+        long totalQuota = 0L;
+
+        if (userMemberSubscription == null) {
+            totalQuota = systemConfig.getTotalStorageQuotaGb();
+        } else {
+            totalQuota = subscriptionPlan.getTotalStorageQuotaGb();
+        }
 
         if (updatedUsedQuota > totalQuota) {
             storageUploadService.logFailure(
@@ -94,8 +117,6 @@ public class DocumentServiceImpl implements DocumentService {
             throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
         }
 
-        SystemConfig systemConfig = systemConfigRepository.findById(1L)
-                .orElseThrow(() -> new RuntimeException("This config is not available"));
 
         Document document = new Document();
         document.setUser(user);
@@ -103,8 +124,16 @@ public class DocumentServiceImpl implements DocumentService {
         document.setFileType(requestDTO.getFileType());
         document.setPreviewUrl(requestDTO.getPreviewUrl());
         document.setDownloadUrl(requestDTO.getDownloadUrl());
-        if(requestDTO.getFileSize() > systemConfig.getMaxFileSizeMb()) {
-            throw new IllegalArgumentException("Maximum size is" + systemConfig.getMaxFileSizeMb());
+
+        Long maxFileSize = 0L;
+
+        if (userMemberSubscription == null) {
+            maxFileSize = systemConfig.getMaxFileSizeMb();
+        } else {
+            maxFileSize = subscriptionPlan.getMaxFileSizeMb();
+        }
+        if (requestDTO.getFileSize() > maxFileSize) {
+            throw new IllegalArgumentException("Maximum size is" + maxFileSize);
         } else {
             document.setFileSize(requestDTO.getFileSize());
         }

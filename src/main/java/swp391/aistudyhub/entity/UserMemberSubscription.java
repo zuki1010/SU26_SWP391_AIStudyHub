@@ -12,10 +12,11 @@ import java.util.UUID;
 @Entity
 @Getter
 @Setter
-@Table(name = "user_member_subcription")
+@Table(name = "user_member_subscription")
 public class UserMemberSubscription {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "mem_id", updatable = false, nullable = false)
     private UUID id;
 
     @OneToOne(fetch = FetchType.LAZY)

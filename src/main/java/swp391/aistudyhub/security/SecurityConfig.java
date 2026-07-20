@@ -101,6 +101,8 @@ public class SecurityConfig {
                         // Admin dashboard APIs: only ADMIN
                         .requestMatchers("/api/admin/**").hasAnyAuthority(ADMIN_ONLY)
 
+                        .requestMatchers("/api/member/**").hasAnyAuthority(USER_ROLES)
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
