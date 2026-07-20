@@ -43,6 +43,7 @@ public class AdminController {
     }
 
     @GetMapping("/document")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<?> getAllDocument(@RequestParam(defaultValue = "0") int page,
                                             @RequestParam(defaultValue = "10") int size
     ) {
