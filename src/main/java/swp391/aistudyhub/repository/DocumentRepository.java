@@ -10,6 +10,12 @@ import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.StatusPublicDoc;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import swp391.aistudyhub.dto.projection.DocumentResponse;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.util.List;
 import java.util.Optional;
@@ -39,12 +45,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
      */
     @Query("""
             SELECT 
+                d.id as id,
                 d.documentName AS documentName,
                 d.fileSize AS fileSize,
                 d.createdAt AS createdAt,
                 d.isPublic AS isPublic,
                 d.user.email AS userEmail,
-                d.user.customerProfile.fullName AS userFullName
+                d.user.customerProfile.fullName AS userFullName,
+                d.user.id AS userId
             FROM Document d
             """)
     Page<DocumentResponse> findBy(Pageable pageable);
@@ -122,4 +130,37 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             @Param("isPublic") Boolean isPublic,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT
+            d.id AS documentId,
+            d.documentName AS documentName,
+            d.fileSize AS fileSize,
+            d.createdAt AS createdAt,
+            d.user.id AS userId,
+            d.status AS status,
+            d.isPublic AS isPublic
+        FROM Document d
+        ORDER BY d.createdAt DESC
+        """)
+Page<DocumentResponse> findAllAdminDocuments(Pageable pageable);
+
+
+@Query("""
+        SELECT
+            d.id AS documentId,
+            d.documentName AS documentName,
+            d.fileSize AS fileSize,
+            d.createdAt AS createdAt,
+            d.user.id AS userId,
+            d.status AS status,
+            d.isPublic AS isPublic
+        FROM Document d
+        WHERE d.status = :status
+        ORDER BY d.createdAt DESC
+        """)
+Page<DocumentResponse> findAdminDocumentsByStatus(
+        @Param("status") StatusPublicDoc status,
+        Pageable pageable
+);
 }

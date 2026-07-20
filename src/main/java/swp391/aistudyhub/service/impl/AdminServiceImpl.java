@@ -17,11 +17,12 @@ import swp391.aistudyhub.entity.SystemConfig;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.SenderType;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.AdminService;
+import swp391.aistudyhub.enums.StatusPublicDoc;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -65,7 +66,8 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public Page<DocumentResponse> getAllDocument(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size);
+
         return documentRepository.findBy(pageable);
     }
 

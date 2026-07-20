@@ -44,9 +44,11 @@ public class SecurityConfig {
             "/swagger-ui.html"
     };
 
-    private static final String[] CUSTOMER_OR_ADMIN = {
+    private static final String[] USER_ROLES = {
             "CUSTOMER",
             "ROLE_CUSTOMER",
+            "MODERATOR",
+            "ROLE_MODERATOR",
             "ADMIN",
             "ROLE_ADMIN"
     };
@@ -77,21 +79,26 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/public").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/public/").permitAll()
 
-                        // Staff review public-document requests. Must stay before /api/v1/documents/**.
+                        // Moderator/Admin can view documents for review
+                        // Phải đặt trước /api/admin/**.
+                        .requestMatchers(HttpMethod.GET, "/api/admin/document").hasAnyAuthority(STAFF)
+                        .requestMatchers(HttpMethod.GET, "/api/admin/document/").hasAnyAuthority(STAFF)
+
+                        // Moderator/Admin can review public documents
                         .requestMatchers(HttpMethod.PUT, "/api/v1/documents/*/review").hasAnyAuthority(STAFF)
 
-                        // Documents: CUSTOMER and ADMIN can use upload/manage/share APIs.
-                        .requestMatchers("/api/v1/documents").hasAnyAuthority(CUSTOMER_OR_ADMIN)
-                        .requestMatchers("/api/v1/documents/**").hasAnyAuthority(CUSTOMER_OR_ADMIN)
+                        // Documents: CUSTOMER, MODERATOR, ADMIN
+                        .requestMatchers("/api/v1/documents").hasAnyAuthority(USER_ROLES)
+                        .requestMatchers("/api/v1/documents/**").hasAnyAuthority(USER_ROLES)
 
-                        // Storage is used by document upload and dashboard.
-                        .requestMatchers("/api/v1/storage").hasAnyAuthority(CUSTOMER_OR_ADMIN)
-                        .requestMatchers("/api/v1/storage/**").hasAnyAuthority(CUSTOMER_OR_ADMIN)
+                        // Storage: CUSTOMER, MODERATOR, ADMIN
+                        .requestMatchers("/api/v1/storage").hasAnyAuthority(USER_ROLES)
+                        .requestMatchers("/api/v1/storage/**").hasAnyAuthority(USER_ROLES)
 
-                        // Chat is available for regular users and admins who test the system.
-                        .requestMatchers("/api/chat/**").hasAnyAuthority(CUSTOMER_OR_ADMIN)
+                        // Chat: CUSTOMER, MODERATOR, ADMIN
+                        .requestMatchers("/api/chat/**").hasAnyAuthority(USER_ROLES)
 
-                        // Admin dashboard APIs.
+                        // Admin dashboard APIs: only ADMIN
                         .requestMatchers("/api/admin/**").hasAnyAuthority(ADMIN_ONLY)
 
                         .anyRequest().authenticated()
@@ -114,10 +121,6 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    /**
-     * Demo mode: old project data is stored as plain text.
-     * Change to BCryptPasswordEncoder after the team migrates existing passwords.
-     */
     @Bean
     @SuppressWarnings("deprecation")
     public PasswordEncoder passwordEncoder() {
