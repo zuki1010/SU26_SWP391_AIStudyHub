@@ -15,7 +15,7 @@ import swp391.aistudyhub.service.MemberService;
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasAnyRole('CUSTOMER', 'MODERATOR')")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-@Tag(name = "Member Dashboard", description = "Subcription")
+@Tag(name = "Member Dashboard", description = "Subscription")
 public class MemberController {
 
     @Autowired
