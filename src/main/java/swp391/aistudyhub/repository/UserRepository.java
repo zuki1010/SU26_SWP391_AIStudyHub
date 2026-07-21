@@ -51,7 +51,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 cp.fullName AS customerProfileFullName,
                 mp.fullName AS moderatorProfileFullName,
                 ap.fullName AS adminProfileFullName,
-                u.role AS role
+                u.role AS role,
+                u.id AS id
             FROM User u
             LEFT JOIN u.customerProfile cp
             LEFT JOIN u.moderatorProfile mp
@@ -75,7 +76,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 cp.fullName AS customerProfileFullName,
                 mp.fullName AS moderatorProfileFullName,
                 ap.fullName AS adminProfileFullName,
-                u.role AS role
+                u.role AS role,
+                u.id AS id
             FROM User u
             LEFT JOIN u.customerProfile cp
             LEFT JOIN u.moderatorProfile mp
