@@ -45,7 +45,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
      */
     @Query("""
             SELECT 
-                d.id as id,
+                d.id as documentId,
                 d.documentName AS documentName,
                 d.fileSize AS fileSize,
                 d.createdAt AS createdAt,
@@ -56,6 +56,21 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             FROM Document d
             """)
     Page<DocumentResponse> findBy(Pageable pageable);
+
+    @Query("""
+            SELECT 
+                d.id as documentId,
+                d.documentName AS documentName,
+                d.fileSize AS fileSize,
+                d.createdAt AS createdAt,
+                d.isPublic AS isPublic,
+                d.user.email AS userEmail,
+                d.user.customerProfile.fullName AS userFullName,
+                d.user.id AS userId
+            FROM Document d
+            WHERE d.status = 'PENDING'
+            """)
+    Page<DocumentResponse> findByPending(Pageable pageable);
 
     @Query("""
             SELECT d

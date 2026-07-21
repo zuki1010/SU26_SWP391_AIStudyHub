@@ -36,4 +36,6 @@ public interface AdminService {
     void updatePriceMember(BigDecimal price);
 
     void approvePublicDocument(ApprovePublicRequestDTO dto);
+
+    Page<DocumentResponse> getAllDocumentPending(int page, int size);
 }

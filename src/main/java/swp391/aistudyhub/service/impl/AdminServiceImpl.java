@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
@@ -13,18 +15,13 @@ import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.dto.request.ApprovePublicRequestDTO;
 import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
-import swp391.aistudyhub.dto.response.UserAccountResponseDTO;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.SubscriptionPlan;
 import swp391.aistudyhub.entity.SystemConfig;
 import swp391.aistudyhub.entity.User;
-import swp391.aistudyhub.enums.AccountStatus;
-import swp391.aistudyhub.enums.SenderType;
-import swp391.aistudyhub.enums.StatusPublicDoc;
-import swp391.aistudyhub.enums.UserRole;
+import swp391.aistudyhub.enums.*;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.AdminService;
-import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -73,7 +70,7 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public Page<DocumentResponse> getAllDocument(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
         return documentRepository.findBy(pageable);
     }
@@ -133,10 +130,44 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public void approvePublicDocument(ApprovePublicRequestDTO dto) {
+        User user = getCurrentUser();
         Document document = documentRepository.findById(dto.getDocumentId())
                 .orElseThrow(() -> new RuntimeException("This document is not found!"));
-        document.setPublic(true);
+        if(dto.getRqd() == RequestPublicDoc.ACCEPT) {
+            document.setPublic(true);
+            document.setStatus(StatusPublicDoc.SUCCESS);
+            document.setApprovedBy(user);
+        } else {
+            document.setPublic(false);
+            document.setStatus(StatusPublicDoc.DEFAULT);
+        }
 
         documentRepository.save(document);
+    }
+
+    @Override
+    public Page<DocumentResponse> getAllDocumentPending(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+        return documentRepository.findByPending(pageable);
+    }
+
+    private Authentication getAuthentication() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || "anonymousUser".equals(String.valueOf(authentication.getPrincipal()))) {
+            throw new RuntimeException("You are not login yet!");
+        }
+
+        return authentication;
+    }
+
+    private User getCurrentUser() {
+        Authentication authentication = getAuthentication();
+
+        return userRepository.findByEmailIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
     }
 }

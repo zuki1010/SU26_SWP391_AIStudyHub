@@ -9,6 +9,5 @@ public interface ChatRequestResponse {
 
     String getMessageContent();
 
-    @Value("#{target.chatSession.user.id}")
     UUID getUserId();
 }

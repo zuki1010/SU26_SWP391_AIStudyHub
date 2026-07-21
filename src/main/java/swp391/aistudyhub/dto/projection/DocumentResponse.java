@@ -24,5 +24,4 @@ public interface DocumentResponse {
     Boolean getIsPublic();
 
     String getStatus();
-
 }

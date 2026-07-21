@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.projection.UserAccountResponse;
@@ -88,10 +89,19 @@ public class AdminController {
         return ResponseEntity.ok("Save Successfully!");
     }
 
-    @PutMapping("/approve-public")
+    @PutMapping("/approve/documents/check")
     @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
     public ResponseEntity<?> approvePublicDocument(@RequestBody ApprovePublicRequestDTO dto) {
         adminService.approvePublicDocument(dto);
         return ResponseEntity.ok("Approve successfully!");
+    }
+
+    @GetMapping("/approve/documents")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR')")
+    public ResponseEntity<?> getAllDocumentPending(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        return ResponseEntity.ok(adminService.getAllDocumentPending(page, size));
     }
 }
