@@ -22,4 +22,6 @@ public interface UserAccountResponse {
     String getAdminProfileFullName();
 
     UserRole getRole();
+
+    UUID getMemberId();
 }
