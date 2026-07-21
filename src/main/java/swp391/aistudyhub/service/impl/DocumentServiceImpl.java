@@ -194,31 +194,86 @@ public class DocumentServiceImpl implements DocumentService {
     private String extractTextFromUrl(String fileUrl, FileType fileType) {
         if (fileUrl == null || fileUrl.isBlank()) return "";
 
-        // Chuyển kiểu Enum thành String để so sánh
         String typeStr = fileType != null ? fileType.name().toLowerCase() : "";
+        String lowerUrl = fileUrl.toLowerCase();
 
         try {
             java.net.URL url = java.net.URI.create(fileUrl).toURL();
 
-            // 1. Trường hợp File Văn Bản Thường (.txt)
-            if ("txt".equalsIgnoreCase(typeStr) || fileUrl.toLowerCase().endsWith(".txt")) {
+            // 1. File TXT
+            if (typeStr.contains("txt") || lowerUrl.endsWith(".txt")) {
                 try (InputStream in = url.openStream()) {
                     return new String(in.readAllBytes(), StandardCharsets.UTF_8);
                 }
             }
 
-            // 2. Trường hợp File PDF (.pdf)
-            if ("pdf".equalsIgnoreCase(typeStr) || fileUrl.toLowerCase().endsWith(".pdf")) {
+            // 2. File PDF
+            if (typeStr.contains("pdf") || lowerUrl.endsWith(".pdf")) {
                 try (InputStream in = url.openStream();
                      PDDocument pdfDocument = PDDocument.load(in)) {
                     PDFTextStripper stripper = new PDFTextStripper();
                     return stripper.getText(pdfDocument);
                 }
             }
+
+            // 3. File Word (.docx)
+            if (typeStr.contains("docx") || lowerUrl.endsWith(".docx")) {
+                try (InputStream in = url.openStream();
+                     org.apache.poi.xwpf.usermodel.XWPFDocument docx = new org.apache.poi.xwpf.usermodel.XWPFDocument(in);
+                     org.apache.poi.xwpf.extractor.XWPFWordExtractor extractor = new org.apache.poi.xwpf.extractor.XWPFWordExtractor(docx)) {
+                    return extractor.getText();
+                }
+            }
+
+            // 4. File Word đời cũ (.doc)
+            if (typeStr.contains("doc") || lowerUrl.endsWith(".doc")) {
+                try (InputStream in = url.openStream();
+                     org.apache.poi.hwpf.HWPFDocument doc = new org.apache.poi.hwpf.HWPFDocument(in);
+                     org.apache.poi.hwpf.extractor.WordExtractor extractor = new org.apache.poi.hwpf.extractor.WordExtractor(doc)) {
+                    return extractor.getText();
+                }
+            }
+
+            // 5. 🚀 THÊM MỚI: File Excel (.xlsx và .xls)
+            if (typeStr.contains("xls") || lowerUrl.endsWith(".xlsx") || lowerUrl.endsWith(".xls")) {
+                try (InputStream in = url.openStream();
+                     org.apache.poi.ss.usermodel.Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory.create(in)) {
+                    return extractTextFromExcel(workbook);
+                }
+            }
+
         } catch (Exception e) {
             System.err.println("==> LỖI BÓC TÁCH CHỮ TỪ URL SUPABASE: " + e.getMessage());
         }
         return "";
+    }
+
+    /**
+     * 📊 Hàm hỗ trợ bóc tách dữ liệu từ các trang (Sheet) của file Excel thành văn bản rõ ràng cho Chatbot
+     */
+    private String extractTextFromExcel(org.apache.poi.ss.usermodel.Workbook workbook) {
+        StringBuilder sb = new StringBuilder();
+        org.apache.poi.ss.usermodel.DataFormatter formatter = new org.apache.poi.ss.usermodel.DataFormatter();
+
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(i);
+            sb.append("--- Trang (Sheet): ").append(sheet.getSheetName()).append(" ---\n");
+
+            for (org.apache.poi.ss.usermodel.Row row : sheet) {
+                StringBuilder rowBuilder = new StringBuilder();
+                for (org.apache.poi.ss.usermodel.Cell cell : row) {
+                    String cellValue = formatter.formatCellValue(cell).trim();
+                    if (!cellValue.isEmpty()) {
+                        rowBuilder.append(cellValue).append(" | ");
+                    }
+                }
+                if (!rowBuilder.isEmpty()) {
+                    sb.append(rowBuilder).append("\n");
+                }
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
     @Override
