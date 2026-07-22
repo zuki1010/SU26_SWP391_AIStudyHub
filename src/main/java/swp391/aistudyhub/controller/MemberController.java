@@ -5,15 +5,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.service.MemberService;
 
-@RestController("/api/member/")
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/member")
 @CrossOrigin(origins = "*")
-@PreAuthorize("hasAnyRole('CUSTOMER', 'MODERATOR')")
+@PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR')")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
 @Tag(name = "Member Dashboard", description = "Subscription")
 public class MemberController {
@@ -24,6 +25,15 @@ public class MemberController {
     @PostMapping("/register")
     public ResponseEntity<?> registerMember() {
         memberService.registerMember();
-        return ResponseEntity.ok().body("Register Successfully! You are now a member of our system");
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "Thanh toán thành công! Tài khoản đã được nâng cấp Premium.",
+                        "plan", "PREMIUM",
+                        "membership", "PREMIUM",
+                        "isPremium", true
+                )
+        );
     }
 }

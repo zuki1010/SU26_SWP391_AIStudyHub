@@ -69,6 +69,13 @@ public class SecurityConfig {
             "ROLE_ADMIN"
     };
 
+    private static final String[] MEMBER_ALLOWED = {
+        "CUSTOMER",
+        "ROLE_CUSTOMER",
+        "MODERATOR",
+        "ROLE_MODERATOR"
+};
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -98,6 +105,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/reports", "/api/reports/**").hasAnyAuthority(USER_ROLES)
 
                         .requestMatchers("/api/reports/pending", "/api/reports/*/process").hasAnyAuthority(STAFF)
+
+                        .requestMatchers("/api/member/**").hasAnyAuthority(MEMBER_ALLOWED)
 
                         .requestMatchers("/api/admin/**").hasAnyAuthority(ADMIN_ONLY)
 
