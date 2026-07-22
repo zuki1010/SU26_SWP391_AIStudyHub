@@ -12,6 +12,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
 
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +52,15 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "account_status", nullable = false, length = 50)
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Column(name = "email_verified", nullable = false)
+private boolean emailVerified = false;
+
+@Column(name = "email_verification_token")
+private String emailVerificationToken;
+
+@Column(name = "email_verification_expired_at")
+private Instant emailVerificationExpiredAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

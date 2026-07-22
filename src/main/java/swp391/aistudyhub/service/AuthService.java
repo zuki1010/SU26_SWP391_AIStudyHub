@@ -31,4 +31,8 @@ public interface AuthService {
     UserProfileResponse getProfile(CustomUserDetails user);
 
     UserProfileResponse updateProfile(CustomUserDetails user, UpdateProfileRequest request);
+
+    void verifyEmail(String token);
+
+    void resendVerificationEmail(String email);
 }

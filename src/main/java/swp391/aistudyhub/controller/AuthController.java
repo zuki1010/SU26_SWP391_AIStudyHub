@@ -40,8 +40,28 @@ public class AuthController {
         AuthResponse response = authService.register(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok("Registration successful", response));
+                .body(ApiResponse.ok("Registration successful. Please verify your email before login.", response));
     }
+
+    @GetMapping("/verify-email")
+@Operation(summary = "Xác thực email bằng token")
+public ResponseEntity<ApiResponse<Void>> verifyEmail1(@RequestParam String token) {
+    authService.verifyEmail(token);
+
+    return ResponseEntity.ok(
+            ApiResponse.ok("Email verified successfully. You can now login.")
+    );
+}
+
+@PostMapping("/resend-verification")
+@Operation(summary = "Gửi lại email xác thực")
+public ResponseEntity<ApiResponse<Void>> resendVerificationEmail1(@RequestParam String email) {
+    authService.resendVerificationEmail(email);
+
+    return ResponseEntity.ok(
+            ApiResponse.ok("Verification email resent successfully.")
+    );
+}
 
     @PostMapping("/login")
     @Operation(summary = "Đăng nhập bằng email và mật khẩu")
@@ -55,6 +75,8 @@ public class AuthController {
                 ApiResponse.ok("Login successful", response)
         );
     }
+
+
 
     @PostMapping("/refresh")
     @Operation(summary = "Làm mới access token bằng refresh token")
