@@ -3,6 +3,7 @@ package swp391.aistudyhub.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import swp391.aistudyhub.dto.request.CreateReportDTO;
@@ -16,6 +17,7 @@ import swp391.aistudyhub.enums.ReportStatus;
 import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.repository.DocumentRepository;
 import swp391.aistudyhub.repository.DocumentReportRepository;
+import swp391.aistudyhub.repository.UserRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,12 +28,23 @@ public class DocumentReportServiceImpl {
 
     private final DocumentReportRepository reportRepository;
     private final DocumentRepository documentRepository;
+    private final UserRepository userRepository; // 👈 Inject UserRepository
+
+    /**
+     * Helper: Tự bóc tách Email từ SecurityContextHolder và tìm User trong DB
+     */
+    private User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng hiện tại trong hệ thống!"));
+    }
 
     /**
      * 1. User tạo Báo cáo (Report) cho Bài Doc Public
      */
     @Transactional
-    public String createReport(CreateReportDTO dto, User currentUser) {
+    public String createReport(CreateReportDTO dto) { // 👈 Bỏ tham số User currentUser
+        User currentUser = getCurrentUser(); // 👈 Lấy trực tiếp tại đây
 
         // 🔴 Validate 1: Nếu chọn lý do "OTHER", bắt buộc phải nhập mô tả
         if (dto.getReason() == ReportReason.OTHER &&
@@ -74,7 +87,7 @@ public class DocumentReportServiceImpl {
     }
 
     /**
-     * 2. Mod/Admin Lấy danh sách Report chờ xử lý (Đã map sang ResponseDTO)
+     * 2. Mod/Admin Lấy danh sách Report chờ xử lý
      */
     @Transactional(readOnly = true)
     public Page<DocumentReportResponseDTO> getPendingReports(Pageable pageable) {
@@ -86,7 +99,7 @@ public class DocumentReportServiceImpl {
      * 3. Mod/Admin Duyệt/Xử lý Report (RESOLVED hoặc REJECTED)
      */
     @Transactional
-    public String processReport(UUID reportId, ProcessReportDTO dto, User adminUser) {
+    public String processReport(UUID reportId, ProcessReportDTO dto) { // 👈 Bỏ tham số User adminUser
         if (dto.getStatus() == null || dto.getStatus() == ReportStatus.PENDING) {
             throw new IllegalArgumentException("Trạng thái xử lý phải là RESOLVED (Chấp nhận) hoặc REJECTED (Từ chối)!");
         }
@@ -121,10 +134,9 @@ public class DocumentReportServiceImpl {
      * Helper Mapper: Chuyển đổi Entity sang Response DTO an toàn
      */
     private DocumentReportResponseDTO mapToResponseDTO(DocumentReport report) {
-        // Lấy tên người báo cáo an toàn (Tùy thuộc vào field tên trong Entity User của bạn)
         String reporterName = "Khách";
         if (report.getReporter() != null) {
-            reporterName = report.getReporter().getEmail(); // Hoặc getFullName() nếu User của bạn có
+            reporterName = report.getReporter().getEmail();
         }
 
         return DocumentReportResponseDTO.builder()
