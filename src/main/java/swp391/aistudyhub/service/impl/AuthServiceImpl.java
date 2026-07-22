@@ -429,32 +429,38 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private UserProfileResponse mapToProfile(User user) {
-        UserProfileResponse.UserProfileResponseBuilder builder = UserProfileResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .role(user.getRole().name())
-                .accountStatus(user.getAccountStatus())
-                .createdAt(user.getCreatedAt());
+    String fullName = resolveFullName(user);
 
-        switch (user.getRole().name()) {
-            case "CUSTOMER" -> customerProfileRepository.findByUser_Id(user.getId()).ifPresent(p -> {
-                builder.fullName(p.getFullName());
-                builder.studentCode(p.getStudentCode());
-                builder.schoolName(p.getSchoolName());
-            });
-            case "ADMIN" -> adminProfileRepository.findByUser_Id(user.getId()).ifPresent(p -> {
-                builder.fullName(p.getFullName());
-                builder.accessLevel(p.getAccessLevel());
-            });
-            case "MODERATOR" -> moderatorProfileRepository.findByUser_Id(user.getId()).ifPresent(p -> {
-                builder.fullName(p.getFullName());
-                builder.department(p.getDepartment());
-                builder.assignedSubject(p.getAssignedSubject());
-            });
-        }
+    System.out.println("==> LOGIN PROFILE USER: " + user.getEmail());
+    System.out.println("==> LOGIN PROFILE ROLE: " + user.getRole());
+    System.out.println("==> LOGIN PROFILE FULL NAME: " + fullName);
 
-        return builder.build();
-    }
+    UserProfileResponse.UserProfileResponseBuilder builder =
+            UserProfileResponse.builder()
+                    .id(user.getId())
+                    .email(user.getEmail())
+                    .role(user.getRole().name())
+                    .fullName(fullName)
+                    .accountStatus(user.getAccountStatus())
+                    .createdAt(user.getCreatedAt());
+
+    customerProfileRepository.findByUser_Id(user.getId())
+            .ifPresent(profile -> {
+                builder.studentCode(profile.getStudentCode());
+                builder.schoolName(profile.getSchoolName());
+            });
+
+    adminProfileRepository.findByUser_Id(user.getId())
+            .ifPresent(profile -> builder.accessLevel(profile.getAccessLevel()));
+
+    moderatorProfileRepository.findByUser_Id(user.getId())
+            .ifPresent(profile -> {
+                builder.department(profile.getDepartment());
+                builder.assignedSubject(profile.getAssignedSubject());
+            });
+
+    return builder.build();
+}
 
     private String resolveClientIp(HttpServletRequest request) {
         if (request == null) {
@@ -480,4 +486,18 @@ public class AuthServiceImpl implements AuthService {
                         || passwordHash.startsWith("$2b$")
                         || passwordHash.startsWith("$2y$"));
     }
+
+    private String resolveFullName(User user) {
+    if (user == null || user.getId() == null) {
+        return null;
+    }
+
+    String displayName = userRepository.findDisplayNameByUserId(user.getId());
+
+    if (displayName != null && !displayName.isBlank()) {
+        return displayName.trim();
+    }
+
+    return null;
+}
 }
