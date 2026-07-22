@@ -66,7 +66,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
                 d.isPublic AS isPublic,
                 d.user.email AS userEmail,
                 d.user.customerProfile.fullName AS userFullName,
-                d.user.id AS userId
+                d.user.id AS userId,
+                d.status AS status
             FROM Document d
             WHERE d.status = 'PENDING'
             """)
