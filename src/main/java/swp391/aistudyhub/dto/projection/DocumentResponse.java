@@ -1,5 +1,6 @@
 package swp391.aistudyhub.dto.projection;
 
+import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.time.Instant;
@@ -11,17 +12,25 @@ public interface DocumentResponse {
 
     String getDocumentName();
 
+    FileType getFileType();
+
     Long getFileSize();
 
     Instant getCreatedAt();
+
+    Boolean getIsPublic();
+
+    StatusPublicDoc getStatus();
+
+    UUID getUserId();
 
     String getUserEmail();
 
     String getUserFullName();
 
-    UUID getUserId();
+    String getAuthorName();
 
-    Boolean getIsPublic();
+    String getUploaderName();
 
-    String getStatus();
+    String getUserName();
 }
