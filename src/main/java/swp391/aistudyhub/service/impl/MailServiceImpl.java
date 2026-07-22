@@ -56,38 +56,37 @@ public class MailServiceImpl implements MailService {
         }
     }
 
-    @Override
-    public void sendVerificationEmail(String toEmail, String verifyLink) {
-        SimpleMailMessage message = new SimpleMailMessage();
+  @Override
+public void sendVerificationEmail(String toEmail, String otp) {
+    SimpleMailMessage message = new SimpleMailMessage();
 
-        message.setFrom(fromAddress);
-        message.setTo(toEmail);
-        message.setSubject("AI Study Hub - Verify Your Email");
-        message.setText("""
-                Hello,
+    message.setFrom(fromAddress);
+    message.setTo(toEmail);
+    message.setSubject("AI Study Hub - Email Verification");
+    message.setText("""
+            Hello,
 
-                Thank you for registering an account at AI Study Hub.
+            Your AI Study Hub verification code is:
 
-                Please click the link below to verify your email:
-                %s
+            %s
 
-                This verification link is valid for 15 minutes.
+            This code is valid for 15 minutes.
 
-                If you did not create an account, please ignore this email.
+            If you did not create an account, please ignore this email.
 
-                AI Study Hub
-                """.formatted(verifyLink));
+            AI Study Hub
+            """.formatted(otp));
 
-        if (mailSender == null) {
-            log.warn("Mail is not configured. Email verification link for {}: {}", toEmail, verifyLink);
-            return;
-        }
-
-        try {
-            mailSender.send(message);
-            log.info("Verification email sent to {}", toEmail);
-        } catch (MailException ex) {
-            throw new RuntimeException("Could not send verification email to " + toEmail, ex);
-        }
+    if (mailSender == null) {
+        log.warn("Mail is not configured. Email verification OTP for {}: {}", toEmail, otp);
+        return;
     }
+
+    try {
+        mailSender.send(message);
+        log.info("Verification OTP sent to {}", toEmail);
+    } catch (MailException ex) {
+        throw new RuntimeException("Could not send verification email to " + toEmail, ex);
+    }
+}
 }

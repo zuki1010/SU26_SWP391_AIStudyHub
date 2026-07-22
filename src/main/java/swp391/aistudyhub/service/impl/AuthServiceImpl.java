@@ -22,6 +22,7 @@ import swp391.aistudyhub.security.CustomUserDetails;
 import swp391.aistudyhub.security.JwtService;
 import swp391.aistudyhub.service.AuthService;
 import swp391.aistudyhub.service.MailService;
+import java.security.SecureRandom;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -41,6 +42,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProperties jwtProperties;
     private final MailService mailService;
     private final CloudStorageRepository cloudStorageRepository;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
 
     @Autowired
     private SystemConfigRepository systemConfigRepository;
@@ -62,7 +65,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserRole role = request.getRole() != null ? request.getRole() : UserRole.CUSTOMER;
 
-        String verifyToken = UUID.randomUUID().toString();
+        String verifyToken = generateOtp();
 
         User user = new User();
         user.setEmail(email);
@@ -89,9 +92,7 @@ public class AuthServiceImpl implements AuthService {
         storage.setUsedQuota(0L);
         cloudStorageRepository.save(storage);
 
-        String verifyLink = frontendUrl + "/verify-email?token=" + verifyToken;
-        mailService.sendVerificationEmail(user.getEmail(), verifyLink);
-
+        mailService.sendVerificationEmail(user.getEmail(), verifyToken);
         return AuthResponse.builder()
                 .accessToken(null)
                 .refreshToken(null)
@@ -156,15 +157,14 @@ public class AuthServiceImpl implements AuthService {
             throw AuthException.badRequest("Email is already verified.");
         }
 
-        String verifyToken = UUID.randomUUID().toString();
+        String verifyToken = generateOtp();
 
         user.setEmailVerificationToken(verifyToken);
         user.setEmailVerificationExpiredAt(Instant.now().plusSeconds(15 * 60));
 
         userRepository.save(user);
 
-        String verifyLink = frontendUrl + "/verify-email?token=" + verifyToken;
-        mailService.sendVerificationEmail(user.getEmail(), verifyLink);
+        mailService.sendVerificationEmail(user.getEmail(), verifyToken);
     }
 
     @Override
@@ -411,4 +411,8 @@ public class AuthServiceImpl implements AuthService {
 
         return request.getRemoteAddr();
     }
+
+    private String generateOtp() {
+    return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+}
 }
