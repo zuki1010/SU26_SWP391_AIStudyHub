@@ -13,7 +13,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -116,10 +116,42 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    /*
+     * PasswordEncoder chuyển tiếp:
+     * - Mật khẩu mới: luôn encode bằng BCrypt.
+     * - Mật khẩu cũ plain text: vẫn cho login tạm thời.
+     * - Sau khi login thành công, AuthServiceImpl sẽ tự đổi plain text sang BCrypt.
+     */
     @Bean
-    @SuppressWarnings("deprecation")
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        return new PasswordEncoder() {
+            private final BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder(12);
+
+            @Override
+            public String encode(CharSequence rawPassword) {
+                return bcrypt.encode(rawPassword);
+            }
+
+            @Override
+            public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                if (rawPassword == null || encodedPassword == null) {
+                    return false;
+                }
+
+                if (isBcryptHash(encodedPassword)) {
+                    return bcrypt.matches(rawPassword, encodedPassword);
+                }
+
+                // Hỗ trợ tạm tài khoản cũ đang lưu plain text.
+                return encodedPassword.equals(rawPassword.toString());
+            }
+
+            private boolean isBcryptHash(String value) {
+                return value.startsWith("$2a$")
+                        || value.startsWith("$2b$")
+                        || value.startsWith("$2y$");
+            }
+        };
     }
 
     @Bean

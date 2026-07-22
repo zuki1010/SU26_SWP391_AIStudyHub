@@ -3,7 +3,6 @@ package swp391.aistudyhub.service.impl;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,14 +21,15 @@ import swp391.aistudyhub.security.CustomUserDetails;
 import swp391.aistudyhub.security.JwtService;
 import swp391.aistudyhub.service.AuthService;
 import swp391.aistudyhub.service.MailService;
-import java.security.SecureRandom;
 
+import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
@@ -42,17 +42,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtProperties jwtProperties;
     private final MailService mailService;
     private final CloudStorageRepository cloudStorageRepository;
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
 
     @Autowired
     private SystemConfigRepository systemConfigRepository;
-
-    @Value("${app.frontend.reset-password-url:http://localhost:3000/reset-password}")
-    private String resetPasswordUrl;
-
-    @Value("${app.frontend-url:http://localhost:5173}")
-    private String frontendUrl;
 
     @Override
     @Transactional
@@ -69,7 +61,10 @@ public class AuthServiceImpl implements AuthService {
 
         User user = new User();
         user.setEmail(email);
-        user.setPasswordHash(request.getPassword());
+
+        // Mã hóa mật khẩu khi đăng ký.
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+
         user.setRole(role);
         user.setAccountStatus(AccountStatus.ACTIVE);
         user.setCreatedAt(Instant.now());
@@ -93,6 +88,7 @@ public class AuthServiceImpl implements AuthService {
         cloudStorageRepository.save(storage);
 
         mailService.sendVerificationEmail(user.getEmail(), verifyToken);
+
         return AuthResponse.builder()
                 .accessToken(null)
                 .refreshToken(null)
@@ -121,8 +117,26 @@ public class AuthServiceImpl implements AuthService {
             throw AuthException.forbidden("Please verify your email before login.");
         }
 
-        String accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
-        String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
+        /*
+         * Nếu user cũ đang lưu mật khẩu plain text,
+         * sau khi login thành công thì tự đổi sang BCrypt.
+         */
+        if (!isBcryptHash(user.getPasswordHash())) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+            userRepository.save(user);
+        }
+
+        String accessToken = jwtService.generateAccessToken(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        String refreshToken = jwtService.generateRefreshToken(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
 
         saveSession(user, refreshToken, request.getDeviceInfo(), resolveClientIp(httpRequest));
 
@@ -190,8 +204,17 @@ public class AuthServiceImpl implements AuthService {
             throw AuthException.forbidden("Please verify your email before refreshing token.");
         }
 
-        String newAccessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
-        String newRefreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
+        String newAccessToken = jwtService.generateAccessToken(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        String newRefreshToken = jwtService.generateRefreshToken(
+                user.getId(),
+                user.getEmail(),
+                user.getRole().name()
+        );
 
         userSessionRepository.delete(session);
         saveSession(user, newRefreshToken, session.getDeviceInfo(), session.getIpAddress());
@@ -206,51 +229,52 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-@Transactional
-public void forgotPassword(ForgotPasswordRequest request) {
-    String email = request.getEmail().trim().toLowerCase();
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
 
-    userRepository.findByEmailIgnoreCase(email)
-            .ifPresent(user -> {
-                String otp = generateOtp();
+        userRepository.findByEmailIgnoreCase(email)
+                .ifPresent(user -> {
+                    String otp = generateOtp();
 
-                user.setPasswordResetOtp(otp);
-                user.setPasswordResetExpiredAt(Instant.now().plusSeconds(15 * 60));
+                    user.setPasswordResetOtp(otp);
+                    user.setPasswordResetExpiredAt(Instant.now().plusSeconds(15 * 60));
 
-                userRepository.save(user);
+                    userRepository.save(user);
 
-                mailService.sendPasswordResetEmail(user.getEmail(), otp);
-            });
-}
+                    mailService.sendPasswordResetEmail(user.getEmail(), otp);
+                });
+    }
 
     @Override
-@Transactional
-public void resetPassword(ResetPasswordRequest request) {
-    String email = request.getEmail().trim().toLowerCase();
-    String otp = request.getToken().trim();
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        String otp = request.getToken().trim();
 
-    User user = userRepository.findByEmailIgnoreCase(email)
-            .orElseThrow(() -> AuthException.notFound("Email does not exist."));
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> AuthException.notFound("Email does not exist."));
 
-    if (user.getPasswordResetOtp() == null ||
-            !user.getPasswordResetOtp().equals(otp)) {
-        throw AuthException.badRequest("Invalid OTP.");
+        if (user.getPasswordResetOtp() == null ||
+                !user.getPasswordResetOtp().equals(otp)) {
+            throw AuthException.badRequest("Invalid OTP.");
+        }
+
+        if (user.getPasswordResetExpiredAt() == null ||
+                user.getPasswordResetExpiredAt().isBefore(Instant.now())) {
+            throw AuthException.badRequest("OTP has expired.");
+        }
+
+        // Mã hóa mật khẩu mới khi reset password.
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+        user.setPasswordResetOtp(null);
+        user.setPasswordResetExpiredAt(null);
+
+        userRepository.save(user);
+
+        userSessionRepository.deleteByUser_Id(user.getId());
     }
-
-    if (user.getPasswordResetExpiredAt() == null ||
-            user.getPasswordResetExpiredAt().isBefore(Instant.now())) {
-        throw AuthException.badRequest("OTP has expired.");
-    }
-
-    user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-
-    user.setPasswordResetOtp(null);
-    user.setPasswordResetExpiredAt(null);
-
-    userRepository.save(user);
-
-    userSessionRepository.deleteByUser_Id(user.getId());
-}
 
     @Override
     @Transactional
@@ -258,11 +282,17 @@ public void resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> AuthException.notFound("User not found"));
 
-        if (!request.getCurrentPassword().equals(user.getPasswordHash())) {
+        /*
+         * Không so sánh plain text bằng equals nữa.
+         * Phải dùng passwordEncoder.matches().
+         */
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw AuthException.badRequest("Current password is incorrect");
         }
 
+        // Mã hóa mật khẩu mới khi change password.
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
         userRepository.save(user);
         userSessionRepository.deleteByUser_Id(user.getId());
     }
@@ -372,11 +402,20 @@ public void resetPassword(ResetPasswordRequest request) {
 
     private AuthResponse buildAuthResponse(User user, String accessToken, String refreshToken) {
         if (accessToken == null) {
-            accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
+            accessToken = jwtService.generateAccessToken(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getRole().name()
+            );
         }
 
         if (refreshToken == null) {
-            refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
+            refreshToken = jwtService.generateRefreshToken(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getRole().name()
+            );
+
             saveSession(user, refreshToken, null, null);
         }
 
@@ -432,6 +471,13 @@ public void resetPassword(ResetPasswordRequest request) {
     }
 
     private String generateOtp() {
-    return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
-}
+        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
+    }
+
+    private boolean isBcryptHash(String passwordHash) {
+        return passwordHash != null &&
+                (passwordHash.startsWith("$2a$")
+                        || passwordHash.startsWith("$2b$")
+                        || passwordHash.startsWith("$2y$"));
+    }
 }
