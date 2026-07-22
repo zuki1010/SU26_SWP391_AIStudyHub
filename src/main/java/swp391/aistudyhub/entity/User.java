@@ -62,6 +62,12 @@ private String emailVerificationToken;
 @Column(name = "email_verification_expired_at")
 private Instant emailVerificationExpiredAt;
 
+@Column(name = "password_reset_otp")
+private String passwordResetOtp;
+
+@Column(name = "password_reset_expired_at")
+private Instant passwordResetExpiredAt;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

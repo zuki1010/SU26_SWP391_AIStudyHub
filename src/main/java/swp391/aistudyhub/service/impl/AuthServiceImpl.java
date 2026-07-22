@@ -206,32 +206,51 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void forgotPassword(ForgotPasswordRequest request) {
-        userRepository.findByEmailIgnoreCase(request.getEmail().trim().toLowerCase())
-                .ifPresent(user -> {
-                    String token = jwtService.generateResetToken(user.getId(), user.getEmail());
-                    String resetLink = resetPasswordUrl + "?token=" + token;
-                    mailService.sendPasswordResetEmail(user.getEmail(), resetLink);
-                });
-    }
+@Transactional
+public void forgotPassword(ForgotPasswordRequest request) {
+    String email = request.getEmail().trim().toLowerCase();
+
+    userRepository.findByEmailIgnoreCase(email)
+            .ifPresent(user -> {
+                String otp = generateOtp();
+
+                user.setPasswordResetOtp(otp);
+                user.setPasswordResetExpiredAt(Instant.now().plusSeconds(15 * 60));
+
+                userRepository.save(user);
+
+                mailService.sendPasswordResetEmail(user.getEmail(), otp);
+            });
+}
 
     @Override
-    @Transactional
-    public void resetPassword(ResetPasswordRequest request) {
-        String token = request.getToken();
+@Transactional
+public void resetPassword(ResetPasswordRequest request) {
+    String email = request.getEmail().trim().toLowerCase();
+    String otp = request.getToken().trim();
 
-        if (!jwtService.isTokenValid(token) || !jwtService.isResetToken(token)) {
-            throw AuthException.badRequest("Invalid or expired reset token");
-        }
+    User user = userRepository.findByEmailIgnoreCase(email)
+            .orElseThrow(() -> AuthException.notFound("Email does not exist."));
 
-        UUID userId = jwtService.extractUserId(token);
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> AuthException.notFound("User not found"));
-
-        user.setPasswordHash(request.getNewPassword());
-        userRepository.save(user);
-        userSessionRepository.deleteByUser_Id(userId);
+    if (user.getPasswordResetOtp() == null ||
+            !user.getPasswordResetOtp().equals(otp)) {
+        throw AuthException.badRequest("Invalid OTP.");
     }
+
+    if (user.getPasswordResetExpiredAt() == null ||
+            user.getPasswordResetExpiredAt().isBefore(Instant.now())) {
+        throw AuthException.badRequest("OTP has expired.");
+    }
+
+    user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+
+    user.setPasswordResetOtp(null);
+    user.setPasswordResetExpiredAt(null);
+
+    userRepository.save(user);
+
+    userSessionRepository.deleteByUser_Id(user.getId());
+}
 
     @Override
     @Transactional
