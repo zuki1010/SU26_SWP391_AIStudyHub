@@ -44,7 +44,8 @@ public class SecurityConfig {
             "/api/email/test",
             "/v3/api-docs/**",
             "/swagger-ui/**",
-            "/swagger-ui.html"
+            "/swagger-ui.html",
+            "/api/reports/reasons"
     };
 
     private static final String[] USER_ROLES = {
@@ -93,6 +94,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/storage/**").hasAnyAuthority(USER_ROLES)
 
                         .requestMatchers("/api/chat/**").hasAnyAuthority(USER_ROLES)
+
+                        .requestMatchers(HttpMethod.POST, "/api/reports", "/api/reports/**").hasAnyAuthority(USER_ROLES)
+
+                        .requestMatchers("/api/reports/pending", "/api/reports/*/process").hasAnyAuthority(STAFF)
 
                         .requestMatchers("/api/admin/**").hasAnyAuthority(ADMIN_ONLY)
 
