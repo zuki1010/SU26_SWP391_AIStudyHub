@@ -92,4 +92,24 @@ public void sendVerificationEmail(String toEmail, String otp) {
         throw new RuntimeException("Could not send verification email to " + toEmail, ex);
     }
 }
+
+  @Override
+  public void sendRoleChangedEmail(String toEmail, String newRole) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'sendRoleChangedEmail'");
+  }
+
+  @Override
+  public void sendDocumentReviewResultEmail(String toEmail, String documentName, String decision) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'sendDocumentReviewResultEmail'");
+  }
+
+  @Override
+  public void sendDocumentReviewConfirmationEmail(String toEmail, String documentName, String decision) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'sendDocumentReviewConfirmationEmail'");
+  }
+
+  
 }

@@ -22,6 +22,7 @@ import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.*;
 import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.AdminService;
+import swp391.aistudyhub.service.MailService;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -46,6 +47,12 @@ public class AdminServiceImpl implements AdminService {
 
     @Autowired
     private SubscriptionPlanRepository subscriptionPlanRepository;
+
+    private MailService mailService;
+
+private ModeratorProfileRepository moderatorProfileRepository;
+
+private CustomerProfileRepository customerProfileRepository;
 
 
     @Override
@@ -146,11 +153,15 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
-    public Page<DocumentResponse> getAllDocumentPending(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+public Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status) {
+    Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        return documentRepository.findByPending(pageable);
+    if (status == null) {
+        return documentRepository.findAllAdminDocuments(pageable);
     }
+
+    return documentRepository.findAdminDocumentsByStatus(status, pageable);
+}
 
     private Authentication getAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

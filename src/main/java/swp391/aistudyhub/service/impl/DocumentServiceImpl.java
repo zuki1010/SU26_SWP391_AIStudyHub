@@ -20,6 +20,8 @@ import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.StorageUploadService;
+import swp391.aistudyhub.service.MailService;
+import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -55,6 +57,9 @@ public class DocumentServiceImpl implements DocumentService {
     private StorageUploadService storageUploadService;
 
     @Autowired
+private MailService mailService;
+
+    @Autowired
     private DocumentShareRepository documentShareRepository;
 
     @Value("${supabase.url:https://ybgeblpkptrsefpafthb.supabase.co}")
@@ -74,6 +79,8 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Autowired
     private SubscriptionPlanRepository subscriptionPlanRepository;
+
+    
 
 
     @Override
@@ -462,7 +469,7 @@ public class DocumentServiceImpl implements DocumentService {
             document.setStatus(StatusPublicDoc.PENDING);
         } else {
             document.setPublic(false);
-            document.setStatus(StatusPublicDoc.DEFAULT);
+            document.setStatus(StatusPublicDoc.DENY);
             document.setApprovedBy(null);
         }
 
@@ -472,52 +479,64 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    @Transactional
-    public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDoc decision) {
-        if (decision == null) {
-            throw new RuntimeException("Quyết định phê duyệt không hợp lệ!");
-        }
-
-        Authentication authentication = getAuthentication();
-
-        boolean isStaff = authentication.getAuthorities().stream()
-                .anyMatch(authority ->
-                        authority.getAuthority().equals("ROLE_MODERATOR")
-                                || authority.getAuthority().equals("MODERATOR")
-                                || authority.getAuthority().equals("ROLE_ADMIN")
-                                || authority.getAuthority().equals("ADMIN")
-                );
-
-        if (!isStaff) {
-            throw new RuntimeException("Bạn không có quyền thực hiện thao tác duyệt này!");
-        }
-
-        User reviewer = userRepository.findByEmailIgnoreCase(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người duyệt trên hệ thống!"));
-
-        Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu phê duyệt."));
-
-        if (document.getStatus() != StatusPublicDoc.PENDING) {
-            throw new RuntimeException("Tài liệu này hiện không có yêu cầu phê duyệt nào cần xử lý hoặc đã được duyệt trước đó!");
-        }
-
-        if (decision == RequestPublicDoc.ACCEPT) {
-            document.setPublic(true);
-            document.setStatus(StatusPublicDoc.SUCCESS);
-        } else if (decision == RequestPublicDoc.DENY) {
-            document.setPublic(false);
-            document.setStatus(StatusPublicDoc.DEFAULT);
-        } else {
-            throw new RuntimeException("Quyết định phê duyệt không hợp lệ! Chỉ chấp nhận ACCEPT hoặc DENY.");
-        }
-
-        document.setApprovedBy(reviewer);
-
-        Document updatedDocument = documentRepository.saveAndFlush(document);
-
-        return mapToResponseDTO(updatedDocument);
+@Transactional
+public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDoc decision) {
+    if (decision == null) {
+        throw new RuntimeException("Quyết định phê duyệt không hợp lệ!");
     }
+
+    Authentication authentication = getAuthentication();
+
+    boolean isStaff = authentication.getAuthorities().stream()
+            .anyMatch(authority ->
+                    authority.getAuthority().equals("ROLE_MODERATOR")
+                            || authority.getAuthority().equals("MODERATOR")
+                            || authority.getAuthority().equals("ROLE_ADMIN")
+                            || authority.getAuthority().equals("ADMIN")
+            );
+
+    if (!isStaff) {
+        throw new RuntimeException("Bạn không có quyền thực hiện thao tác duyệt này!");
+    }
+
+    User reviewer = userRepository.findByEmailIgnoreCase(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người duyệt trên hệ thống!"));
+
+    Document document = documentRepository.findById(documentId)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu phê duyệt."));
+
+    if (document.getStatus() != StatusPublicDoc.PENDING) {
+        throw new RuntimeException("Tài liệu này hiện không có yêu cầu phê duyệt nào cần xử lý hoặc đã được duyệt trước đó!");
+    }
+
+    if (decision == RequestPublicDoc.ACCEPT) {
+        document.setPublic(true);
+        document.setStatus(StatusPublicDoc.SUCCESS);
+    } else if (decision == RequestPublicDoc.DENY) {
+        document.setPublic(false);
+        document.setStatus(StatusPublicDoc.DENY);
+    } else {
+        throw new RuntimeException("Quyết định phê duyệt không hợp lệ! Chỉ chấp nhận ACCEPT hoặc DENY.");
+    }
+
+    document.setApprovedBy(reviewer);
+
+    Document savedDocument = documentRepository.saveAndFlush(document);
+
+    mailService.sendDocumentReviewResultEmail(
+            savedDocument.getUser().getEmail(),
+            savedDocument.getDocumentName(),
+            decision.name()
+    );
+
+    mailService.sendDocumentReviewConfirmationEmail(
+            reviewer.getEmail(),
+            savedDocument.getDocumentName(),
+            decision.name()
+    );
+
+    return mapToResponseDTO(savedDocument);
+}
 
     @Override
     public long getTotalQuota() {
@@ -880,4 +899,6 @@ public class DocumentServiceImpl implements DocumentService {
 
         return UUID.fromString(String.valueOf(value));
     }
+
+    
 }
