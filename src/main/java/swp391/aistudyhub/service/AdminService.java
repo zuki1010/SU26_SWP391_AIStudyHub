@@ -37,5 +37,5 @@ public interface AdminService {
 
     void approvePublicDocument(ApprovePublicRequestDTO dto);
 
-    Page<DocumentResponse> getAllDocumentPending(int page, int size);
+    Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status);
 }

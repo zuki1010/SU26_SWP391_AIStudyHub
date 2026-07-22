@@ -11,6 +11,9 @@ import swp391.aistudyhub.dto.projection.UserAccountResponse;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import java.util.UUID;
 
 
 import java.util.Optional;
@@ -122,4 +125,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             @Param("id") UUID id,
             @Param("role") UserRole role
     );
+
+    @Query(
+        value = """
+                SELECT COALESCE(
+                    NULLIF(cp.full_name, ''),
+                    NULLIF(mp.full_name, ''),
+                    NULLIF(ap.full_name, '')
+                )
+                FROM users u
+                LEFT JOIN customer_profiles cp ON cp.user_id = u.user_id
+                LEFT JOIN moderator_profiles mp ON mp.user_id = u.user_id
+                LEFT JOIN admin_profiles ap ON ap.user_id = u.user_id
+                WHERE u.user_id = :userId
+                """,
+        nativeQuery = true
+)
+String findDisplayNameByUserId(@Param("userId") UUID userId);
 }

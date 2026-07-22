@@ -10,12 +10,6 @@ import swp391.aistudyhub.dto.projection.DocumentResponse;
 import swp391.aistudyhub.entity.Document;
 import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.StatusPublicDoc;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import swp391.aistudyhub.dto.projection.DocumentResponse;
-import swp391.aistudyhub.enums.StatusPublicDoc;
 
 import java.util.List;
 import java.util.Optional;
@@ -40,38 +34,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     long sumFileSizeByUserId(@Param("userId") UUID userId);
 
     /*
-     * Admin projection query.
-     * Không SELECT d trực tiếp để tránh lỗi enum FileType khi DB có dữ liệu sai như "khoa".
+     * Giữ method cũ để AdminServiceImpl.getAllDocument(page, size) vẫn chạy.
+     * Method này gọi lại query native đầy đủ bên dưới.
      */
-    @Query("""
-            SELECT 
-                d.id as documentId,
-                d.documentName AS documentName,
-                d.fileSize AS fileSize,
-                d.createdAt AS createdAt,
-                d.isPublic AS isPublic,
-                d.user.email AS userEmail,
-                d.user.customerProfile.fullName AS userFullName,
-                d.user.id AS userId
-            FROM Document d
-            """)
-    Page<DocumentResponse> findBy(Pageable pageable);
+    default Page<DocumentResponse> findBy(Pageable pageable) {
+        return findAllAdminDocuments(pageable);
+    }
 
-    @Query("""
-            SELECT 
-                d.id as documentId,
-                d.documentName AS documentName,
-                d.fileSize AS fileSize,
-                d.createdAt AS createdAt,
-                d.isPublic AS isPublic,
-                d.user.email AS userEmail,
-                d.user.customerProfile.fullName AS userFullName,
-                d.user.id AS userId,
-                d.status AS status
-            FROM Document d
-            WHERE d.status = 'PENDING'
-            """)
-    Page<DocumentResponse> findByPending(Pageable pageable);
+    /*
+     * Giữ method cũ nếu nơi khác còn gọi findByPending(pageable).
+     */
+    default Page<DocumentResponse> findByPending(Pageable pageable) {
+        return findAdminDocumentsByStatus(StatusPublicDoc.PENDING, pageable);
+    }
 
     @Query("""
             SELECT d
@@ -147,37 +122,144 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             Pageable pageable
     );
 
-    @Query("""
-        SELECT
-            d.id AS documentId,
-            d.documentName AS documentName,
-            d.fileSize AS fileSize,
-            d.createdAt AS createdAt,
-            d.user.id AS userId,
-            d.status AS status,
-            d.isPublic AS isPublic
-        FROM Document d
-        ORDER BY d.createdAt DESC
-        """)
-Page<DocumentResponse> findAllAdminDocuments(Pageable pageable);
+    /*
+     * Admin/Moderator: lấy toàn bộ tài liệu kèm tên người gửi.
+     */
+    @Query(
+            value = """
+                    SELECT
+                        d.document_id AS documentId,
+                        d.document_name AS documentName,
+                        d.file_type AS fileType,
+                        d.file_size AS fileSize,
+                        d.created_at AS createdAt,
+                        d.is_public AS isPublic,
+                        d.status AS status,
 
+                        u.user_id AS userId,
+                        u.email AS userEmail,
 
-@Query("""
-        SELECT
-            d.id AS documentId,
-            d.documentName AS documentName,
-            d.fileSize AS fileSize,
-            d.createdAt AS createdAt,
-            d.user.id AS userId,
-            d.status AS status,
-            d.isPublic AS isPublic,
-            d.user.customerProfile.fullName AS userName
-        FROM Document d
-        WHERE d.status = :status
-        ORDER BY d.createdAt DESC
-        """)
-Page<DocumentResponse> findAdminDocumentsByStatus(
-        @Param("status") StatusPublicDoc status,
-        Pageable pageable
-);
+                        COALESCE(
+                            cp.full_name,
+                            mp.full_name,
+                            ap.full_name,
+                            u.email
+                        ) AS userFullName,
+
+                        COALESCE(
+                            cp.full_name,
+                            mp.full_name,
+                            ap.full_name,
+                            u.email
+                        ) AS authorName,
+
+                        COALESCE(
+                            cp.full_name,
+                            mp.full_name,
+                            ap.full_name,
+                            u.email
+                        ) AS uploaderName,
+
+                        COALESCE(
+                            cp.full_name,
+                            mp.full_name,
+                            ap.full_name,
+                            u.email
+                        ) AS userName
+                    FROM documents d
+                    LEFT JOIN users u ON d.user_id = u.user_id
+                    LEFT JOIN customer_profiles cp ON cp.user_id = u.user_id
+                    LEFT JOIN moderator_profiles mp ON mp.user_id = u.user_id
+                    LEFT JOIN admin_profiles ap ON ap.user_id = u.user_id
+                    ORDER BY d.created_at DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(*)
+                    FROM documents d
+                    """,
+            nativeQuery = true
+    )
+    Page<DocumentResponse> findAllAdminDocuments(Pageable pageable);
+
+    /*
+     * Method AdminServiceImpl đang gọi:
+     * documentRepository.findAdminDocumentsByStatus(status, pageable)
+     *
+     * Ta giữ tên method này để không phải sửa AdminServiceImpl.
+     * Nhưng bên trong chuyển enum sang String để native SQL chạy ổn.
+     */
+    default Page<DocumentResponse> findAdminDocumentsByStatus(
+            StatusPublicDoc status,
+            Pageable pageable
+    ) {
+        if (status == null) {
+            return findAllAdminDocuments(pageable);
+        }
+
+        return findAdminDocumentsByStatusValue(status.name(), pageable);
+    }
+
+    /*
+     * Query thật dùng String status.
+     */
+    @Query(
+            value = """
+                    SELECT
+                        d.document_id AS documentId,
+                        d.document_name AS documentName,
+                        d.file_type AS fileType,
+                        d.file_size AS fileSize,
+                        d.created_at AS createdAt,
+                        d.is_public AS isPublic,
+                        d.status AS status,
+
+                        u.user_id AS userId,
+                        u.email AS userEmail,
+
+                        COALESCE(
+                            cp.full_name,
+                            mp.full_name,
+                            ap.full_name,
+                            u.email
+                        ) AS userFullName,
+
+                        COALESCE(
+                            cp.full_name,
+                            mp.full_name,
+                            ap.full_name,
+                            u.email
+                        ) AS authorName,
+
+                        COALESCE(
+                            cp.full_name,
+                            mp.full_name,
+                            ap.full_name,
+                            u.email
+                        ) AS uploaderName,
+
+                        COALESCE(
+                            cp.full_name,
+                            mp.full_name,
+                            ap.full_name,
+                            u.email
+                        ) AS userName
+                    FROM documents d
+                    LEFT JOIN users u ON d.user_id = u.user_id
+                    LEFT JOIN customer_profiles cp ON cp.user_id = u.user_id
+                    LEFT JOIN moderator_profiles mp ON mp.user_id = u.user_id
+                    LEFT JOIN admin_profiles ap ON ap.user_id = u.user_id
+                    WHERE d.status = :status
+                    ORDER BY d.created_at DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(*)
+                    FROM documents d
+                    WHERE d.status = :status
+                    """,
+            nativeQuery = true
+    )
+    Page<DocumentResponse> findAdminDocumentsByStatusValue(
+            @Param("status") String status,
+            Pageable pageable
+    );
 }
