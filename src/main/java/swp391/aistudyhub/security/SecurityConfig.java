@@ -39,6 +39,9 @@ public class SecurityConfig {
             "/api/auth/reset-password",
             "/api/auth/refresh",
             "/api/auth/logout",
+            "/api/auth/verify-email",
+            "/api/auth/resend-verification",
+            "/api/email/test",
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html"
@@ -74,34 +77,24 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Public APIs
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/public").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/public/").permitAll()
 
-                        // Moderator/Admin can view documents for review
-                        // Phải đặt trước /api/admin/**.
                         .requestMatchers(HttpMethod.GET, "/api/admin/document").hasAnyAuthority(STAFF)
                         .requestMatchers(HttpMethod.GET, "/api/admin/document/").hasAnyAuthority(STAFF)
 
-                        // Moderator/Admin can review public documents
                         .requestMatchers(HttpMethod.PUT, "/api/v1/documents/*/review").hasAnyAuthority(STAFF)
 
-                        // Documents: CUSTOMER, MODERATOR, ADMIN
                         .requestMatchers("/api/v1/documents").hasAnyAuthority(USER_ROLES)
                         .requestMatchers("/api/v1/documents/**").hasAnyAuthority(USER_ROLES)
 
-                        // Storage: CUSTOMER, MODERATOR, ADMIN
                         .requestMatchers("/api/v1/storage").hasAnyAuthority(USER_ROLES)
                         .requestMatchers("/api/v1/storage/**").hasAnyAuthority(USER_ROLES)
 
-                        // Chat: CUSTOMER, MODERATOR, ADMIN
                         .requestMatchers("/api/chat/**").hasAnyAuthority(USER_ROLES)
 
-                        // Admin dashboard APIs: only ADMIN
                         .requestMatchers("/api/admin/**").hasAnyAuthority(ADMIN_ONLY)
-
-                        .requestMatchers("/api/member/**").hasAnyAuthority(USER_ROLES)
 
                         .anyRequest().authenticated()
                 )
@@ -146,6 +139,7 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
+
         return source;
     }
 }

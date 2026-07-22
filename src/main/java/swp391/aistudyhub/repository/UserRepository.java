@@ -12,6 +12,7 @@ import swp391.aistudyhub.entity.User;
 import swp391.aistudyhub.enums.AccountStatus;
 import swp391.aistudyhub.enums.UserRole;
 
+
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmailIgnoreCase(String email);
 
     Optional<User> findUserById(UUID id);
+
+    Optional<User> findByEmailVerificationToken(String token);
 
     Page<User> findByEmailContainingIgnoreCaseOrCustomerProfileFullNameContainingIgnoreCase(
             String emailKeyword,

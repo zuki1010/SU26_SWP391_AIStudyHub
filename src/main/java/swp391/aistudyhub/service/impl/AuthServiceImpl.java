@@ -48,47 +48,77 @@ public class AuthServiceImpl implements AuthService {
     @Value("${app.frontend.reset-password-url:http://localhost:3000/reset-password}")
     private String resetPasswordUrl;
 
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmailIgnoreCase(request.getEmail())) {
+        String email = request.getEmail().trim().toLowerCase();
+
+        if (userRepository.existsByEmailIgnoreCase(email)) {
             throw AuthException.conflict("Email is already registered");
         }
 
         UserRole role = request.getRole() != null ? request.getRole() : UserRole.CUSTOMER;
 
+        String verifyToken = UUID.randomUUID().toString();
+
         User user = new User();
-//        user.setId(UUID.randomUUID());
-        user.setEmail(request.getEmail().trim().toLowerCase());
+        user.setEmail(email);
         user.setPasswordHash(request.getPassword());
         user.setRole(role);
         user.setAccountStatus(AccountStatus.ACTIVE);
         user.setCreatedAt(Instant.now());
+
+        user.setEmailVerified(false);
+        user.setEmailVerificationToken(verifyToken);
+        user.setEmailVerificationExpiredAt(Instant.now().plusSeconds(15 * 60));
+
         user = userRepository.save(user);
 
         createRoleProfile(user, request);
 
         CloudStorage storage = new CloudStorage();
-        storage.setUser(user);                  // Gắn tài khoản vừa tạo
+        storage.setUser(user);
+
         SystemConfig systemConfig = systemConfigRepository.findById(1L)
-                        .orElseThrow(() -> new RuntimeException("This config is not found!"));
-        storage.setTotalQuota(systemConfig.getTotalStorageQuotaGb());     // Cấp sẵn 5GB free
-        storage.setUsedQuota(0L);               // Dung lượng đã dùng ban đầu bằng 0
+                .orElseThrow(() -> new RuntimeException("This config is not found!"));
+
+        storage.setTotalQuota(systemConfig.getTotalStorageQuotaGb());
+        storage.setUsedQuota(0L);
         cloudStorageRepository.save(storage);
 
-        return buildAuthResponse(user, null, null);
+        String verifyLink = frontendUrl + "/verify-email?token=" + verifyToken;
+        mailService.sendVerificationEmail(user.getEmail(), verifyLink);
+
+        return AuthResponse.builder()
+                .accessToken(null)
+                .refreshToken(null)
+                .tokenType("Bearer")
+                .expiresInMs(0)
+                .user(mapToProfile(user))
+                .build();
     }
 
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest) {
+        String email = request.getEmail().trim().toLowerCase();
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getEmail().trim().toLowerCase(),
-                        request.getPassword()));
+                        email,
+                        request.getPassword()
+                )
+        );
 
-        User user = userRepository.findByEmailIgnoreCase(request.getEmail().trim().toLowerCase())
+        User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> AuthException.unauthorized("Invalid email or password"));
+
+        if (!user.isEmailVerified()) {
+            throw AuthException.forbidden("Please verify your email before login.");
+        }
 
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
         String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
@@ -96,6 +126,45 @@ public class AuthServiceImpl implements AuthService {
         saveSession(user, refreshToken, request.getDeviceInfo(), resolveClientIp(httpRequest));
 
         return buildAuthResponse(user, accessToken, refreshToken);
+    }
+
+    @Override
+    @Transactional
+    public void verifyEmail(String token) {
+        User user = userRepository.findByEmailVerificationToken(token)
+                .orElseThrow(() -> AuthException.badRequest("Invalid verification token."));
+
+        if (user.getEmailVerificationExpiredAt() == null ||
+                user.getEmailVerificationExpiredAt().isBefore(Instant.now())) {
+            throw AuthException.badRequest("Verification token has expired.");
+        }
+
+        user.setEmailVerified(true);
+        user.setEmailVerificationToken(null);
+        user.setEmailVerificationExpiredAt(null);
+
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmailIgnoreCase(email.trim().toLowerCase())
+                .orElseThrow(() -> AuthException.notFound("Email does not exist."));
+
+        if (user.isEmailVerified()) {
+            throw AuthException.badRequest("Email is already verified.");
+        }
+
+        String verifyToken = UUID.randomUUID().toString();
+
+        user.setEmailVerificationToken(verifyToken);
+        user.setEmailVerificationExpiredAt(Instant.now().plusSeconds(15 * 60));
+
+        userRepository.save(user);
+
+        String verifyLink = frontendUrl + "/verify-email?token=" + verifyToken;
+        mailService.sendVerificationEmail(user.getEmail(), verifyLink);
     }
 
     @Override
@@ -116,6 +185,11 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = session.getUser();
+
+        if (!user.isEmailVerified()) {
+            throw AuthException.forbidden("Please verify your email before refreshing token.");
+        }
+
         String newAccessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
         String newRefreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
 
@@ -166,8 +240,8 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> AuthException.notFound("User not found"));
 
         if (!request.getCurrentPassword().equals(user.getPasswordHash())) {
-    throw AuthException.badRequest("Current password is incorrect");
-    }
+            throw AuthException.badRequest("Current password is incorrect");
+        }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
@@ -179,6 +253,7 @@ public class AuthServiceImpl implements AuthService {
     public UserProfileResponse getProfile(CustomUserDetails currentUser) {
         User user = userRepository.findById(currentUser.getId())
                 .orElseThrow(() -> AuthException.notFound("User not found"));
+
         return mapToProfile(user);
     }
 
@@ -202,7 +277,6 @@ public class AuthServiceImpl implements AuthService {
         switch (user.getRole().name()) {
             case "CUSTOMER" -> {
                 CustomerProfile profile = new CustomerProfile();
-//                profile.setId(UUID.randomUUID());
                 profile.setUser(user);
                 profile.setFullName(request.getFullName());
                 profile.setStudentCode(request.getStudentCode());
@@ -211,7 +285,6 @@ public class AuthServiceImpl implements AuthService {
             }
             case "ADMIN" -> {
                 AdminProfile profile = new AdminProfile();
-//                profile.setId(UUID.randomUUID());
                 profile.setUser(user);
                 profile.setFullName(request.getFullName());
                 profile.setAccessLevel(1);
@@ -219,7 +292,6 @@ public class AuthServiceImpl implements AuthService {
             }
             case "MODERATOR" -> {
                 ModeratorProfile profile = new ModeratorProfile();
-//                profile.setId(UUID.randomUUID());
                 profile.setUser(user);
                 profile.setFullName(request.getFullName());
                 profile.setDepartment(request.getDepartment());
@@ -230,29 +302,34 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-
     private void updateCustomerProfile(User user, UpdateProfileRequest request) {
         CustomerProfile profile = customerProfileRepository.findByUser_Id(user.getId())
                 .orElseThrow(() -> AuthException.notFound("Customer profile not found"));
+
         applyIfPresent(request.getFullName(), profile::setFullName);
         applyIfPresent(request.getStudentCode(), profile::setStudentCode);
         applyIfPresent(request.getSchoolName(), profile::setSchoolName);
+
         customerProfileRepository.save(profile);
     }
 
     private void updateAdminProfile(User user, UpdateProfileRequest request) {
         AdminProfile profile = adminProfileRepository.findByUser_Id(user.getId())
                 .orElseThrow(() -> AuthException.notFound("Admin profile not found"));
+
         applyIfPresent(request.getFullName(), profile::setFullName);
+
         adminProfileRepository.save(profile);
     }
 
     private void updateModeratorProfile(User user, UpdateProfileRequest request) {
         ModeratorProfile profile = moderatorProfileRepository.findByUser_Id(user.getId())
                 .orElseThrow(() -> AuthException.notFound("Moderator profile not found"));
+
         applyIfPresent(request.getFullName(), profile::setFullName);
         applyIfPresent(request.getDepartment(), profile::setDepartment);
         applyIfPresent(request.getAssignedSubject(), profile::setAssignedSubject);
+
         moderatorProfileRepository.save(profile);
     }
 
@@ -264,12 +341,13 @@ public class AuthServiceImpl implements AuthService {
 
     private void saveSession(User user, String refreshToken, String deviceInfo, String ipAddress) {
         UserSession session = new UserSession();
-//        session.setId(UUID.randomUUID());
+
         session.setUser(user);
         session.setRefreshToken(refreshToken);
         session.setDeviceInfo(deviceInfo);
         session.setIpAddress(ipAddress);
         session.setExpiresAt(Instant.now().plusMillis(jwtProperties.getRefreshExpirationMs()));
+
         userSessionRepository.save(session);
     }
 
@@ -277,6 +355,7 @@ public class AuthServiceImpl implements AuthService {
         if (accessToken == null) {
             accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().name());
         }
+
         if (refreshToken == null) {
             refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail(), user.getRole().name());
             saveSession(user, refreshToken, null, null);
@@ -323,10 +402,13 @@ public class AuthServiceImpl implements AuthService {
         if (request == null) {
             return null;
         }
+
         String forwarded = request.getHeader("X-Forwarded-For");
+
         if (forwarded != null && !forwarded.isBlank()) {
             return forwarded.split(",")[0].trim();
         }
+
         return request.getRemoteAddr();
     }
 }
