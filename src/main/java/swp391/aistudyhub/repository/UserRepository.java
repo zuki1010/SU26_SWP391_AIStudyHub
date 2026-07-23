@@ -89,7 +89,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             LEFT JOIN u.customerProfile cp
             LEFT JOIN u.moderatorProfile mp
             LEFT JOIN u.adminProfile ap
-            LEFT JOIN UserMemberSubscription mb ON u.id = mb.id
+            LEFT JOIN UserMemberSubscription mb ON mb.user.id = u.id
             """)
     Page<UserAccountResponse> findBy(Pageable pageable);
 

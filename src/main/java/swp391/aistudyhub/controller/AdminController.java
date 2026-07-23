@@ -46,14 +46,14 @@ public class AdminController {
     }
 
     @GetMapping("/document")
-@PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN','MODERATOR','ROLE_MODERATOR')")
-public ResponseEntity<?> getAllDocument(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size,
-        @RequestParam(required = false) StatusPublicDoc status
-) {
-    return ResponseEntity.ok(adminService.getAllDocument(page, size, status));
-}
+    @PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN','MODERATOR','ROLE_MODERATOR')")
+    public ResponseEntity<?> getAllDocument(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) StatusPublicDoc status
+    ) {
+        return ResponseEntity.ok(adminService.getAllDocument(page, size, status));
+    }
 
     @PutMapping("/account/role/{id}")
     public ResponseEntity<?> updateUserRole(@PathVariable("id") UUID userId,
@@ -99,13 +99,13 @@ public ResponseEntity<?> getAllDocument(
     }
 
     @GetMapping("/approve/documents")
-@PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN','MODERATOR','ROLE_MODERATOR')")
-public ResponseEntity<?> getAllDocumentPending(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size
-) {
-    return ResponseEntity.ok(
-            adminService.getAllDocument(page, size, StatusPublicDoc.PENDING)
-    );
-}
+    @PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN','MODERATOR','ROLE_MODERATOR')")
+    public ResponseEntity<?> getAllDocumentPending(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(
+                adminService.getAllDocument(page, size, StatusPublicDoc.PENDING)
+        );
+    }
 }
