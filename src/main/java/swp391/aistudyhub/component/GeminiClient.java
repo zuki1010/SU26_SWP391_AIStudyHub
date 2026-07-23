@@ -35,7 +35,7 @@ public class GeminiClient {
 
     @SuppressWarnings("unchecked")
     public GeminiResult callGemini(String systemPrompt, List<ChatMessage> history, String userMessageContent) {
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=" + geminiApiKey;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
