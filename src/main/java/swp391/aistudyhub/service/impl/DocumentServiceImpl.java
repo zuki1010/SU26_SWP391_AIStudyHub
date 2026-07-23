@@ -117,7 +117,7 @@ private MailService mailService;
             totalQuota = subscriptionPlan.getTotalStorageQuotaGb();
         }
 
-        if (updatedUsedQuota > totalQuota) {
+        if (updatedUsedQuota > totalQuota * 1073741824) {
             storageUploadService.logFailure(
                     storage,
                     requestDTO.getDocumentName(),
@@ -143,7 +143,7 @@ private MailService mailService;
         } else {
             maxFileSize = subscriptionPlan.getMaxFileSizeMb();
         }
-        if (requestDTO.getFileSize() > maxFileSize) {
+        if (requestDTO.getFileSize() > maxFileSize * 1048576) {
             throw new IllegalArgumentException("Maximum file size is " + maxFileSize);
         } else {
             document.setFileSize(requestDTO.getFileSize());

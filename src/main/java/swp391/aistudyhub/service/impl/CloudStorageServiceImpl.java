@@ -10,11 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.dto.response.CloudStorageUsageResponseDTO;
-import swp391.aistudyhub.entity.CloudStorage;
-import swp391.aistudyhub.entity.User;
-import swp391.aistudyhub.repository.CloudStorageRepository;
-import swp391.aistudyhub.repository.DocumentRepository;
-import swp391.aistudyhub.repository.UserRepository;
+import swp391.aistudyhub.entity.*;
+import swp391.aistudyhub.repository.*;
 import swp391.aistudyhub.service.CloudStorageService;
 
 import java.io.IOException;
@@ -43,6 +40,15 @@ public class CloudStorageServiceImpl implements CloudStorageService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    @Autowired
+    UserMemberSubscriptionRepository userMemberSubscriptionRepository;
+
+    @Autowired
+    SystemConfigRepository systemConfigRepository;
+
+    @Autowired
+    SubscriptionPlanRepository subscriptionPlanRepository;
+
     @Override
     @Transactional
     public String uploadFile(MultipartFile file) {
@@ -54,7 +60,24 @@ public class CloudStorageServiceImpl implements CloudStorageService {
 
         long fileSize = file.getSize();
 
-        if (storage.getUsedQuota() + fileSize > storage.getTotalQuota()) {
+        UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)
+                .orElse(null);
+
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("This config is not available"));
+
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
+                .orElseThrow(() -> new RuntimeException("This subscription is not available"));
+
+        long totalQuota = 0L;
+
+        if (userMemberSubscription == null) {
+            totalQuota = systemConfig.getTotalStorageQuotaGb();
+        } else {
+            totalQuota = subscriptionPlan.getTotalStorageQuotaGb();
+        }
+
+        if (storage.getUsedQuota() + fileSize > totalQuota * 1073741824) {
             throw new RuntimeException("Dung lượng bộ nhớ đám mây của bạn đã đầy!");
         }
 
