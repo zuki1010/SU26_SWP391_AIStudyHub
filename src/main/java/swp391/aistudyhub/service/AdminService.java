@@ -1,10 +1,7 @@
 package swp391.aistudyhub.service;
 
 import org.springframework.data.domain.Page;
-import swp391.aistudyhub.dto.projection.ChatRequestResponse;
-import swp391.aistudyhub.dto.projection.DocumentResponse;
-import swp391.aistudyhub.dto.projection.StorageUsageResponse;
-import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.projection.*;
 import swp391.aistudyhub.dto.request.ApprovePublicRequestDTO;
 import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
@@ -38,4 +35,8 @@ public interface AdminService {
     void approvePublicDocument(ApprovePublicRequestDTO dto);
 
     Page<DocumentResponse> getAllDocument(int page, int size, StatusPublicDoc status);
+
+    SystemConfigResponse getSystemConfig();
+
+    SubscriptionPlanResponse getSubscriptionConfig();
 }

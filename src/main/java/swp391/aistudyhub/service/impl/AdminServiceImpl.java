@@ -9,10 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import swp391.aistudyhub.dto.projection.ChatRequestResponse;
-import swp391.aistudyhub.dto.projection.DocumentResponse;
-import swp391.aistudyhub.dto.projection.StorageUsageResponse;
-import swp391.aistudyhub.dto.projection.UserAccountResponse;
+import swp391.aistudyhub.dto.projection.*;
 import swp391.aistudyhub.dto.request.ApprovePublicRequestDTO;
 import swp391.aistudyhub.dto.request.MemberConfigDTO;
 import swp391.aistudyhub.dto.request.SystemConfigDTO;
@@ -227,6 +224,16 @@ public class AdminServiceImpl implements AdminService {
         }
 
         return documentRepository.findAdminDocumentsByStatus(status, pageable);
+    }
+
+    @Override
+    public SystemConfigResponse getSystemConfig() {
+        return systemConfigRepository.findBy();
+    }
+
+    @Override
+    public SubscriptionPlanResponse getSubscriptionConfig() {
+        return subscriptionPlanRepository.findBy();
     }
 
     private Authentication getAuthentication() {

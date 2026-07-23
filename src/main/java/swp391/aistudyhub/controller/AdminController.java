@@ -73,6 +73,16 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllStorage(page, size));
     }
 
+    @GetMapping("/all/system-config")
+    public ResponseEntity<?> getSystemConfig() {
+        return ResponseEntity.ok(adminService.getSystemConfig());
+    }
+
+    @GetMapping("/all/subscription-config")
+    public ResponseEntity<?> getSubscriptionConfig() {
+        return ResponseEntity.ok(adminService.getSubscriptionConfig());
+    }
+
     @PutMapping("/config")
     public ResponseEntity<?> updateConfig(@RequestBody SystemConfigDTO dto) {
         adminService.systemConfig(dto);
