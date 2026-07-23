@@ -25,13 +25,9 @@ public class ChatSession {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "session_documents",
-            joinColumns = @JoinColumn(name = "chat_session_id"),
-            inverseJoinColumns = @JoinColumn(name = "document_id")
-    )
-    private Set<Document> documents = new HashSet<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "document_id")
+    private Document document;
 
     @Size(max = 255)
     @Column(name = "session_title")
@@ -42,12 +38,4 @@ public class ChatSession {
 
     @OneToMany(mappedBy = "chatSession", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ChatMessage> chatMessages = new ArrayList<>();
-
-    public void addDocument(Document doc) {
-        this.documents.add(doc);
-    }
-
-    public void removeDocument(Document doc) {
-        this.documents.remove(doc);
-    }
 }

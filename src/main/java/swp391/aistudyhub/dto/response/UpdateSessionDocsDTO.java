@@ -7,5 +7,5 @@ import java.util.UUID;
 
 @Data
 public class UpdateSessionDocsDTO {
-    private List<UUID> documentIds;
+    private UUID documentIds;
 }

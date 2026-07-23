@@ -27,17 +27,17 @@ public class ChatBotController {
     private ChatBotService chatBotService;
 
     @PostMapping("/start")
-    public ResponseEntity<?> startChat(@RequestBody(required = false) StartSessionDTO dto) {
-        UUID sessionId = chatBotService.createNewChatSession(dto);
+    public ResponseEntity<?> startChat(@RequestBody(required = false) UUID documentId) {
+        UUID sessionId = chatBotService.createNewChatSession(documentId);
         return ResponseEntity.ok().body("Chat Session Created. Session ID: " + sessionId);
     }
 
     @PutMapping("/session/{sessionId}/documents")
     public ResponseEntity<?> updateDocuments(
             @PathVariable UUID sessionId,
-            @RequestBody UpdateSessionDocsDTO dto) {
-        chatBotService.updateSessionDocuments(sessionId, dto);
-        return ResponseEntity.ok().body("Update Documents List Successfully!");
+            @RequestBody UUID documentId) {
+        chatBotService.updateSessionDocuments(sessionId, documentId);
+        return ResponseEntity.ok().body("Update Document Successfully!");
     }
 
     @PostMapping("/send-message")

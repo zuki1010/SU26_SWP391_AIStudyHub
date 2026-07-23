@@ -62,7 +62,7 @@ public class ChatBotServiceImpl implements ChatBotService {
     private SubscriptionPlanRepository subscriptionPlanRepository;
 
     @Override
-    public UUID createNewChatSession(StartSessionDTO dto) {
+    public UUID createNewChatSession(UUID documentId) {
         Authentication au = SecurityContextHolder.getContext().getAuthentication();
         if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
             throw new RuntimeException("You are not login yet!");
@@ -75,20 +75,15 @@ public class ChatBotServiceImpl implements ChatBotService {
         newSession.setUser(user);
         newSession.setCreatedAt(Instant.now());
 
-        if (dto != null && dto.getDocumentIds() != null && !dto.getDocumentIds().isEmpty()) {
+        if (documentId != null) {
+            Document document = documentRepository.findById(documentId)
+                    .orElseThrow(() -> new RuntimeException("This document is not available"));
 
-            List<Document> documents = documentRepository.findAllById(dto.getDocumentIds());
-            if (documents.isEmpty()) {
-                throw new RuntimeException("Documents are not found!");
-            }
+            newSession.setDocument(document);
 
-            newSession.getDocuments().addAll(documents);
 
-            if (documents.size() == 1) {
-                newSession.setSessionTitle("Chat about documents: " + documents.get(0).getDocumentName());
-            } else {
-                newSession.setSessionTitle("Chat about " + documents.size() + " documents selected");
-            }
+            newSession.setSessionTitle("Chat about " + document.getDocumentName());
+
 
         } else {
             newSession.setSessionTitle("New chat session");
@@ -99,17 +94,16 @@ public class ChatBotServiceImpl implements ChatBotService {
     }
 
     @Override
-    public void updateSessionDocuments(UUID sessionId, UpdateSessionDocsDTO dto) {
+    public void updateSessionDocuments(UUID sessionId, UUID documentId) {
         ChatSession session = chatSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("This chat session is not found!"));
 
-        session.getDocuments().clear();
+        if (documentId != null) {
+            Document document = documentRepository.findById(documentId)
+                    .orElseThrow(() -> new RuntimeException("This document is not available"));
 
-        if (dto != null && dto.getDocumentIds() != null && !dto.getDocumentIds().isEmpty()) {
-            List<Document> targetDocuments = documentRepository.findAllById(dto.getDocumentIds());
-
-            session.getDocuments().addAll(targetDocuments);
-            session.setSessionTitle("Chat about " + targetDocuments.size() + " documents selected");
+            session.setDocument(document);
+            session.setSessionTitle("Chat about " + document.getDocumentName());
         } else {
             session.setSessionTitle("Chat Free Session");
         }
@@ -139,7 +133,7 @@ public class ChatBotServiceImpl implements ChatBotService {
                     .orElseThrow(() -> new RuntimeException("This config is not available"));
             int maxDailyTokens = 0;
 
-            if(userMemberSubscription == null) {
+            if (userMemberSubscription == null) {
                 maxDailyTokens = systemConfig.getMaxDailyChatTokens();
             } else {
                 maxDailyTokens = subscriptionPlan.getMaxDailyChatTokens();
@@ -164,13 +158,13 @@ public class ChatBotServiceImpl implements ChatBotService {
         List<ChatMessage> history = chatMessageRepository.findTop10ByChatSessionOrderBySentAtDesc(session);
         Collections.reverse(history);
 
-        Set<Document> attachedDocs = session.getDocuments();
+        Document attachedDoc = session.getDocument();
         String documentContext = "";
 
-        if (attachedDocs != null && !attachedDocs.isEmpty()) {
-            List<UUID> docIds = attachedDocs.stream().map(Document::getId).toList();
+        if (attachedDoc != null) {
+            UUID documentId = attachedDoc.getId();
             String embeddingResult = documentChunkService.getVectorStringForQuery(dto.getMessageContent());
-            List<String> relevantChunks = documentChunkRepository.findRelevantChunks(docIds, embeddingResult, 5);
+            List<String> relevantChunks = documentChunkRepository.findRelevantChunks(documentId, embeddingResult, 5);
             documentContext = String.join("\n\n", relevantChunks);
         }
 

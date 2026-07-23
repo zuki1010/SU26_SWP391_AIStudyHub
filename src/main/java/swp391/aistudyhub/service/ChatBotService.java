@@ -10,9 +10,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ChatBotService {
-    UUID createNewChatSession(StartSessionDTO dto);
+    UUID createNewChatSession(UUID documentId);
 
-    void updateSessionDocuments(UUID sessionId, UpdateSessionDocsDTO dto);
+    void updateSessionDocuments(UUID sessionId, UUID documentId);
 
     String chatWithGemini(ChatRequestSessionDTO dto);
 
