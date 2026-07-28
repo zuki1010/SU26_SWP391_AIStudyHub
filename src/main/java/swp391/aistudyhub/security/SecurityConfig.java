@@ -1,6 +1,7 @@
 package swp391.aistudyhub.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,6 +22,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -32,6 +34,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsServiceImpl userDetailsService;
 
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}")
+    private String allowedOrigins;
+
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/register",
             "/api/auth/login",
@@ -42,10 +47,12 @@ public class SecurityConfig {
             "/api/auth/verify-email",
             "/api/auth/resend-verification",
             "/api/email/test",
+            "/api/reports/reasons",
+            "/actuator/health",
+            "/actuator/health/**",
             "/v3/api-docs/**",
             "/swagger-ui/**",
-            "/swagger-ui.html",
-            "/api/reports/reasons"
+            "/swagger-ui.html"
     };
 
     private static final String[] USER_ROLES = {
@@ -70,22 +77,25 @@ public class SecurityConfig {
     };
 
     private static final String[] MEMBER_ALLOWED = {
-        "CUSTOMER",
-        "ROLE_CUSTOMER",
-        "MODERATOR",
-        "ROLE_MODERATOR"
-};
+            "CUSTOMER",
+            "ROLE_CUSTOMER",
+            "MODERATOR",
+            "ROLE_MODERATOR"
+    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/public").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/documents/public/").permitAll()
 
@@ -102,9 +112,14 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/chat/**").hasAnyAuthority(USER_ROLES)
 
-                        .requestMatchers(HttpMethod.POST, "/api/reports", "/api/reports/**").hasAnyAuthority(USER_ROLES)
+                        .requestMatchers(HttpMethod.POST, "/api/reports", "/api/reports/**")
+                        .hasAnyAuthority(USER_ROLES)
 
-                        .requestMatchers("/api/reports/pending", "/api/reports/*/process").hasAnyAuthority(STAFF)
+                        .requestMatchers(HttpMethod.GET, "/api/reports/pending")
+                        .hasAnyAuthority(STAFF)
+
+                        .requestMatchers(HttpMethod.PUT, "/api/reports/*/process")
+                        .hasAnyAuthority(STAFF)
 
                         .requestMatchers("/api/member/**").hasAnyAuthority(MEMBER_ALLOWED)
 
@@ -113,29 +128,31 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
         return http.build();
     }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
+
         provider.setPasswordEncoder(passwordEncoder());
+
         return provider;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config
+    ) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /*
-     * PasswordEncoder chuyển tiếp:
-     * - Mật khẩu mới: luôn encode bằng BCrypt.
-     * - Mật khẩu cũ plain text: vẫn cho login tạm thời.
-     * - Sau khi login thành công, AuthServiceImpl sẽ tự đổi plain text sang BCrypt.
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new PasswordEncoder() {
@@ -156,7 +173,6 @@ public class SecurityConfig {
                     return bcrypt.matches(rawPassword, encodedPassword);
                 }
 
-                // Hỗ trợ tạm tài khoản cũ đang lưu plain text.
                 return encodedPassword.equals(rawPassword.toString());
             }
 
@@ -172,18 +188,27 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "https://aistudyfe.onrender.com"
-        ));
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedOriginPatterns(origins);
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
+        ));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Content-Disposition"));
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
 
         return source;

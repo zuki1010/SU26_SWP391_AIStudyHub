@@ -1,0 +1,11 @@
+target
+.git
+.github
+.idea
+.vscode
+*.log
+hs_err_pid*
+.env
+.env.*
+uploads
+node_modules
