@@ -27,8 +27,8 @@ public class SubscriptionPlan {
     private Integer maxDailyChatTokens;
 
     @Column(name = "total_storage_quota_gb", nullable = false)
-    private Long totalStorageQuotaGb;
+    private Double totalStorageQuotaGb;
 
     @Column(name = "max_file_size_mb", nullable = false)
-    private Long maxFileSizeMb;
+    private Double maxFileSizeMb;
 }

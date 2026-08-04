@@ -69,7 +69,7 @@ public class CloudStorageServiceImpl implements CloudStorageService {
         SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
                 .orElseThrow(() -> new RuntimeException("This subscription is not available"));
 
-        long totalQuota = 0L;
+        Double totalQuota;
 
         if (userMemberSubscription == null) {
             totalQuota = systemConfig.getTotalStorageQuotaGb();
@@ -138,7 +138,7 @@ public class CloudStorageServiceImpl implements CloudStorageService {
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình bộ nhớ của người dùng"));
 
-        long realUsedQuota = documentRepository.sumFileSizeByUserId(userId);
+        Double realUsedQuota = documentRepository.sumFileSizeByUserId(userId);
 
         String percentageWithSign = "0%";
 

@@ -98,8 +98,8 @@ private MailService mailService;
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình không gian lưu trữ của người dùng này."));
 
         long actualFileSize = requestDTO.getFileSize() != null ? requestDTO.getFileSize() : 0L;
-        long usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
-        long updatedUsedQuota = usedQuota + actualFileSize;
+        Double usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
+        Double updatedUsedQuota = usedQuota + actualFileSize;
 
         UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)
                 .orElse(null);
@@ -110,7 +110,7 @@ private MailService mailService;
         SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
                 .orElseThrow(() -> new RuntimeException("This subscription is not available"));
 
-        long totalQuota = 0L;
+        Double totalQuota = 0.0;
 
         if (userMemberSubscription == null) {
             totalQuota = systemConfig.getTotalStorageQuotaGb();
@@ -137,7 +137,7 @@ private MailService mailService;
         document.setPreviewUrl(requestDTO.getPreviewUrl());
         document.setDownloadUrl(requestDTO.getDownloadUrl());
 
-        Long maxFileSize = 0L;
+        Double maxFileSize = 0.0;
 
         if (userMemberSubscription == null) {
             maxFileSize = systemConfig.getMaxFileSizeMb();
@@ -373,8 +373,8 @@ private MailService mailService;
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
 
-        long usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
-        long newUsedQuota = Math.max(0, usedQuota - actualFileSize);
+        Double usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
+        Double newUsedQuota = Math.max(0, usedQuota - actualFileSize);
 
         storage.setUsedQuota(newUsedQuota);
         cloudStorageRepository.saveAndFlush(storage);
@@ -541,8 +541,8 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
 }
 
     @Override
-    public long getTotalQuota() {
-        long total = 0;
+    public Double getTotalQuota() {
+        Double total = 0.0;
         User user = getCurrentUser();
 
         UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)

@@ -13,9 +13,9 @@ public class CloudStorageUsageResponseDTO {
 
     private UUID userId;
 
-    private Long usedQuota;
+    private Double usedQuota;
 
-    private Long totalQuota;
+    private Double totalQuota;
 
     private String usagePercentage;
 }

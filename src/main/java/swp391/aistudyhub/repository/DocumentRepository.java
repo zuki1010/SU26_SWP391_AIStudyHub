@@ -31,7 +31,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             FROM Document d
             WHERE d.user.id = :userId
             """)
-    long sumFileSizeByUserId(@Param("userId") UUID userId);
+    Double sumFileSizeByUserId(@Param("userId") UUID userId);
 
     /*
      * Giữ method cũ để AdminServiceImpl.getAllDocument(page, size) vẫn chạy.

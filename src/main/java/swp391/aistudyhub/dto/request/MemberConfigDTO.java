@@ -5,6 +5,6 @@ import lombok.Data;
 @Data
 public class MemberConfigDTO {
     private Integer maxDailyChatTokens;
-    private Long totalStorageQuotaGb;
-    private Long maxFileSizeMb;
+    private Double totalStorageQuotaGb;
+    private Double maxFileSizeMb;
 }

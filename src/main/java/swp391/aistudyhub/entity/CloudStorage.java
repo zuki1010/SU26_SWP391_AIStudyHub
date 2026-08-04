@@ -31,12 +31,12 @@ public class CloudStorage {
 
     @NotNull
     @Column(name = "total_quota", nullable = false)
-    private Long totalQuota = 5368709120L;
+    private Double totalQuota;
 
     @NotNull
     @ColumnDefault("0")
     @Column(name = "used_quota", nullable = false)
-    private Long usedQuota = 0L;
+    private Double usedQuota;
 
     @OneToMany(mappedBy = "cloudStorage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<StorageUploadLog> uploadLogs = new ArrayList<>();

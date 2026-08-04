@@ -84,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("This config is not found!"));
 
         storage.setTotalQuota(systemConfig.getTotalStorageQuotaGb());
-        storage.setUsedQuota(0L);
+        storage.setUsedQuota(0.0);
         cloudStorageRepository.save(storage);
 
         mailService.sendVerificationEmail(user.getEmail(), verifyToken);

@@ -3,7 +3,7 @@ package swp391.aistudyhub.dto.projection;
 public interface SubscriptionPlanResponse {
     Integer getMaxDailyChatTokens();
 
-    Long getTotalStorageQuotaGb();
+    Double getTotalStorageQuotaGb();
 
-    Long getMaxFileSizeMb();
+    Double getMaxFileSizeMb();
 }
