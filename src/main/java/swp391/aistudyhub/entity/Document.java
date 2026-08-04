@@ -71,15 +71,13 @@ public class Document {
     @JoinColumn(name = "approved_by")
     private User approvedBy;
 
-    @Column(name = "category_id")
-    private UUID categoryId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id")
+    private DocumentCategory category;
 
     @NotNull
     @Column(name = "created_at", updatable = false, nullable = false)
     private Instant createdAt = Instant.now();
-
-    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DocumentCategory> documentCategories = new ArrayList<>();
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentChunk> documentChunks = new ArrayList<>();

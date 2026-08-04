@@ -16,7 +16,7 @@ import lombok.Setter;
 public class SystemConfig {
 
     @Id
-    private Long id = 1L; // Cố định ID là 1, không dùng GeneratedValue tự tăng
+    private Long id = 1L;
 
     @Column(name = "max_daily_chat_tokens", nullable = false)
     private Integer maxDailyChatTokens;

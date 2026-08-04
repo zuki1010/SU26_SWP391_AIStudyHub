@@ -54,19 +54,19 @@ public class User {
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
 
     @Column(name = "email_verified", nullable = false)
-private boolean emailVerified = false;
+    private boolean emailVerified = false;
 
-@Column(name = "email_verification_token")
-private String emailVerificationToken;
+    @Column(name = "email_verification_token")
+    private String emailVerificationToken;
 
-@Column(name = "email_verification_expired_at")
-private Instant emailVerificationExpiredAt;
+    @Column(name = "email_verification_expired_at")
+    private Instant emailVerificationExpiredAt;
 
-@Column(name = "password_reset_otp")
-private String passwordResetOtp;
+    @Column(name = "password_reset_otp")
+    private String passwordResetOtp;
 
-@Column(name = "password_reset_expired_at")
-private Instant passwordResetExpiredAt;
+    @Column(name = "password_reset_expired_at")
+    private Instant passwordResetExpiredAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

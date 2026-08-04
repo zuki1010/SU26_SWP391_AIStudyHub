@@ -10,12 +10,4 @@ import java.util.UUID;
 
 @Repository
 public interface DocumentCategoryRepository extends JpaRepository<DocumentCategory, UUID> {
-
-    List<DocumentCategory> findByDocument_Id(UUID documentId);
-
-    List<DocumentCategory> findByUser_Id(UUID userId);
-
-    Optional<DocumentCategory> findByCategoryNameIgnoreCaseAndUser_Id(String categoryName, UUID userId);
-
-    Optional<DocumentCategory> findByCategoryNameIgnoreCaseAndUserIsNull(String categoryName);
 }

@@ -63,35 +63,28 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 
     @Query("""
-            SELECT d
-            FROM Document d
-            WHERE
-            (
-                d.user.id = :userId
-                OR d.isPublic = true
-                OR d.id IN (
-                    SELECT ds.document.id
-                    FROM DocumentShare ds
-                    WHERE ds.sharedWithUser.id = :userId
+                SELECT d
+                FROM Document d
+                WHERE
+                (
+                    d.user.id = :userId
+                    OR d.isPublic = true
+                    OR d.id IN (
+                        SELECT ds.document.id
+                        FROM DocumentShare ds
+                        WHERE ds.sharedWithUser.id = :userId
+                    )
                 )
-            )
-            AND
-            (
-                :searchText = ''
-                OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%'))
-                OR LOWER(d.description) LIKE LOWER(CONCAT('%', :searchText, '%'))
-                OR d.id IN (
-                    SELECT dc.document.id
-                    FROM DocumentCategory dc
-                    WHERE LOWER(dc.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                AND
+                (
+                    :searchText = ''
+                    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                    OR LOWER(d.description) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                    OR LOWER(d.category.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))
                 )
-            )
-            ORDER BY d.createdAt DESC
+                ORDER BY d.createdAt DESC
             """)
-    List<Document> searchSmartAccessibleDocuments(
-            @Param("userId") UUID userId,
-            @Param("searchText") String searchText
-    );
+    List<Document> searchSmartAccessibleDocuments(@Param("userId") UUID userId, @Param("searchText") String searchText);
 
     @Query("""
             SELECT d

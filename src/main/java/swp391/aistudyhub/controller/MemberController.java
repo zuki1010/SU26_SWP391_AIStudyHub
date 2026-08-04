@@ -36,4 +36,9 @@ public class MemberController {
                 )
         );
     }
+
+    @GetMapping("/detail")
+    public ResponseEntity<?> getDetail() {
+        return ResponseEntity.ok().body(memberService.getMemberDetail());
+    }
 }

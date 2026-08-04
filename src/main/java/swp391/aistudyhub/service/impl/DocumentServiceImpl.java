@@ -80,7 +80,8 @@ private MailService mailService;
     @Autowired
     private SubscriptionPlanRepository subscriptionPlanRepository;
 
-    
+    @Autowired
+    private DocumentCategoryRepository documentCategoryRepository;
 
 
     @Override
@@ -155,7 +156,7 @@ private MailService mailService;
                         : StatusPublicDoc.DEFAULT
         );
         document.setPublic(false);
-        document.setCategoryId(null);
+        document.setCategory(null);
 
         Document savedDocument = documentRepository.saveAndFlush(document);
 
@@ -164,7 +165,8 @@ private MailService mailService;
                 requestDTO.getSubjectCode()
         );
 
-        savedDocument.setCategoryId(subjectCategoryId);
+        savedDocument.setCategory(documentCategoryRepository.findById(subjectCategoryId)
+                .orElse(null));
         updateDocumentCategory(savedDocument, subjectCategoryId);
 
         savedDocument = documentRepository.saveAndFlush(savedDocument);
@@ -694,7 +696,7 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
                 .setParameter(2, savedDocument.getId())
                 .executeUpdate();
 
-        savedDocument.setCategoryId(categoryId);
+        savedDocument.setCategory(documentCategoryRepository.findById(categoryId).orElse(null));
     }
 
     private void deletePhysicalFileFromSupabase(
@@ -862,7 +864,7 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
     }
 
     private SubjectCode resolveSubjectCodeFromDocument(Document document) {
-        if (document.getCategoryId() == null) {
+        if (document.getCategory() == null) {
             return null;
         }
 
@@ -871,7 +873,7 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
                     "SELECT category_name FROM document_categories WHERE category_id = ? LIMIT 1";
 
             Object result = entityManager.createNativeQuery(sqlGetCategoryName)
-                    .setParameter(1, document.getCategoryId())
+                    .setParameter(1, document.getCategory())
                     .getSingleResult();
 
             if (result == null) {

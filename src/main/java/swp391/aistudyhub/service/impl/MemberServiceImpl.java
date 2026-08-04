@@ -103,6 +103,33 @@ public class MemberServiceImpl implements MemberService {
         }
     }
 
+    @Override
+    public UserMemberSubscription getMemberDetail() {
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || "anonymousUser".equals(String.valueOf(authentication.getPrincipal()))) {
+            throw new RuntimeException("You are not login yet!");
+        }
+
+        User user = userRepository.findByEmailIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
+                .orElseThrow(() -> new RuntimeException("This subscription is not available"));
+
+        UserMemberSubscription userMemberSubscription =
+                userMemberSubscriptionRepository.findByUser(user).orElse(null);
+
+        if(userMemberSubscription != null) {
+            return userMemberSubscription;
+        }
+        return null;
+    }
+
     private String resolvePlanName(SubscriptionPlan subscriptionPlan) {
         if (subscriptionPlan == null
                 || subscriptionPlan.getPlanName() == null
