@@ -90,7 +90,7 @@ private MailService mailService;
         User user = getCurrentUser();
         UUID userId = user.getId();
 
-        if (requestDTO.getSubjectCode() == null) {
+        if (requestDTO.getCategoryId() == null) {
             throw new RuntimeException("Vui lòng chọn môn học hợp lệ!");
         }
 
@@ -156,20 +156,12 @@ private MailService mailService;
                         : StatusPublicDoc.DEFAULT
         );
         document.setPublic(false);
-        document.setCategory(null);
+        DocumentCategory documentCategory = documentCategoryRepository.findById(requestDTO.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("This category is not exist"));
+        document.setCategory(documentCategory);
 
         Document savedDocument = documentRepository.saveAndFlush(document);
 
-        UUID subjectCategoryId = handleDocumentCategories(
-                savedDocument,
-                requestDTO.getSubjectCode()
-        );
-
-        savedDocument.setCategory(documentCategoryRepository.findById(subjectCategoryId)
-                .orElse(null));
-        updateDocumentCategory(savedDocument, subjectCategoryId);
-
-        savedDocument = documentRepository.saveAndFlush(savedDocument);
 
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.saveAndFlush(storage);

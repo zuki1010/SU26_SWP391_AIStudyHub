@@ -1,9 +1,12 @@
 package swp391.aistudyhub.dto.request;
 
 import lombok.Data;
+import swp391.aistudyhub.entity.DocumentCategory;
 import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.StatusPublicDoc;
 import swp391.aistudyhub.enums.SubjectCode;
+
+import java.util.UUID;
 
 @Data
 public class DocumentRequestDTO {
@@ -22,7 +25,7 @@ public class DocumentRequestDTO {
 
     private String description;
 
-    private SubjectCode subjectCode;
+    private UUID categoryId;
 
     private StatusPublicDoc status;
 }

@@ -16,6 +16,7 @@ import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.request.DocumentTogglePublicRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.entity.DocumentCategory;
 import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.RequestPublicDoc;
 import swp391.aistudyhub.enums.StatusPublicDoc;
@@ -72,8 +73,8 @@ public class DocumentController {
     public ResponseEntity<?> createDocument(
             @RequestPart("file") MultipartFile file,
             @RequestParam("description") String description,
-            @RequestParam("subjectCode") SubjectCode subjectCode
-    ) {
+            @RequestParam("subjectCode")UUID categoryId
+            ) {
         try {
             if (file == null || file.isEmpty()) {
                 return ResponseEntity.badRequest().body("Vui lòng chọn file để upload!");
@@ -84,7 +85,7 @@ public class DocumentController {
                         .body("Vui lòng cung cấp mô tả cho tài liệu trước khi upload!");
             }
 
-            if (subjectCode == null) {
+            if (categoryId == null) {
                 return ResponseEntity.badRequest().body("Vui lòng chọn môn học hợp lệ!");
             }
 
@@ -118,7 +119,7 @@ public class DocumentController {
             requestDTO.setTextContent(description.trim());
             requestDTO.setPreviewUrl(fileUrl);
             requestDTO.setDownloadUrl(fileUrl);
-            requestDTO.setSubjectCode(subjectCode);
+            requestDTO.setCategoryId(categoryId);
 
             DocumentResponseDTO response = documentService.createDocument(requestDTO);
 

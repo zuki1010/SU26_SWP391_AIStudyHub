@@ -28,6 +28,7 @@ public class DocumentCategoryController {
         return ResponseEntity.ok().body(documentCategoryService.addSubject(dto));
     }
     @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR', 'CUSTOMER')")
     public ResponseEntity<?> getAllSubject(@RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok().body(documentCategoryService.getAllSubjects(page, size));
