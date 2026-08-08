@@ -22,4 +22,6 @@ public interface DocumentCategoryRepository extends JpaRepository<DocumentCatego
     );
 
     List<DocumentCategory> findByCategoryTypeIgnoreCaseOrderByCategoryNameAsc(String categoryType);
+
+    void deleteAllByParentId(UUID parentId);
 }

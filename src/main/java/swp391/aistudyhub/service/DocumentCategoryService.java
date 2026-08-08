@@ -13,6 +13,7 @@ import swp391.aistudyhub.entity.DocumentCategory;
 import swp391.aistudyhub.repository.DocumentCategoryRepository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -105,8 +106,8 @@ public class DocumentCategoryService {
         DocumentCategory documentCategory = documentCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại."));
 
-        if (documentCategory.getDocuments() != null && !documentCategory.getDocuments().isEmpty()) {
-            throw new RuntimeException("Không thể xóa danh mục đang có tài liệu.");
+        if(documentCategory.getCategoryName().contains("Semester")) {
+            documentCategoryRepository.deleteAllByParentId(categoryId);
         }
 
         documentCategoryRepository.delete(documentCategory);
