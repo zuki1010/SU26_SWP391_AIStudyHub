@@ -43,9 +43,7 @@ import swp391.aistudyhub.service.StorageUploadService;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
@@ -150,6 +148,13 @@ public class DocumentServiceImpl implements DocumentService {
         Document document = new Document();
         document.setUser(user);
         document.setDocumentName(requestDTO.getDocumentName());
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("Cấu Hình Không Tồn Tại"));
+        List<String> extensions = Arrays.asList(systemConfig.getAllowedFileTypes().split(","));
+        if(!extensions.contains(requestDTO.getFileType().name())) {
+            throw new RuntimeException("Định dạng file không được cho phép");
+        }
+
         document.setFileType(requestDTO.getFileType());
         document.setFileSize(actualFileSize);
         document.setPreviewUrl(requestDTO.getPreviewUrl());
