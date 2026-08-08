@@ -106,8 +106,11 @@ public class DocumentCategoryService {
         DocumentCategory documentCategory = documentCategoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại."));
 
-        if(documentCategory.getCategoryName().contains("Semester")) {
-            documentCategoryRepository.deleteAllByParentId(categoryId);
+        if(documentCategory.getParentId() == null) {
+            List<DocumentCategory> children = documentCategoryRepository.findAllByParentId(categoryId);
+            if (!children.isEmpty()) {
+                documentCategoryRepository.deleteAll(children);
+            }
         }
 
         documentCategoryRepository.delete(documentCategory);
