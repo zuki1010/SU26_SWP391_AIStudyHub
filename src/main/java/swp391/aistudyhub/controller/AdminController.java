@@ -115,7 +115,7 @@ public class AdminController {
     }
 
     @GetMapping("/all/system-config")
-    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN', 'CUSTOMER', 'MODERATOR')")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<?> getSystemConfig() {
         return ResponseEntity.ok(adminService.getSystemConfig());
     }

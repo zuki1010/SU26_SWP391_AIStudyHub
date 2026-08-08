@@ -552,6 +552,14 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    public String getAllFileType() {
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("Cấu Hình không tồn tại"));
+
+        return systemConfig.getAllowedFileTypes();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<DocumentResponseDTO> getPublicDocuments() {
         return documentRepository.findByIsPublicTrueOrderByCreatedAtDesc()

@@ -396,4 +396,9 @@ public class DocumentController {
 
         return fileName;
     }
+
+    @GetMapping("/file-type")
+    public ResponseEntity<?> getAllFileType() {
+        return ResponseEntity.ok(documentService.getAllFileType());
+    }
 }
