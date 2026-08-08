@@ -10,6 +10,7 @@ import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.response.PaymentResponseDTO;
 import swp391.aistudyhub.service.MemberService;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -34,6 +35,21 @@ public class MemberController {
             @RequestParam("orderCode") Long orderCode
     ) {
         return ResponseEntity.ok(memberService.confirmPremiumPayment(orderCode));
+    }
+
+    @PostMapping("/payment/cancel")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR')")
+    public ResponseEntity<?> cancelPremiumPayment(
+            @RequestParam("orderCode") Long orderCode
+    ) {
+        memberService.cancelPremiumPayment(orderCode);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    @GetMapping("/payment/history")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR')")
+    public ResponseEntity<List<PaymentResponseDTO>> getPaymentHistory() {
+        return ResponseEntity.ok(memberService.getPaymentHistory());
     }
 
     @PostMapping("/payment/webhook")

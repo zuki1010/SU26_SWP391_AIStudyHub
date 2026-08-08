@@ -39,4 +39,6 @@ public interface AdminService {
     SystemConfigResponse getSystemConfig();
 
     SubscriptionPlanResponse getSubscriptionConfig();
+
+    Page<PaymentTransactionResponse> getAllPayments(int page, int size, String status);
 }

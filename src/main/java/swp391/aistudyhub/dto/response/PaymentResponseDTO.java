@@ -2,6 +2,8 @@ package swp391.aistudyhub.dto.response;
 
 import lombok.Data;
 
+import java.time.Instant;
+
 @Data
 public class PaymentResponseDTO {
 
@@ -34,4 +36,8 @@ public class PaymentResponseDTO {
     private Boolean isPremium;
 
     private String message;
+
+    private Instant createdAt;
+
+    private Instant paidAt;
 }

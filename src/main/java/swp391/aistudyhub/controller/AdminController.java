@@ -95,6 +95,16 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllChat(page, size));
     }
 
+    @GetMapping("/payments")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<?> getAllPayments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status
+    ) {
+        return ResponseEntity.ok(adminService.getAllPayments(page, size, status));
+    }
+
     @GetMapping("/storage")
     @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<?> getAllStorageUsage(

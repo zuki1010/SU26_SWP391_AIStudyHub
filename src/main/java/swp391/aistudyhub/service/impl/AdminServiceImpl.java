@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import swp391.aistudyhub.dto.projection.ChatRequestResponse;
 import swp391.aistudyhub.dto.projection.DocumentResponse;
+import swp391.aistudyhub.dto.projection.PaymentTransactionResponse;
 import swp391.aistudyhub.dto.projection.StorageUsageResponse;
 import swp391.aistudyhub.dto.projection.SubscriptionPlanResponse;
 import swp391.aistudyhub.dto.projection.SystemConfigResponse;
@@ -30,6 +31,7 @@ import swp391.aistudyhub.enums.UserRole;
 import swp391.aistudyhub.repository.ChatMessageRepository;
 import swp391.aistudyhub.repository.CloudStorageRepository;
 import swp391.aistudyhub.repository.DocumentRepository;
+import swp391.aistudyhub.repository.PaymentTransactionRepository;
 import swp391.aistudyhub.repository.SubscriptionPlanRepository;
 import swp391.aistudyhub.repository.SystemConfigRepository;
 import swp391.aistudyhub.repository.UserRepository;
@@ -62,6 +64,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Autowired
     private MailService mailService;
+
+    @Autowired
+    private PaymentTransactionRepository paymentTransactionRepository;
 
     @Override
     public Page<UserAccountResponse> getAllCustomer(String key, int page, int size) {
@@ -304,6 +309,17 @@ public class AdminServiceImpl implements AdminService {
     @Override
     public SubscriptionPlanResponse getSubscriptionConfig() {
         return subscriptionPlanRepository.findBy();
+    }
+
+    @Override
+    public Page<PaymentTransactionResponse> getAllPayments(int page, int size, String status) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        String cleanStatus = (status == null || status.trim().isEmpty())
+                ? null
+                : status.trim().toUpperCase();
+
+        return paymentTransactionRepository.findAllAdminPayments(cleanStatus, pageable);
     }
 
     private Authentication getAuthentication() {

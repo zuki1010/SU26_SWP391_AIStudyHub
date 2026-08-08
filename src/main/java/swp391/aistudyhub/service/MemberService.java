@@ -1,8 +1,9 @@
 package swp391.aistudyhub.service;
 
+import swp391.aistudyhub.dto.response.MemberDetailResponseDTO;
 import swp391.aistudyhub.dto.response.PaymentResponseDTO;
-import swp391.aistudyhub.entity.UserMemberSubscription;
 
+import java.util.List;
 import java.util.Map;
 
 public interface MemberService {
@@ -11,9 +12,13 @@ public interface MemberService {
 
     PaymentResponseDTO confirmPremiumPayment(Long orderCode);
 
+    void cancelPremiumPayment(Long orderCode);
+
     void handlePaymentWebhook(Map<String, Object> payload);
 
     void registerMember();
 
-    UserMemberSubscription getMemberDetail();
+    MemberDetailResponseDTO getMemberDetail();
+
+    List<PaymentResponseDTO> getPaymentHistory();
 }

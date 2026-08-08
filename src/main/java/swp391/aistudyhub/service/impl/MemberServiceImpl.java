@@ -6,6 +6,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import swp391.aistudyhub.dto.response.MemberDetailResponseDTO;
 import swp391.aistudyhub.dto.response.PaymentResponseDTO;
 import swp391.aistudyhub.entity.PaymentTransaction;
 import swp391.aistudyhub.entity.SubscriptionPlan;
@@ -24,8 +25,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class MemberServiceImpl implements MemberService {
@@ -67,6 +70,18 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public PaymentResponseDTO createPremiumPayment() {
         User user = getCurrentUser();
+
+        PaymentTransaction pendingTransaction = paymentTransactionRepository
+                .findFirstByUserAndStatusOrderByCreatedAtDesc(user, "PENDING_CONFIRMATION")
+                .orElse(null);
+
+        if (pendingTransaction != null) {
+            return mapPaymentResponse(
+                    pendingTransaction,
+                    false,
+                    "Bạn đang có một phiên giao dịch chờ xác nhận."
+            );
+        }
 
         long orderCode = generateOrderCode();
         long amount = paymentAmount == null ? 0L : paymentAmount;
@@ -147,6 +162,31 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     @Transactional
+    public void cancelPremiumPayment(Long orderCode) {
+        if (orderCode == null) {
+            throw new RuntimeException("Thiếu mã giao dịch.");
+        }
+
+        User currentUser = getCurrentUser();
+
+        PaymentTransaction transaction = paymentTransactionRepository.findByOrderCode(orderCode)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phiên giao dịch."));
+
+        if (!Objects.equals(transaction.getUser().getId(), currentUser.getId())) {
+            throw new RuntimeException("Phiên giao dịch không thuộc tài khoản hiện tại.");
+        }
+
+        if (!"PENDING_CONFIRMATION".equalsIgnoreCase(transaction.getStatus())) {
+            return;
+        }
+
+        transaction.setStatus("CANCELLED");
+
+        paymentTransactionRepository.save(transaction);
+    }
+
+    @Override
+    @Transactional
     public void handlePaymentWebhook(Map<String, Object> payload) {
     }
 
@@ -158,10 +198,44 @@ public class MemberServiceImpl implements MemberService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserMemberSubscription getMemberDetail() {
+    public MemberDetailResponseDTO getMemberDetail() {
         User user = getCurrentUser();
 
-        return userMemberSubscriptionRepository.findByUser(user).orElse(null);
+        UserMemberSubscription subscription = userMemberSubscriptionRepository
+                .findByUser(user)
+                .orElse(null);
+
+        if (subscription == null) {
+            return null;
+        }
+
+        MemberDetailResponseDTO dto = new MemberDetailResponseDTO();
+
+        dto.setStatus(
+                subscription.getStatus() == null
+                        ? null
+                        : subscription.getStatus().name()
+        );
+        dto.setPlanName(resolvePlanName(subscription.getSubscriptionPlan()));
+        dto.setStartDate(subscription.getStartDate());
+        dto.setEndDate(subscription.getEndDate());
+
+        return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentResponseDTO> getPaymentHistory() {
+        User user = getCurrentUser();
+
+        return paymentTransactionRepository.findByUserOrderByCreatedAtDesc(user)
+                .stream()
+                .map(transaction -> mapPaymentResponse(
+                        transaction,
+                        "MANUAL_CONFIRMED".equalsIgnoreCase(transaction.getStatus()),
+                        null
+                ))
+                .collect(Collectors.toList());
     }
 
     private void activatePremium(
@@ -325,6 +399,8 @@ public class MemberServiceImpl implements MemberService {
         dto.setAccountName(transaction.getAccountName());
         dto.setIsPremium(isPremium);
         dto.setMessage(message);
+        dto.setCreatedAt(transaction.getCreatedAt());
+        dto.setPaidAt(transaction.getPaidAt());
 
         return dto;
     }
