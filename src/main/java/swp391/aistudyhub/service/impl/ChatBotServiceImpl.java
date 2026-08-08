@@ -234,7 +234,8 @@ public class ChatBotServiceImpl implements ChatBotService {
         User user = userRepository.findByEmailIgnoreCase(au.getName())
                 .orElseThrow(() -> new RuntimeException("This user is not found!"));
 
-        ChatSession chatSession = chatSessionRepository.findChatSessionByUser(user);
+        ChatSession chatSession = chatSessionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Phiên chat không tồn tại"));
 
         chatSessionRepository.delete(chatSession);
     }
