@@ -64,4 +64,10 @@ public class ChatBotController {
         List<ChatMessageDTO> history = chatBotService.getChatHistory(sessionId, page, size);
         return ResponseEntity.ok(history);
     }
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<?> deleteChat(@PathVariable("id") UUID sessionId) {
+        chatBotService.deleteChat(sessionId);
+        return ResponseEntity.ok("Xóa phiên chat thành công");
+    }
 }

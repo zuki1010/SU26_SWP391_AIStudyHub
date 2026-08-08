@@ -17,4 +17,6 @@ public interface ChatBotService {
     String chatWithGemini(ChatRequestSessionDTO dto);
 
     List<ChatMessageDTO> getChatHistory(UUID sessionId, int page, int size);
+
+    void deleteChat(UUID id);
 }

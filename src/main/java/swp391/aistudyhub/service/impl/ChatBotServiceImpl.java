@@ -223,4 +223,19 @@ public class ChatBotServiceImpl implements ChatBotService {
 
         return history;
     }
+
+    @Override
+    public void deleteChat(UUID id) {
+        Authentication au = SecurityContextHolder.getContext().getAuthentication();
+        if (au == null || !au.isAuthenticated() || "anonymousUser".equals(au.getPrincipal().toString())) {
+            throw new RuntimeException("You are not login yet!");
+        }
+
+        User user = userRepository.findByEmailIgnoreCase(au.getName())
+                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+
+        ChatSession chatSession = chatSessionRepository.findChatSessionByUser(user);
+
+        chatSessionRepository.delete(chatSession);
+    }
 }
