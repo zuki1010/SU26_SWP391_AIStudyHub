@@ -158,6 +158,54 @@ public class DocumentController {
         }
     }
 
+    @PutMapping(value = "/{id}/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Thay thế file của tài liệu đã có")
+    public ResponseEntity<?> replaceDocumentFile(
+            @PathVariable("id") UUID documentId,
+            @RequestPart("file") MultipartFile file
+    ) {
+        try {
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest().body("Vui lòng chọn file để thay thế!");
+            }
+
+            String originalName = file.getOriginalFilename();
+
+            if (originalName == null || !originalName.contains(".")) {
+                return ResponseEntity.badRequest().body("File không có định dạng hợp lệ!");
+            }
+
+            String extension = originalName
+                    .substring(originalName.lastIndexOf(".") + 1)
+                    .toLowerCase(Locale.ROOT)
+                    .trim();
+
+            FileType fileType;
+
+            try {
+                fileType = FileType.valueOf(extension);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body("Định dạng file không được hỗ trợ: " + extension);
+            }
+
+            String fileUrl = cloudStorageService.uploadFile(file);
+
+            DocumentRequestDTO requestDTO = new DocumentRequestDTO();
+            requestDTO.setDocumentName(originalName);
+            requestDTO.setFileSize(file.getSize());
+            requestDTO.setFileType(fileType);
+            requestDTO.setPreviewUrl(fileUrl);
+            requestDTO.setDownloadUrl(fileUrl);
+
+            DocumentResponseDTO response = documentService.replaceDocumentFile(documentId, requestDTO);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa tài liệu")
     public ResponseEntity<?> deleteDocument(@PathVariable("id") UUID documentId) {

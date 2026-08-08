@@ -13,6 +13,8 @@ public interface DocumentService {
 
     DocumentResponseDTO createDocument(DocumentRequestDTO requestDTO);
 
+    DocumentResponseDTO replaceDocumentFile(UUID documentId, DocumentRequestDTO requestDTO);
+
     List<DocumentResponseDTO> getAllDocumentsByUser();
 
     DocumentResponseDTO getDocumentDetail(UUID documentId);

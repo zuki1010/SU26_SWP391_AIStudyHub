@@ -191,6 +191,83 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    @Transactional
+    public DocumentResponseDTO replaceDocumentFile(UUID documentId, DocumentRequestDTO requestDTO) {
+        User user = getCurrentUser();
+        UUID userId = user.getId();
+
+        Document document = documentRepository.findByIdAndUserId(documentId, userId)
+                .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền thay đổi file."));
+
+        CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình lưu trữ của tài khoản này."));
+
+        long oldFileSize = document.getFileSize() != null ? document.getFileSize() : 0L;
+        long newFileSize = requestDTO.getFileSize() != null ? requestDTO.getFileSize() : 0L;
+
+        double usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0.0;
+        double updatedUsedQuota = Math.max(0.0, usedQuota - oldFileSize) + newFileSize;
+
+        double totalQuotaGb = getTotalQuotaGbForUser(user);
+        double maxFileSizeMb = getMaxFileSizeMbForUser(user);
+
+        if (newFileSize > maxFileSizeMb * BYTES_PER_MB) {
+            storageUploadService.logFailure(
+                    storage,
+                    requestDTO.getDocumentName(),
+                    newFileSize,
+                    "FAILED_FILE_TOO_LARGE"
+            );
+
+            throw new IllegalArgumentException("Dung lượng file tối đa là " + maxFileSizeMb + "MB.");
+        }
+
+        if (updatedUsedQuota > totalQuotaGb * BYTES_PER_GB) {
+            storageUploadService.logFailure(
+                    storage,
+                    requestDTO.getDocumentName(),
+                    newFileSize,
+                    "FAILED_QUOTA_FULL"
+            );
+
+            throw new RuntimeException("Không gian lưu trữ của bạn đã đầy.");
+        }
+
+        deletePhysicalFileFromSupabase(document);
+
+        document.setDocumentName(requestDTO.getDocumentName());
+        document.setFileType(requestDTO.getFileType());
+        document.setFileSize(newFileSize);
+        document.setPreviewUrl(requestDTO.getPreviewUrl());
+        document.setDownloadUrl(requestDTO.getDownloadUrl());
+
+        Document savedDocument = documentRepository.saveAndFlush(document);
+
+        storage.setUsedQuota(updatedUsedQuota);
+        cloudStorageRepository.saveAndFlush(storage);
+
+        storageUploadService.logSuccess(storage, requestDTO.getDocumentName(), newFileSize);
+
+        documentChunkRepository.deleteByDocument_Id(documentId);
+
+        try {
+            String fileUrl = savedDocument.getDownloadUrl() != null && !savedDocument.getDownloadUrl().isBlank()
+                    ? savedDocument.getDownloadUrl()
+                    : savedDocument.getPreviewUrl();
+
+            String fullTextContent = extractTextFromUrl(fileUrl, savedDocument.getFileType());
+
+            if (fullTextContent != null && !fullTextContent.trim().isEmpty()) {
+                documentChunkService.chunkAndEmbedDocument(savedDocument, fullTextContent);
+            }
+        } catch (Exception e) {
+            System.err.println("==> RAG ERROR: Lỗi trong quá trình đọc file mới và băm Chunk: " + e.getMessage());
+        }
+
+        return mapToResponseDTO(savedDocument);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<DocumentResponseDTO> getAllDocumentsByUser() {
         User user = getCurrentUser();
