@@ -8,11 +8,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import swp391.aistudyhub.dto.request.CreateCategoryDTO;
+import swp391.aistudyhub.dto.request.UpdateCategoryDTO;
 import swp391.aistudyhub.entity.DocumentCategory;
 import swp391.aistudyhub.repository.DocumentCategoryRepository;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -21,48 +21,104 @@ public class DocumentCategoryService {
     @Autowired
     private DocumentCategoryRepository documentCategoryRepository;
 
+    @Transactional
     public DocumentCategory addSubject(CreateCategoryDTO dto) {
-        DocumentCategory documentCategory = new DocumentCategory();
-        documentCategory.setCategoryType(dto.getCategoryType());
-        documentCategory.setCategoryName(dto.getCategoryName());
+        if (dto == null) {
+            throw new RuntimeException("Dữ liệu danh mục không hợp lệ.");
+        }
 
+        String categoryName = cleanText(dto.getCategoryName());
+        String categoryType = cleanText(dto.getCategoryType());
+
+        if (categoryName == null) {
+            throw new RuntimeException("Vui lòng nhập tên danh mục.");
+        }
+
+        if (categoryType == null) {
+            categoryType = "SUBJECT";
+        }
+
+        boolean existed = documentCategoryRepository
+                .existsByCategoryNameIgnoreCaseAndCategoryTypeIgnoreCase(categoryName, categoryType);
+
+        if (existed) {
+            throw new RuntimeException("Danh mục này đã tồn tại.");
+        }
+
+        DocumentCategory documentCategory = new DocumentCategory();
+        documentCategory.setCategoryName(categoryName);
+        documentCategory.setCategoryType(categoryType.toUpperCase());
         documentCategory.setParentId(dto.getParentId());
         documentCategory.setCreatedAt(Instant.now());
 
-        documentCategoryRepository.save(documentCategory);
-        return documentCategory;
+        return documentCategoryRepository.save(documentCategory);
     }
 
     public Page<DocumentCategory> getAllSubjects(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("categoryType").descending());
+        int safePage = Math.max(page, 0);
+        int safeSize = size <= 0 ? 100 : Math.min(size, 500);
+
+        Pageable pageable = PageRequest.of(
+                safePage,
+                safeSize,
+                Sort.by("categoryType").ascending().and(Sort.by("categoryName").ascending())
+        );
 
         return documentCategoryRepository.findAll(pageable);
     }
 
     @Transactional
-    public DocumentCategory updateSubject(CreateCategoryDTO dto, UUID categoryId) {
+    public DocumentCategory updateSubject(UpdateCategoryDTO dto, UUID categoryId) {
+        if (categoryId == null) {
+            throw new RuntimeException("Thiếu mã danh mục.");
+        }
+
+        if (dto == null) {
+            throw new RuntimeException("Dữ liệu cập nhật không hợp lệ.");
+        }
+
         DocumentCategory documentCategory = documentCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("This Category is not exist!"));
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại."));
 
-        if (dto.getCategoryName() != null) {
-            documentCategory.setCategoryName(dto.getCategoryName());
-        }
-        if (dto.getCategoryType() != null) {
-            documentCategory.setCategoryType(dto.getCategoryType());
-        }
-        if (dto.getParentId() != null) {
-            documentCategory.setParentId(dto.getParentId());
+        String categoryName = cleanText(dto.getCategoryName());
+        String categoryType = cleanText(dto.getCategoryType());
+
+        if (categoryName != null) {
+            documentCategory.setCategoryName(categoryName);
         }
 
-        documentCategoryRepository.save(documentCategory);
-        return documentCategory;
+        if (categoryType != null) {
+            documentCategory.setCategoryType(categoryType.toUpperCase());
+        }
+
+        documentCategory.setParentId(dto.getParentId());
+
+        return documentCategoryRepository.save(documentCategory);
     }
 
     @Transactional
     public void deleteSubject(UUID categoryId) {
+        if (categoryId == null) {
+            throw new RuntimeException("Thiếu mã danh mục.");
+        }
+
         DocumentCategory documentCategory = documentCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("This Category is not exist!"));
+                .orElseThrow(() -> new RuntimeException("Danh mục không tồn tại."));
+
+        if (documentCategory.getDocuments() != null && !documentCategory.getDocuments().isEmpty()) {
+            throw new RuntimeException("Không thể xóa danh mục đang có tài liệu.");
+        }
 
         documentCategoryRepository.delete(documentCategory);
+    }
+
+    private String cleanText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String text = value.trim();
+
+        return text.isEmpty() ? null : text;
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.CreateCategoryDTO;
+import swp391.aistudyhub.dto.request.UpdateCategoryDTO;
 import swp391.aistudyhub.service.DocumentCategoryService;
 
 import java.util.UUID;
@@ -17,30 +18,39 @@ import java.util.UUID;
 @CrossOrigin("*")
 @Tag(name = "Document Category Config", description = "CRUD Search for subjects and semesters")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
-@PreAuthorize("hasRole('ADMIN')")
 public class DocumentCategoryController {
 
     @Autowired
     private DocumentCategoryService documentCategoryService;
 
     @PostMapping("/add")
-    public ResponseEntity<?> createCategory(CreateCategoryDTO dto) {
-        return ResponseEntity.ok().body(documentCategoryService.addSubject(dto));
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR', 'ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<?> createCategory(@RequestBody CreateCategoryDTO dto) {
+        return ResponseEntity.ok(documentCategoryService.addSubject(dto));
     }
+
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR', 'CUSTOMER')")
-    public ResponseEntity<?> getAllSubject(@RequestParam(defaultValue = "0") int page,
-                                           @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok().body(documentCategoryService.getAllSubjects(page, size));
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR', 'ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<?> getAllSubject(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "500") int size
+    ) {
+        return ResponseEntity.ok(documentCategoryService.getAllSubjects(page, size));
     }
+
     @PutMapping("/update/{id}")
-    public ResponseEntity<?> updateCategory(@RequestBody CreateCategoryDTO dto,
-                                            @PathVariable("id") UUID id) {
-        return ResponseEntity.ok().body(documentCategoryService.updateSubject(dto, id));
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<?> updateCategory(
+            @RequestBody UpdateCategoryDTO dto,
+            @PathVariable("id") UUID id
+    ) {
+        return ResponseEntity.ok(documentCategoryService.updateSubject(dto, id));
     }
+
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<?> deleteCategory(@PathVariable("id") UUID id) {
         documentCategoryService.deleteSubject(id);
-        return ResponseEntity.ok().body("Delete Successfully");
+        return ResponseEntity.ok("Xóa danh mục thành công.");
     }
 }

@@ -83,39 +83,39 @@ public class EmailServiceImpl implements EmailService {
         sendHtmlEmail(to, subject, html);
     }
 
-    @Override
-    public void sendPaymentSuccessEmail(String to, String planName, Long amount) {
-        NumberFormat formatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-        String amountText = formatter.format(amount == null ? 0L : amount);
+  @Override
+public void sendPaymentSuccessEmail(String to, String planName, Long amount) {
+    NumberFormat formatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+    String amountText = formatter.format(amount == null ? 0L : amount);
 
-        String subject = "AI Study Hub - Payment Successful";
+    String subject = "AI Study Hub - Premium Activation";
 
-        String html = """
-                <div style="font-family: Arial, sans-serif; max-width: 620px; margin: auto; color: #0f172a;">
-                    <div style="border:1px solid #e5e7eb;border-radius:18px;padding:24px;">
-                        <h2 style="color: #16a34a; margin-top:0;">Thanh toán thành công</h2>
-                        <p>Xin chào,</p>
-                        <p>Tài khoản của bạn đã được nâng cấp thành công lên gói <b>%s</b>.</p>
+    String html = """
+            <div style="font-family: Arial, sans-serif; max-width: 620px; margin: auto; color: #0f172a;">
+                <div style="border:1px solid #e5e7eb;border-radius:18px;padding:24px;">
+                    <h2 style="color: #16a34a; margin-top:0;">Premium Activation</h2>
+                    <p>Xin chào,</p>
+                    <p>Tài khoản của bạn đã được kích hoạt gói <b>%s</b>.</p>
 
-                        <div style="background:#f8fafc;border-radius:14px;padding:16px;margin:18px 0;">
-                            <p style="margin:6px 0;"><b>Gói:</b> %s</p>
-                            <p style="margin:6px 0;"><b>Số tiền:</b> %s</p>
-                            <p style="margin:6px 0;"><b>Thời hạn:</b> 30 ngày</p>
-                            <p style="margin:6px 0;"><b>Trạng thái:</b> Thành công</p>
-                        </div>
-
-                        <p>Bạn đã có thể sử dụng dung lượng 10GB, giới hạn AI cao hơn và upload file lớn hơn.</p>
-                        <p>Cảm ơn bạn đã sử dụng AI Study Hub.</p>
-
-                        <p style="color:#64748b;font-size:13px;margin-top:22px;">
-                            Email này được gửi tự động từ hệ thống AI Study Hub.
-                        </p>
+                    <div style="background:#f8fafc;border-radius:14px;padding:16px;margin:18px 0;">
+                        <p style="margin:6px 0;"><b>Gói:</b> %s</p>
+                        <p style="margin:6px 0;"><b>Giá trị giao dịch:</b> %s</p>
+                        <p style="margin:6px 0;"><b>Thời hạn:</b> 30 ngày</p>
+                        <p style="margin:6px 0;"><b>Trạng thái:</b> Đã kích hoạt</p>
                     </div>
-                </div>
-                """.formatted(planName, planName, amountText);
 
-        sendHtmlEmail(to, subject, html);
-    }
+                    <p>Bạn đã có thể sử dụng dung lượng Premium, giới hạn AI cao hơn và upload file lớn hơn.</p>
+                    <p>Cảm ơn bạn đã sử dụng AI Study Hub.</p>
+
+                    <p style="color:#64748b;font-size:13px;margin-top:22px;">
+                        Email này được gửi tự động từ hệ thống AI Study Hub.
+                    </p>
+                </div>
+            </div>
+            """.formatted(planName, planName, amountText);
+
+    sendHtmlEmail(to, subject, html);
+}
 
     @Override
     public void sendPaymentFailedEmail(String to, String planName) {

@@ -14,15 +14,12 @@ import org.springframework.web.multipart.MultipartFile;
 import swp391.aistudyhub.config.OpenApiConfig;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
 import swp391.aistudyhub.dto.request.DocumentTogglePublicRequestDTO;
+import swp391.aistudyhub.dto.request.DocumentUpdateRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
-import swp391.aistudyhub.entity.Document;
-import swp391.aistudyhub.entity.DocumentCategory;
 import swp391.aistudyhub.enums.FileType;
 import swp391.aistudyhub.enums.RequestPublicDoc;
 import swp391.aistudyhub.enums.StatusPublicDoc;
-import swp391.aistudyhub.enums.SubjectCode;
 import swp391.aistudyhub.service.CloudStorageService;
-import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
 import swp391.aistudyhub.service.DocumentShareService;
 
@@ -38,9 +35,6 @@ public class DocumentController {
 
     @Autowired
     private DocumentService documentService;
-
-    @Autowired
-    private DocumentChunkService documentChunkService;
 
     @Autowired
     private CloudStorageService cloudStorageService;
@@ -73,8 +67,8 @@ public class DocumentController {
     public ResponseEntity<?> createDocument(
             @RequestPart("file") MultipartFile file,
             @RequestParam("description") String description,
-            @RequestParam("subjectCode")UUID categoryId
-            ) {
+            @RequestParam("categoryId") UUID categoryId
+    ) {
         try {
             if (file == null || file.isEmpty()) {
                 return ResponseEntity.badRequest().body("Vui lòng chọn file để upload!");
@@ -123,10 +117,6 @@ public class DocumentController {
 
             DocumentResponseDTO response = documentService.createDocument(requestDTO);
 
-            Document docEntity = new Document();
-            docEntity.setId(response.getDocumentId());
-            documentChunkService.chunkAndEmbedDocument(docEntity, requestDTO.getTextContent());
-
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             e.printStackTrace();
@@ -145,13 +135,24 @@ public class DocumentController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Đổi tên tài liệu")
-    public ResponseEntity<?> updateDocumentName(
+    @Operation(summary = "Cập nhật thông tin tài liệu")
+    public ResponseEntity<?> updateDocument(
             @PathVariable("id") UUID documentId,
-            @RequestParam("newName") String newName
+            @RequestBody(required = false) DocumentUpdateRequestDTO requestDTO,
+            @RequestParam(value = "newName", required = false) String newName
     ) {
         try {
-            return ResponseEntity.ok(documentService.updateDocumentName(documentId, newName));
+            if (requestDTO == null) {
+                requestDTO = new DocumentUpdateRequestDTO();
+            }
+
+            if (newName != null && !newName.trim().isEmpty()) {
+                requestDTO.setDocumentName(newName.trim());
+            }
+
+            DocumentResponseDTO response = documentService.updateDocument(documentId, requestDTO);
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -309,6 +310,12 @@ public class DocumentController {
         }
     }
 
+    @GetMapping("/get-storage")
+    @Operation(summary = "Lấy tổng dung lượng lưu trữ của tài khoản hiện tại")
+    public ResponseEntity<?> getTotalQuota() {
+        return ResponseEntity.ok(documentService.getTotalQuota());
+    }
+
     private MediaType resolveMediaType(FileType fileType) {
         if (fileType == null) {
             return MediaType.APPLICATION_OCTET_STREAM;
@@ -340,10 +347,5 @@ public class DocumentController {
         }
 
         return fileName;
-    }
-
-    @GetMapping("/get-storage")
-    public ResponseEntity<?> getTotalQuota() {
-        return ResponseEntity.ok().body(documentService.getTotalQuota());
     }
 }

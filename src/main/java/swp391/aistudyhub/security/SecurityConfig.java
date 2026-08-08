@@ -102,14 +102,20 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/chat/**").hasAnyAuthority(USER_ROLES)
 
-                        .requestMatchers(HttpMethod.POST, "/api/reports", "/api/reports/**").hasAnyAuthority(USER_ROLES)
+.requestMatchers(HttpMethod.POST, "/api/reports").hasAnyAuthority(USER_ROLES)
+.requestMatchers(HttpMethod.GET, "/api/reports/reasons").permitAll()
+.requestMatchers(HttpMethod.GET, "/api/reports/pending").hasAnyAuthority(STAFF)
+.requestMatchers(HttpMethod.PUT, "/api/reports/*/process").hasAnyAuthority(STAFF)
 
-                        .requestMatchers("/api/reports/pending", "/api/reports/*/process").hasAnyAuthority(STAFF)
+.requestMatchers(HttpMethod.GET, "/api/document-category/all").hasAnyAuthority(USER_ROLES)
+.requestMatchers(HttpMethod.GET, "/api/document-category/all/**").hasAnyAuthority(USER_ROLES)
+.requestMatchers(HttpMethod.POST, "/api/document-category/add").hasAnyAuthority(USER_ROLES)
 
-                        .requestMatchers("/api/member/**").hasAnyAuthority(MEMBER_ALLOWED)
+.requestMatchers("/api/document-category/**").hasAnyAuthority(ADMIN_ONLY)
 
-                        .requestMatchers("/api/admin/**").hasAnyAuthority(ADMIN_ONLY)
+.requestMatchers("/api/member/**").hasAnyAuthority(MEMBER_ALLOWED)
 
+.requestMatchers("/api/admin/**").hasAnyAuthority(ADMIN_ONLY)
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

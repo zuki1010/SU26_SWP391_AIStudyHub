@@ -33,17 +33,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             """)
     Double sumFileSizeByUserId(@Param("userId") UUID userId);
 
-    /*
-     * Giữ method cũ để AdminServiceImpl.getAllDocument(page, size) vẫn chạy.
-     * Method này gọi lại query native đầy đủ bên dưới.
-     */
     default Page<DocumentResponse> findBy(Pageable pageable) {
         return findAllAdminDocuments(pageable);
     }
 
-    /*
-     * Giữ method cũ nếu nơi khác còn gọi findByPending(pageable).
-     */
     default Page<DocumentResponse> findByPending(Pageable pageable) {
         return findAdminDocumentsByStatus(StatusPublicDoc.PENDING, pageable);
     }
@@ -63,28 +56,31 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     List<Document> findAccessibleDocuments(@Param("userId") UUID userId);
 
     @Query("""
-                SELECT d
-                FROM Document d
-                WHERE
-                (
-                    d.user.id = :userId
-                    OR d.isPublic = true
-                    OR d.id IN (
-                        SELECT ds.document.id
-                        FROM DocumentShare ds
-                        WHERE ds.sharedWithUser.id = :userId
-                    )
+            SELECT d
+            FROM Document d
+            WHERE
+            (
+                d.user.id = :userId
+                OR d.isPublic = true
+                OR d.id IN (
+                    SELECT ds.document.id
+                    FROM DocumentShare ds
+                    WHERE ds.sharedWithUser.id = :userId
                 )
-                AND
-                (
-                    :searchText = ''
-                    OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%'))
-                    OR LOWER(d.description) LIKE LOWER(CONCAT('%', :searchText, '%'))
-                    OR LOWER(d.category.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))
-                )
-                ORDER BY d.createdAt DESC
+            )
+            AND
+            (
+                :searchText = ''
+                OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                OR LOWER(d.description) LIKE LOWER(CONCAT('%', :searchText, '%'))
+                OR LOWER(d.category.categoryName) LIKE LOWER(CONCAT('%', :searchText, '%'))
+            )
+            ORDER BY d.createdAt DESC
             """)
-    List<Document> searchSmartAccessibleDocuments(@Param("userId") UUID userId, @Param("searchText") String searchText);
+    List<Document> searchSmartAccessibleDocuments(
+            @Param("userId") UUID userId,
+            @Param("searchText") String searchText
+    );
 
     @Query("""
             SELECT d
@@ -96,6 +92,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
                 OR LOWER(d.documentName) LIKE LOWER(CONCAT('%', :key, '%'))
                 OR LOWER(d.description) LIKE LOWER(CONCAT('%', :key, '%'))
                 OR LOWER(d.user.email) LIKE LOWER(CONCAT('%', :key, '%'))
+                OR LOWER(d.category.categoryName) LIKE LOWER(CONCAT('%', :key, '%'))
             )
             AND
             (
@@ -115,9 +112,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
             Pageable pageable
     );
 
-    /*
-     * Admin/Moderator: lấy toàn bộ tài liệu kèm tên người gửi.
-     */
     @Query(
             value = """
                     SELECT
@@ -128,6 +122,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
                         d.created_at AS createdAt,
                         d.is_public AS isPublic,
                         d.status AS status,
+
+                        dc.category_id AS categoryId,
+                        dc.category_name AS categoryName,
+                        dc.category_type AS categoryType,
+                        dc.parent_id AS parentCategoryId,
 
                         u.user_id AS userId,
                         u.email AS userEmail,
@@ -160,6 +159,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
                             u.email
                         ) AS userName
                     FROM documents d
+                    LEFT JOIN document_categories dc ON dc.category_id = d.category_id
                     LEFT JOIN users u ON d.user_id = u.user_id
                     LEFT JOIN customer_profiles cp ON cp.user_id = u.user_id
                     LEFT JOIN moderator_profiles mp ON mp.user_id = u.user_id
@@ -174,13 +174,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     )
     Page<DocumentResponse> findAllAdminDocuments(Pageable pageable);
 
-    /*
-     * Method AdminServiceImpl đang gọi:
-     * documentRepository.findAdminDocumentsByStatus(status, pageable)
-     *
-     * Ta giữ tên method này để không phải sửa AdminServiceImpl.
-     * Nhưng bên trong chuyển enum sang String để native SQL chạy ổn.
-     */
     default Page<DocumentResponse> findAdminDocumentsByStatus(
             StatusPublicDoc status,
             Pageable pageable
@@ -192,9 +185,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
         return findAdminDocumentsByStatusValue(status.name(), pageable);
     }
 
-    /*
-     * Query thật dùng String status.
-     */
     @Query(
             value = """
                     SELECT
@@ -205,6 +195,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
                         d.created_at AS createdAt,
                         d.is_public AS isPublic,
                         d.status AS status,
+
+                        dc.category_id AS categoryId,
+                        dc.category_name AS categoryName,
+                        dc.category_type AS categoryType,
+                        dc.parent_id AS parentCategoryId,
 
                         u.user_id AS userId,
                         u.email AS userEmail,
@@ -237,6 +232,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
                             u.email
                         ) AS userName
                     FROM documents d
+                    LEFT JOIN document_categories dc ON dc.category_id = d.category_id
                     LEFT JOIN users u ON d.user_id = u.user_id
                     LEFT JOIN customer_profiles cp ON cp.user_id = u.user_id
                     LEFT JOIN moderator_profiles mp ON mp.user_id = u.user_id

@@ -1,6 +1,5 @@
 package swp391.aistudyhub.service.impl;
 
-import jakarta.persistence.EntityManager;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,24 +12,46 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
+import swp391.aistudyhub.dto.request.DocumentUpdateRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
-import swp391.aistudyhub.entity.*;
-import swp391.aistudyhub.enums.*;
-import swp391.aistudyhub.repository.*;
+import swp391.aistudyhub.entity.CloudStorage;
+import swp391.aistudyhub.entity.Document;
+import swp391.aistudyhub.entity.DocumentCategory;
+import swp391.aistudyhub.entity.DocumentShare;
+import swp391.aistudyhub.entity.SubscriptionPlan;
+import swp391.aistudyhub.entity.SystemConfig;
+import swp391.aistudyhub.entity.User;
+import swp391.aistudyhub.entity.UserMemberSubscription;
+import swp391.aistudyhub.enums.FileType;
+import swp391.aistudyhub.enums.MemberStatus;
+import swp391.aistudyhub.enums.RequestPublicDoc;
+import swp391.aistudyhub.enums.StatusPublicDoc;
+import swp391.aistudyhub.repository.CloudStorageRepository;
+import swp391.aistudyhub.repository.DocumentCategoryRepository;
+import swp391.aistudyhub.repository.DocumentChunkRepository;
+import swp391.aistudyhub.repository.DocumentRepository;
+import swp391.aistudyhub.repository.DocumentShareRepository;
+import swp391.aistudyhub.repository.SubscriptionPlanRepository;
+import swp391.aistudyhub.repository.SystemConfigRepository;
+import swp391.aistudyhub.repository.UserMemberSubscriptionRepository;
+import swp391.aistudyhub.repository.UserRepository;
 import swp391.aistudyhub.service.DocumentChunkService;
 import swp391.aistudyhub.service.DocumentService;
-import swp391.aistudyhub.service.StorageUploadService;
 import swp391.aistudyhub.service.MailService;
-import swp391.aistudyhub.dto.response.DocumentResponseDTO;
+import swp391.aistudyhub.service.StorageUploadService;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
+
+    private static final double BYTES_PER_GB = 1073741824.0;
+    private static final double BYTES_PER_MB = 1048576.0;
 
     @Autowired
     private DocumentRepository documentRepository;
@@ -48,28 +69,16 @@ public class DocumentServiceImpl implements DocumentService {
     private DocumentChunkService documentChunkService;
 
     @Autowired
-    private EntityManager entityManager;
-
-    @Autowired
     private RestTemplate restTemplate;
 
     @Autowired
     private StorageUploadService storageUploadService;
 
     @Autowired
-private MailService mailService;
+    private MailService mailService;
 
     @Autowired
     private DocumentShareRepository documentShareRepository;
-
-    @Value("${supabase.url:https://ybgeblpkptrsefpafthb.supabase.co}")
-    private String supabaseUrl;
-
-    @Value("${supabase.bucket-name:documents}")
-    private String bucketName;
-
-    @Value("${supabase.service-role-key:}")
-    private String supabaseServiceRoleKey;
 
     @Autowired
     private SystemConfigRepository systemConfigRepository;
@@ -83,6 +92,14 @@ private MailService mailService;
     @Autowired
     private DocumentCategoryRepository documentCategoryRepository;
 
+    @Value("${supabase.url:https://ybgeblpkptrsefpafthb.supabase.co}")
+    private String supabaseUrl;
+
+    @Value("${supabase.bucket-name:documents}")
+    private String bucketName;
+
+    @Value("${supabase.service-role-key:}")
+    private String supabaseServiceRoleKey;
 
     @Override
     @Transactional
@@ -91,34 +108,35 @@ private MailService mailService;
         UUID userId = user.getId();
 
         if (requestDTO.getCategoryId() == null) {
-            throw new RuntimeException("Vui lòng chọn môn học hợp lệ!");
+            throw new RuntimeException("Vui lòng chọn môn học hợp lệ.");
         }
+
+        DocumentCategory category = documentCategoryRepository.findById(requestDTO.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Môn học được chọn không tồn tại."));
 
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình không gian lưu trữ của người dùng này."));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy cấu hình lưu trữ của tài khoản này."));
 
         long actualFileSize = requestDTO.getFileSize() != null ? requestDTO.getFileSize() : 0L;
-        Double usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
-        Double updatedUsedQuota = usedQuota + actualFileSize;
 
-        UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)
-                .orElse(null);
+        double usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0.0;
+        double updatedUsedQuota = usedQuota + actualFileSize;
 
-        SystemConfig systemConfig = systemConfigRepository.findById(1L)
-                .orElseThrow(() -> new RuntimeException("This config is not available"));
+        double totalQuotaGb = getTotalQuotaGbForUser(user);
+        double maxFileSizeMb = getMaxFileSizeMbForUser(user);
 
-        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
-                .orElseThrow(() -> new RuntimeException("This subscription is not available"));
+        if (actualFileSize > maxFileSizeMb * BYTES_PER_MB) {
+            storageUploadService.logFailure(
+                    storage,
+                    requestDTO.getDocumentName(),
+                    actualFileSize,
+                    "FAILED_FILE_TOO_LARGE"
+            );
 
-        Double totalQuota = 0.0;
-
-        if (userMemberSubscription == null) {
-            totalQuota = systemConfig.getTotalStorageQuotaGb();
-        } else {
-            totalQuota = subscriptionPlan.getTotalStorageQuotaGb();
+            throw new IllegalArgumentException("Dung lượng file tối đa là " + maxFileSizeMb + "MB.");
         }
 
-        if (updatedUsedQuota > totalQuota * 1073741824) {
+        if (updatedUsedQuota > totalQuotaGb * BYTES_PER_GB) {
             storageUploadService.logFailure(
                     storage,
                     requestDTO.getDocumentName(),
@@ -126,29 +144,16 @@ private MailService mailService;
                     "FAILED_QUOTA_FULL"
             );
 
-            throw new RuntimeException("Không gian lưu trữ đám mây của bạn đã đầy!");
+            throw new RuntimeException("Không gian lưu trữ của bạn đã đầy.");
         }
-
 
         Document document = new Document();
         document.setUser(user);
         document.setDocumentName(requestDTO.getDocumentName());
         document.setFileType(requestDTO.getFileType());
+        document.setFileSize(actualFileSize);
         document.setPreviewUrl(requestDTO.getPreviewUrl());
         document.setDownloadUrl(requestDTO.getDownloadUrl());
-
-        Double maxFileSize = 0.0;
-
-        if (userMemberSubscription == null) {
-            maxFileSize = systemConfig.getMaxFileSizeMb();
-        } else {
-            maxFileSize = subscriptionPlan.getMaxFileSizeMb();
-        }
-        if (requestDTO.getFileSize() > maxFileSize * 1048576) {
-            throw new IllegalArgumentException("Maximum file size is " + maxFileSize);
-        } else {
-            document.setFileSize(requestDTO.getFileSize());
-        }
         document.setDescription(requestDTO.getDescription());
         document.setStatus(
                 requestDTO.getStatus() != null
@@ -156,12 +161,9 @@ private MailService mailService;
                         : StatusPublicDoc.DEFAULT
         );
         document.setPublic(false);
-        DocumentCategory documentCategory = documentCategoryRepository.findById(requestDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("This category is not exist"));
-        document.setCategory(documentCategory);
+        document.setCategory(category);
 
         Document savedDocument = documentRepository.saveAndFlush(document);
-
 
         storage.setUsedQuota(updatedUsedQuota);
         cloudStorageRepository.saveAndFlush(storage);
@@ -173,13 +175,10 @@ private MailService mailService;
                     ? savedDocument.getDownloadUrl()
                     : savedDocument.getPreviewUrl();
 
-            // Truyền savedDocument.getFileType()
             String fullTextContent = extractTextFromUrl(fileUrl, savedDocument.getFileType());
 
             if (fullTextContent != null && !fullTextContent.trim().isEmpty()) {
                 System.out.println("==> RAG LOG: Trích xuất thành công " + fullTextContent.length() + " ký tự chữ từ file.");
-
-                // SỬA ĐÂY: Dùng biến documentChunkService (chữ d thường) đã @Autowired
                 documentChunkService.chunkAndEmbedDocument(savedDocument, fullTextContent);
             } else {
                 System.out.println("==> RAG WARNING: File rỗng hoặc không thể trích xuất chữ từ URL: " + fileUrl);
@@ -188,93 +187,7 @@ private MailService mailService;
             System.err.println("==> RAG ERROR: Lỗi trong quá trình đọc file và băm Chunk: " + e.getMessage());
         }
 
-
         return mapToResponseDTO(savedDocument);
-    }
-
-    private String extractTextFromUrl(String fileUrl, FileType fileType) {
-        if (fileUrl == null || fileUrl.isBlank()) return "";
-
-        String typeStr = fileType != null ? fileType.name().toLowerCase() : "";
-        String lowerUrl = fileUrl.toLowerCase();
-
-        try {
-            java.net.URL url = java.net.URI.create(fileUrl).toURL();
-
-            // 1. File TXT
-            if (typeStr.contains("txt") || lowerUrl.endsWith(".txt")) {
-                try (InputStream in = url.openStream()) {
-                    return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                }
-            }
-
-            // 2. File PDF
-            if (typeStr.contains("pdf") || lowerUrl.endsWith(".pdf")) {
-                try (InputStream in = url.openStream();
-                     PDDocument pdfDocument = PDDocument.load(in)) {
-                    PDFTextStripper stripper = new PDFTextStripper();
-                    return stripper.getText(pdfDocument);
-                }
-            }
-
-            // 3. File Word (.docx)
-            if (typeStr.contains("docx") || lowerUrl.endsWith(".docx")) {
-                try (InputStream in = url.openStream();
-                     org.apache.poi.xwpf.usermodel.XWPFDocument docx = new org.apache.poi.xwpf.usermodel.XWPFDocument(in);
-                     org.apache.poi.xwpf.extractor.XWPFWordExtractor extractor = new org.apache.poi.xwpf.extractor.XWPFWordExtractor(docx)) {
-                    return extractor.getText();
-                }
-            }
-
-            // 4. File Word đời cũ (.doc)
-            if (typeStr.contains("doc") || lowerUrl.endsWith(".doc")) {
-                try (InputStream in = url.openStream();
-                     org.apache.poi.hwpf.HWPFDocument doc = new org.apache.poi.hwpf.HWPFDocument(in);
-                     org.apache.poi.hwpf.extractor.WordExtractor extractor = new org.apache.poi.hwpf.extractor.WordExtractor(doc)) {
-                    return extractor.getText();
-                }
-            }
-
-            // 5. 🚀 THÊM MỚI: File Excel (.xlsx và .xls)
-            if (typeStr.contains("xls") || lowerUrl.endsWith(".xlsx") || lowerUrl.endsWith(".xls")) {
-                try (InputStream in = url.openStream();
-                     org.apache.poi.ss.usermodel.Workbook workbook = org.apache.poi.ss.usermodel.WorkbookFactory.create(in)) {
-                    return extractTextFromExcel(workbook);
-                }
-            }
-
-        } catch (Exception e) {
-            System.err.println("==> LỖI BÓC TÁCH CHỮ TỪ URL SUPABASE: " + e.getMessage());
-        }
-        return "";
-    }
-
-    /**
-     * 📊 Hàm hỗ trợ bóc tách dữ liệu từ các trang (Sheet) của file Excel thành văn bản rõ ràng cho Chatbot
-     */
-    private String extractTextFromExcel(org.apache.poi.ss.usermodel.Workbook workbook) {
-        StringBuilder sb = new StringBuilder();
-        org.apache.poi.ss.usermodel.DataFormatter formatter = new org.apache.poi.ss.usermodel.DataFormatter();
-
-        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
-            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(i);
-            sb.append("--- Trang (Sheet): ").append(sheet.getSheetName()).append(" ---\n");
-
-            for (org.apache.poi.ss.usermodel.Row row : sheet) {
-                StringBuilder rowBuilder = new StringBuilder();
-                for (org.apache.poi.ss.usermodel.Cell cell : row) {
-                    String cellValue = formatter.formatCellValue(cell).trim();
-                    if (!cellValue.isEmpty()) {
-                        rowBuilder.append(cellValue).append(" | ");
-                    }
-                }
-                if (!rowBuilder.isEmpty()) {
-                    sb.append(rowBuilder).append("\n");
-                }
-            }
-            sb.append("\n");
-        }
-        return sb.toString();
     }
 
     @Override
@@ -295,7 +208,7 @@ private MailService mailService;
         UUID userId = user.getId();
 
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu."));
 
         boolean isOwner = document.getUser() != null
                 && Objects.equals(document.getUser().getId(), userId);
@@ -305,8 +218,10 @@ private MailService mailService;
         boolean isSharedWithMe =
                 documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
 
-        if (!isOwner && !isPublic && !isSharedWithMe) {
-            throw new RuntimeException("Bạn không có quyền xem tài liệu này");
+        boolean isStaff = isStaff(getAuthentication());
+
+        if (!isOwner && !isPublic && !isSharedWithMe && !isStaff) {
+            throw new RuntimeException("Bạn không có quyền xem tài liệu này.");
         }
 
         return mapToResponseDTO(document);
@@ -314,12 +229,12 @@ private MailService mailService;
 
     @Override
     @Transactional
-    public DocumentResponseDTO updateDocumentName(UUID documentId, String newName) {
+    public DocumentResponseDTO updateDocument(UUID documentId, DocumentUpdateRequestDTO requestDTO) {
         User user = getCurrentUser();
         UUID userId = user.getId();
 
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu."));
 
         boolean isOwner = document.getUser() != null
                 && Objects.equals(document.getUser().getId(), userId);
@@ -331,18 +246,40 @@ private MailService mailService;
                 && "edit".equalsIgnoreCase(shareOpt.get().getPermissionType());
 
         if (!isOwner && !hasEditPermission) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa tài liệu này!");
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa tài liệu này.");
         }
 
-        if (newName == null || newName.trim().isEmpty()) {
-            throw new RuntimeException("Tên tài liệu không được để trống!");
+        if (requestDTO == null) {
+            throw new RuntimeException("Dữ liệu cập nhật không hợp lệ.");
         }
 
-        document.setDocumentName(newName.trim());
+        if (requestDTO.getDocumentName() != null && !requestDTO.getDocumentName().isBlank()) {
+            document.setDocumentName(requestDTO.getDocumentName().trim());
+        }
+
+        if (requestDTO.getDescription() != null) {
+            document.setDescription(requestDTO.getDescription().trim());
+        }
+
+        if (requestDTO.getCategoryId() != null) {
+            DocumentCategory category = documentCategoryRepository.findById(requestDTO.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Môn học được chọn không tồn tại."));
+
+            document.setCategory(category);
+        }
 
         Document updatedDocument = documentRepository.saveAndFlush(document);
 
         return mapToResponseDTO(updatedDocument);
+    }
+
+    @Override
+    @Transactional
+    public DocumentResponseDTO updateDocumentName(UUID documentId, String newName) {
+        DocumentUpdateRequestDTO requestDTO = new DocumentUpdateRequestDTO();
+        requestDTO.setDocumentName(newName);
+
+        return updateDocument(documentId, requestDTO);
     }
 
     @Override
@@ -352,21 +289,17 @@ private MailService mailService;
         UUID userId = user.getId();
 
         Document document = documentRepository.findByIdAndUserId(documentId, userId)
-                .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền xóa"));
+                .orElseThrow(() -> new RuntimeException("Tài liệu không tồn tại hoặc bạn không có quyền xóa."));
 
         long actualFileSize = document.getFileSize() != null ? document.getFileSize() : 0L;
 
-        /*
-         * Xóa file vật lý qua Supabase Storage REST API.
-         * Tự động catch lỗi nếu sai Token/Key để đảm bảo DB vẫn được dọn sạch.
-         */
-        deletePhysicalFileFromSupabase(document, userId, documentId);
+        deletePhysicalFileFromSupabase(document);
 
         CloudStorage storage = cloudStorageRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ đám mây không tồn tại"));
+                .orElseThrow(() -> new RuntimeException("Cấu hình lưu trữ không tồn tại."));
 
-        Double usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0L;
-        Double newUsedQuota = Math.max(0, usedQuota - actualFileSize);
+        double usedQuota = storage.getUsedQuota() != null ? storage.getUsedQuota() : 0.0;
+        double newUsedQuota = Math.max(0.0, usedQuota - actualFileSize);
 
         storage.setUsedQuota(newUsedQuota);
         cloudStorageRepository.saveAndFlush(storage);
@@ -383,7 +316,7 @@ private MailService mailService;
         UUID userId = user.getId();
 
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu."));
 
         boolean isOwner = document.getUser() != null
                 && Objects.equals(document.getUser().getId(), userId);
@@ -399,8 +332,10 @@ private MailService mailService;
                         || "edit".equalsIgnoreCase(shareOpt.get().getPermissionType())
         );
 
-        if (!isOwner && !isPublic && !hasDownloadPermission) {
-            throw new RuntimeException("Tài liệu này chỉ cho phép xem trực tuyến, bạn không có quyền tải xuống!");
+        boolean isStaff = isStaff(getAuthentication());
+
+        if (!isOwner && !isPublic && !hasDownloadPermission && !isStaff) {
+            throw new RuntimeException("Bạn không có quyền tải xuống tài liệu này.");
         }
 
         return fetchFileResourceFromCloud(document);
@@ -413,7 +348,7 @@ private MailService mailService;
         UUID userId = user.getId();
 
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu."));
 
         boolean isOwner = document.getUser() != null
                 && Objects.equals(document.getUser().getId(), userId);
@@ -423,8 +358,10 @@ private MailService mailService;
         boolean isSharedWithMe =
                 documentShareRepository.existsByDocument_IdAndSharedWithUser_Id(documentId, userId);
 
-        if (!isOwner && !isPublic && !isSharedWithMe) {
-            throw new RuntimeException("Bạn không có quyền xem trước tài liệu này!");
+        boolean isStaff = isStaff(getAuthentication());
+
+        if (!isOwner && !isPublic && !isSharedWithMe && !isStaff) {
+            throw new RuntimeException("Bạn không có quyền xem trước tài liệu này.");
         }
 
         return fetchFileResourceFromCloud(document);
@@ -455,7 +392,7 @@ private MailService mailService;
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu."));
 
         if (document.getUser() == null || !document.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa trạng thái của tài liệu này!");
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa trạng thái của tài liệu này.");
         }
 
         if (isPublic) {
@@ -473,84 +410,63 @@ private MailService mailService;
     }
 
     @Override
-@Transactional
-public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDoc decision) {
-    if (decision == null) {
-        throw new RuntimeException("Quyết định phê duyệt không hợp lệ!");
-    }
-
-    Authentication authentication = getAuthentication();
-
-    boolean isStaff = authentication.getAuthorities().stream()
-            .anyMatch(authority ->
-                    authority.getAuthority().equals("ROLE_MODERATOR")
-                            || authority.getAuthority().equals("MODERATOR")
-                            || authority.getAuthority().equals("ROLE_ADMIN")
-                            || authority.getAuthority().equals("ADMIN")
-            );
-
-    if (!isStaff) {
-        throw new RuntimeException("Bạn không có quyền thực hiện thao tác duyệt này!");
-    }
-
-    User reviewer = userRepository.findByEmailIgnoreCase(authentication.getName())
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người duyệt trên hệ thống!"));
-
-    Document document = documentRepository.findById(documentId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu phê duyệt."));
-
-    if (document.getStatus() != StatusPublicDoc.PENDING) {
-        throw new RuntimeException("Tài liệu này hiện không có yêu cầu phê duyệt nào cần xử lý hoặc đã được duyệt trước đó!");
-    }
-
-    if (decision == RequestPublicDoc.ACCEPT) {
-        document.setPublic(true);
-        document.setStatus(StatusPublicDoc.SUCCESS);
-    } else if (decision == RequestPublicDoc.DENY) {
-        document.setPublic(false);
-        document.setStatus(StatusPublicDoc.DENY);
-    } else {
-        throw new RuntimeException("Quyết định phê duyệt không hợp lệ! Chỉ chấp nhận ACCEPT hoặc DENY.");
-    }
-
-    document.setApprovedBy(reviewer);
-
-    Document savedDocument = documentRepository.saveAndFlush(document);
-
-    mailService.sendDocumentReviewResultEmail(
-            savedDocument.getUser().getEmail(),
-            savedDocument.getDocumentName(),
-            decision.name()
-    );
-
-    mailService.sendDocumentReviewConfirmationEmail(
-            reviewer.getEmail(),
-            savedDocument.getDocumentName(),
-            decision.name()
-    );
-
-    return mapToResponseDTO(savedDocument);
-}
-
-    @Override
-    public Double getTotalQuota() {
-        Double total = 0.0;
-        User user = getCurrentUser();
-
-        UserMemberSubscription userMemberSubscription = userMemberSubscriptionRepository.findByUser(user)
-                .orElse(null);
-        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(1)
-                .orElseThrow(() -> new RuntimeException("This subscription is not available"));
-        SystemConfig systemConfig = systemConfigRepository.findById(1L)
-                .orElseThrow(() -> new RuntimeException("This config is not available"));
-
-        if(userMemberSubscription==null) {
-            total = systemConfig.getTotalStorageQuotaGb();
-        } else {
-            total = subscriptionPlan.getTotalStorageQuotaGb();
+    @Transactional
+    public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDoc decision) {
+        if (decision == null) {
+            throw new RuntimeException("Quyết định phê duyệt không hợp lệ.");
         }
 
-        return total;
+        Authentication authentication = getAuthentication();
+
+        if (!isStaff(authentication)) {
+            throw new RuntimeException("Bạn không có quyền thực hiện thao tác duyệt này.");
+        }
+
+        User reviewer = userRepository.findByEmailIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người duyệt."));
+
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài liệu yêu cầu phê duyệt."));
+
+        if (document.getStatus() != StatusPublicDoc.PENDING) {
+            throw new RuntimeException("Tài liệu này không có yêu cầu phê duyệt cần xử lý.");
+        }
+
+        if (decision == RequestPublicDoc.ACCEPT) {
+            document.setPublic(true);
+            document.setStatus(StatusPublicDoc.SUCCESS);
+        } else if (decision == RequestPublicDoc.DENY) {
+            document.setPublic(false);
+            document.setStatus(StatusPublicDoc.DENY);
+        } else {
+            throw new RuntimeException("Quyết định phê duyệt không hợp lệ.");
+        }
+
+        document.setApprovedBy(reviewer);
+
+        Document savedDocument = documentRepository.saveAndFlush(document);
+
+        mailService.sendDocumentReviewResultEmail(
+                savedDocument.getUser().getEmail(),
+                savedDocument.getDocumentName(),
+                decision.name()
+        );
+
+        mailService.sendDocumentReviewConfirmationEmail(
+                reviewer.getEmail(),
+                savedDocument.getDocumentName(),
+                decision.name()
+        );
+
+        return mapToResponseDTO(savedDocument);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getTotalQuota() {
+        User user = getCurrentUser();
+
+        return getTotalQuotaGbForUser(user);
     }
 
     @Override
@@ -562,13 +478,73 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
                 .toList();
     }
 
+    private double getTotalQuotaGbForUser(User user) {
+        UserMemberSubscription memberSubscription = userMemberSubscriptionRepository.findByUser(user)
+                .orElse(null);
+
+        if (isActiveMember(memberSubscription)) {
+            SubscriptionPlan subscriptionPlan = resolveSubscriptionPlan(memberSubscription);
+            return subscriptionPlan.getTotalStorageQuotaGb() != null
+                    ? subscriptionPlan.getTotalStorageQuotaGb()
+                    : 0.0;
+        }
+
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("Cấu hình hệ thống hiện chưa khả dụng."));
+
+        return systemConfig.getTotalStorageQuotaGb() != null
+                ? systemConfig.getTotalStorageQuotaGb()
+                : 0.0;
+    }
+
+    private double getMaxFileSizeMbForUser(User user) {
+        UserMemberSubscription memberSubscription = userMemberSubscriptionRepository.findByUser(user)
+                .orElse(null);
+
+        if (isActiveMember(memberSubscription)) {
+            SubscriptionPlan subscriptionPlan = resolveSubscriptionPlan(memberSubscription);
+            return subscriptionPlan.getMaxFileSizeMb() != null
+                    ? subscriptionPlan.getMaxFileSizeMb()
+                    : 0.0;
+        }
+
+        SystemConfig systemConfig = systemConfigRepository.findById(1L)
+                .orElseThrow(() -> new RuntimeException("Cấu hình hệ thống hiện chưa khả dụng."));
+
+        return systemConfig.getMaxFileSizeMb() != null
+                ? systemConfig.getMaxFileSizeMb()
+                : 0.0;
+    }
+
+    private SubscriptionPlan resolveSubscriptionPlan(UserMemberSubscription memberSubscription) {
+        if (memberSubscription != null && memberSubscription.getSubscriptionPlan() != null) {
+            return memberSubscription.getSubscriptionPlan();
+        }
+
+        return subscriptionPlanRepository.findById(1)
+                .orElseThrow(() -> new RuntimeException("Gói Premium hiện chưa khả dụng."));
+    }
+
+    private boolean isActiveMember(UserMemberSubscription memberSubscription) {
+        if (memberSubscription == null) {
+            return false;
+        }
+
+        if (memberSubscription.getStatus() != MemberStatus.ACTIVE) {
+            return false;
+        }
+
+        return memberSubscription.getEndDate() == null
+                || memberSubscription.getEndDate().isAfter(Instant.now());
+    }
+
     private Authentication getAuthentication() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null
                 || !authentication.isAuthenticated()
                 || "anonymousUser".equals(String.valueOf(authentication.getPrincipal()))) {
-            throw new RuntimeException("You are not login yet!");
+            throw new RuntimeException("Vui lòng đăng nhập để tiếp tục.");
         }
 
         return authentication;
@@ -578,124 +554,116 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
         Authentication authentication = getAuthentication();
 
         return userRepository.findByEmailIgnoreCase(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("This user is not found!"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản hiện tại."));
     }
 
-    private UUID handleDocumentCategories(
-            Document savedDocument,
-            SubjectCode subjectCode
-    ) {
-        if (subjectCode == null) {
-            throw new RuntimeException("Vui lòng chọn một môn học hợp lệ từ danh sách hệ thống!");
+    private boolean isStaff(Authentication authentication) {
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return false;
         }
 
-        Semester semester = subjectCode.getSemester();
+        return authentication.getAuthorities()
+                .stream()
+                .anyMatch(authority -> {
+                    String value = authority.getAuthority();
 
-        if (semester == null) {
-            throw new RuntimeException("Môn học được chọn không thuộc bất kỳ học kỳ nào hiện tại!");
+                    return "ADMIN".equals(value)
+                            || "ROLE_ADMIN".equals(value)
+                            || "MODERATOR".equals(value)
+                            || "ROLE_MODERATOR".equals(value);
+                });
+    }
+
+    private String extractTextFromUrl(String fileUrl, FileType fileType) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return "";
         }
 
-        UUID semesterCategoryId = findOrCreateSemesterCategory(
-                savedDocument.getId(),
-                semester
-        );
+        String typeStr = fileType != null ? fileType.name().toLowerCase() : "";
+        String lowerUrl = fileUrl.toLowerCase();
 
-        UUID subjectCategoryId = findOrCreateSubjectCategory(
-                savedDocument.getId(),
-                subjectCode.name(),
-                semesterCategoryId
-        );
+        try {
+            java.net.URL url = java.net.URI.create(fileUrl).toURL();
 
-        entityManager.flush();
+            if (typeStr.contains("txt") || lowerUrl.endsWith(".txt")) {
+                try (InputStream in = url.openStream()) {
+                    return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
 
-        return subjectCategoryId;
-    }
+            if (typeStr.contains("pdf") || lowerUrl.endsWith(".pdf")) {
+                try (InputStream in = url.openStream();
+                     PDDocument pdfDocument = PDDocument.load(in)) {
+                    PDFTextStripper stripper = new PDFTextStripper();
+                    return stripper.getText(pdfDocument);
+                }
+            }
 
-    private UUID findOrCreateSemesterCategory(UUID documentId, Semester semester) {
-        String sqlCheckSemester =
-                "SELECT category_id FROM document_categories " +
-                        "WHERE UPPER(category_name) = ? AND user_id IS NULL LIMIT 1";
+            if (typeStr.contains("docx") || lowerUrl.endsWith(".docx")) {
+                try (InputStream in = url.openStream();
+                     org.apache.poi.xwpf.usermodel.XWPFDocument docx =
+                             new org.apache.poi.xwpf.usermodel.XWPFDocument(in);
+                     org.apache.poi.xwpf.extractor.XWPFWordExtractor extractor =
+                             new org.apache.poi.xwpf.extractor.XWPFWordExtractor(docx)) {
+                    return extractor.getText();
+                }
+            }
 
-        List<?> existingSemesterIds = entityManager.createNativeQuery(sqlCheckSemester)
-                .setParameter(1, semester.name().toUpperCase())
-                .getResultList();
+            if (typeStr.contains("doc") || lowerUrl.endsWith(".doc")) {
+                try (InputStream in = url.openStream();
+                     org.apache.poi.hwpf.HWPFDocument doc =
+                             new org.apache.poi.hwpf.HWPFDocument(in);
+                     org.apache.poi.hwpf.extractor.WordExtractor extractor =
+                             new org.apache.poi.hwpf.extractor.WordExtractor(doc)) {
+                    return extractor.getText();
+                }
+            }
 
-        if (!existingSemesterIds.isEmpty()) {
-            return toUuid(existingSemesterIds.get(0));
+            if (typeStr.contains("xls") || lowerUrl.endsWith(".xlsx") || lowerUrl.endsWith(".xls")) {
+                try (InputStream in = url.openStream();
+                     org.apache.poi.ss.usermodel.Workbook workbook =
+                             org.apache.poi.ss.usermodel.WorkbookFactory.create(in)) {
+                    return extractTextFromExcel(workbook);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("==> LỖI BÓC TÁCH CHỮ TỪ URL SUPABASE: " + e.getMessage());
         }
 
-        UUID semesterCategoryId = UUID.randomUUID();
-
-        String sqlInsertSemester =
-                "INSERT INTO document_categories " +
-                        "(category_id, document_id, category_name, category_type, created_at, parent_id, user_id) " +
-                        "VALUES (?, ?, ?, ?, ?, NULL, NULL)";
-
-        entityManager.createNativeQuery(sqlInsertSemester)
-                .setParameter(1, semesterCategoryId)
-                .setParameter(2, documentId)
-                .setParameter(3, semester.name())
-                .setParameter(4, "SEMESTER")
-                .setParameter(5, java.time.OffsetDateTime.now())
-                .executeUpdate();
-
-        return semesterCategoryId;
+        return "";
     }
 
-    private UUID findOrCreateSubjectCategory(
-            UUID documentId,
-            String subjectName,
-            UUID semesterCategoryId
-    ) {
-        String sqlCheckSubject =
-                "SELECT category_id FROM document_categories " +
-                        "WHERE UPPER(category_name) = ? AND parent_id = ? AND user_id IS NULL LIMIT 1";
+    private String extractTextFromExcel(org.apache.poi.ss.usermodel.Workbook workbook) {
+        StringBuilder sb = new StringBuilder();
+        org.apache.poi.ss.usermodel.DataFormatter formatter = new org.apache.poi.ss.usermodel.DataFormatter();
 
-        List<?> existingSubjectIds = entityManager.createNativeQuery(sqlCheckSubject)
-                .setParameter(1, subjectName.toUpperCase())
-                .setParameter(2, semesterCategoryId)
-                .getResultList();
+        for (int i = 0; i < workbook.getNumberOfSheets(); i++) {
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(i);
+            sb.append("--- Trang (Sheet): ").append(sheet.getSheetName()).append(" ---\n");
 
-        if (!existingSubjectIds.isEmpty()) {
-            return toUuid(existingSubjectIds.get(0));
+            for (org.apache.poi.ss.usermodel.Row row : sheet) {
+                StringBuilder rowBuilder = new StringBuilder();
+
+                for (org.apache.poi.ss.usermodel.Cell cell : row) {
+                    String cellValue = formatter.formatCellValue(cell).trim();
+
+                    if (!cellValue.isEmpty()) {
+                        rowBuilder.append(cellValue).append(" | ");
+                    }
+                }
+
+                if (!rowBuilder.isEmpty()) {
+                    sb.append(rowBuilder).append("\n");
+                }
+            }
+
+            sb.append("\n");
         }
 
-        UUID subjectCategoryId = UUID.randomUUID();
-
-        String sqlInsertSubject =
-                "INSERT INTO document_categories " +
-                        "(category_id, document_id, category_name, category_type, created_at, parent_id, user_id) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, NULL)";
-
-        entityManager.createNativeQuery(sqlInsertSubject)
-                .setParameter(1, subjectCategoryId)
-                .setParameter(2, documentId)
-                .setParameter(3, subjectName)
-                .setParameter(4, "SUBJECT")
-                .setParameter(5, java.time.OffsetDateTime.now())
-                .setParameter(6, semesterCategoryId)
-                .executeUpdate();
-
-        return subjectCategoryId;
+        return sb.toString();
     }
 
-    private void updateDocumentCategory(Document savedDocument, UUID categoryId) {
-        String sqlUpdateDocument =
-                "UPDATE documents SET category_id = ? WHERE document_id = ?";
-
-        entityManager.createNativeQuery(sqlUpdateDocument)
-                .setParameter(1, categoryId)
-                .setParameter(2, savedDocument.getId())
-                .executeUpdate();
-
-        savedDocument.setCategory(documentCategoryRepository.findById(categoryId).orElse(null));
-    }
-
-    private void deletePhysicalFileFromSupabase(
-            Document document,
-            UUID userId,
-            UUID documentId
-    ) {
+    private void deletePhysicalFileFromSupabase(Document document) {
         try {
             String downloadUrl = document.getDownloadUrl();
 
@@ -711,13 +679,11 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
                 return;
             }
 
-            // Bỏ kiểm tra dấu chấm (.) để chấp nhận cả chuỗi token thế hệ mới sb_secret_...
             if (serviceKey == null || serviceKey.isBlank()) {
                 System.out.println("==> Cảnh báo: supabase.service-role-key trống, bỏ qua xóa file vật lý. FileKey=" + fileKey);
                 return;
             }
 
-            // Chuẩn hóa loại bỏ dấu gạch chéo dư thừa ở đầu key
             if (fileKey.startsWith("/")) {
                 fileKey = fileKey.substring(1);
             }
@@ -726,16 +692,14 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
                     ? supabaseUrl.substring(0, supabaseUrl.length() - 1)
                     : supabaseUrl;
 
-            // ĐỔI ENDPOINT: Ghép trực tiếp bucket và fileKey vào URL theo chuẩn REST API đơn lẻ của Supabase
             String deleteUrl = baseUrl + "/storage/v1/object/" + bucketName + "/" + fileKey;
 
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.set("Authorization", "Bearer " + serviceKey);
-            headers.set("apikey", serviceKey); // Gửi kèm api key song song để tránh lỗi phân quyền RLS
+            headers.set("apikey", serviceKey);
 
             org.springframework.http.HttpEntity<Void> entity = new org.springframework.http.HttpEntity<>(headers);
 
-            // Sử dụng HTTP Method DELETE trực tiếp lên URL của file
             restTemplate.exchange(
                     deleteUrl,
                     org.springframework.http.HttpMethod.DELETE,
@@ -743,7 +707,7 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
                     String.class
             );
 
-            System.out.println("==> Đã gửi lệnh REST API xóa file vật lý thành công trên Supabase Bucket: " + fileKey);
+            System.out.println("==> Đã gửi lệnh xóa file vật lý trên Supabase Bucket: " + fileKey);
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             String errorResponse = e.getResponseBodyAsString();
 
@@ -784,14 +748,14 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
         if (fileUrl == null || fileUrl.isEmpty()) {
             return null;
         }
-        // Ví dụ: .../storage/v1/object/public/your-bucket-name/userId/filename.pdf
-        // Hoặc: .../storage/v1/object/public/your-bucket-name/filename.pdf
+
         String target = "/" + bucketName + "/";
         int index = fileUrl.indexOf(target);
+
         if (index != -1) {
-            // Cắt toàn bộ chuỗi đứng sau tên bucket để làm File Key chuẩn xác trên Supabase
             return fileUrl.substring(index + target.length());
         }
+
         return null;
     }
 
@@ -850,49 +814,19 @@ public DocumentResponseDTO approvePublicRequest(UUID documentId, RequestPublicDo
                         ? document.getStatus()
                         : StatusPublicDoc.DEFAULT
         );
-        dto.setSubjectCode(resolveSubjectCodeFromDocument(document));
+
+        if (document.getCategory() != null) {
+            DocumentCategory category = document.getCategory();
+
+            dto.setCategoryId(category.getId());
+            dto.setCategoryName(category.getCategoryName());
+            dto.setCategoryType(category.getCategoryType());
+            dto.setParentCategoryId(category.getParentId());
+
+            dto.setSubjectCode(category.getCategoryName());
+            dto.setSubjectName(category.getCategoryName());
+        }
 
         return dto;
     }
-
-    private SubjectCode resolveSubjectCodeFromDocument(Document document) {
-        if (document.getCategory() == null) {
-            return null;
-        }
-
-        try {
-            String sqlGetCategoryName =
-                    "SELECT category_name FROM document_categories WHERE category_id = ? LIMIT 1";
-
-            Object result = entityManager.createNativeQuery(sqlGetCategoryName)
-                    .setParameter(1, document.getCategory())
-                    .getSingleResult();
-
-            if (result == null) {
-                return null;
-            }
-
-            String categoryName = String.valueOf(result).trim().toUpperCase();
-
-            if (categoryName.isEmpty()) {
-                return null;
-            }
-
-            return SubjectCode.valueOf(categoryName);
-        } catch (IllegalArgumentException e) {
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private UUID toUuid(Object value) {
-        if (value instanceof UUID uuid) {
-            return uuid;
-        }
-
-        return UUID.fromString(String.valueOf(value));
-    }
-
-    
 }

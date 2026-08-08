@@ -2,6 +2,7 @@ package swp391.aistudyhub.service;
 
 import org.springframework.core.io.Resource;
 import swp391.aistudyhub.dto.request.DocumentRequestDTO;
+import swp391.aistudyhub.dto.request.DocumentUpdateRequestDTO;
 import swp391.aistudyhub.dto.response.DocumentResponseDTO;
 import swp391.aistudyhub.enums.RequestPublicDoc;
 
@@ -15,6 +16,8 @@ public interface DocumentService {
     List<DocumentResponseDTO> getAllDocumentsByUser();
 
     DocumentResponseDTO getDocumentDetail(UUID documentId);
+
+    DocumentResponseDTO updateDocument(UUID documentId, DocumentUpdateRequestDTO requestDTO);
 
     DocumentResponseDTO updateDocumentName(UUID documentId, String newName);
 

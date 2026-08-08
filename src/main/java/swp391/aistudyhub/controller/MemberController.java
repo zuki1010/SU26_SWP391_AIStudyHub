@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import swp391.aistudyhub.config.OpenApiConfig;
+import swp391.aistudyhub.dto.response.PaymentResponseDTO;
 import swp391.aistudyhub.service.MemberService;
 
 import java.util.Map;
@@ -14,7 +15,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/member")
 @CrossOrigin(origins = "*")
-@PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR')")
 @SecurityRequirement(name = OpenApiConfig.BEARER_SCHEME)
 @Tag(name = "Member Dashboard", description = "Subscription")
 public class MemberController {
@@ -22,23 +22,40 @@ public class MemberController {
     @Autowired
     private MemberService memberService;
 
-    @PostMapping("/register")
-    public ResponseEntity<?> registerMember() {
-        memberService.registerMember();
+    @PostMapping("/payment/create")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR')")
+    public ResponseEntity<PaymentResponseDTO> createPremiumPayment() {
+        return ResponseEntity.ok(memberService.createPremiumPayment());
+    }
 
-        return ResponseEntity.ok(
+    @PostMapping("/payment/confirm")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR')")
+    public ResponseEntity<PaymentResponseDTO> confirmPremiumPayment(
+            @RequestParam("orderCode") Long orderCode
+    ) {
+        return ResponseEntity.ok(memberService.confirmPremiumPayment(orderCode));
+    }
+
+    @PostMapping("/payment/webhook")
+    public ResponseEntity<?> handlePaymentWebhook(@RequestBody Map<String, Object> payload) {
+        memberService.handlePaymentWebhook(payload);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    @PostMapping("/register")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR')")
+    public ResponseEntity<?> registerMember() {
+        return ResponseEntity.badRequest().body(
                 Map.of(
-                        "success", true,
-                        "message", "Thanh toán thành công! Tài khoản đã được nâng cấp Premium.",
-                        "plan", "PREMIUM",
-                        "membership", "PREMIUM",
-                        "isPremium", true
+                        "success", false,
+                        "message", "Vui lòng xác nhận giao dịch trước khi kích hoạt Premium."
                 )
         );
     }
 
     @GetMapping("/detail")
+    @PreAuthorize("hasAnyAuthority('CUSTOMER', 'ROLE_CUSTOMER', 'MODERATOR', 'ROLE_MODERATOR', 'ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<?> getDetail() {
-        return ResponseEntity.ok().body(memberService.getMemberDetail());
+        return ResponseEntity.ok(memberService.getMemberDetail());
     }
 }

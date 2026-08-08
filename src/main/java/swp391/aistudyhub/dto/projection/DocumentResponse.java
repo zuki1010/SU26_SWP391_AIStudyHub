@@ -22,6 +22,14 @@ public interface DocumentResponse {
 
     StatusPublicDoc getStatus();
 
+    UUID getCategoryId();
+
+    String getCategoryName();
+
+    String getCategoryType();
+
+    UUID getParentCategoryId();
+
     UUID getUserId();
 
     String getUserEmail();
