@@ -1,0 +1,9 @@
+target
+.idea
+.vscode
+.git
+.gitignore
+*.log
+hs_err_pid*.log
+.env
+node_modules
